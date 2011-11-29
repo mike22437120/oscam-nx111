@@ -5,7 +5,9 @@ plat_dir=build_mipsel
 
 rm -f oscam oscam-nx111  oscam-$plat-svn*.tar.gz oscam-$plat-svn*.ipk
 export OLDPATH=$PATH
-export PATH=../../toolchains/mipsel-unknown-linux-gnu/bin:$OLDPATH     # 指定编译源码时要用的mipsel环境下的GCC和C++编译器路径
+if ! echo $PATH | grep mipsel-unknown-linux-gnu >/dev/null; then 
+	export PATH=../../toolchains/mipsel-unknown-linux-gnu/bin:$PATH     # 指定编译源码时要用的mipsel环境下的GCC和C++编译器路径
+fi
 make clean
 cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-mips-tuxbox.cmake -DWEBIF=1 ..    #用cmake命令对源码进行交叉编译
 make
