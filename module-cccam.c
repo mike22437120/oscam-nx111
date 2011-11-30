@@ -273,6 +273,7 @@ int32_t is_sid_blocked(struct cc_card *card, struct cc_srvid *srvid_blocked) {
 
 int32_t is_good_sid(struct cc_card *card, struct cc_srvid *srvid_good) {
 	LL_ITER it = ll_iter_create(card->goodsids);
+	if(!ll_count(card->goodsids))return 1;
 	struct cc_srvid *srvid;
 	while ((srvid = ll_iter_next(&it))) {
 		if (sid_eq(srvid, srvid_good)) {
@@ -316,7 +317,7 @@ void remove_good_sid(struct cc_card *card, struct cc_srvid *srvid_good) {
 
 void add_good_sid(struct s_client *cl __attribute__((unused)), struct cc_card *card,
 		struct cc_srvid *srvid_good) {
-	if (is_good_sid(card, srvid_good))
+	if (is_good_sid(card, srvid_good) && ll_count(card->goodsids))
 		return;
 
 	remove_sid_block(card, srvid_good);
@@ -1047,7 +1048,6 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 
 	int32_t h = -1;
 
-	cs_debug_mask(D_TRACE,"[get_matching_card]:cur_caid=%06X cur_prid=%06X cur_srvid.sid=%04X cur_srvid.ecmlen=%d",cur_er->caid,cur_er->prid,cur_srvid.sid,cur_srvid.ecmlen);
 	LL_ITER it = ll_iter_create(cc->cards);
 	struct cc_card *card = NULL, *ncard, *xcard = NULL;
 	while ((ncard = ll_iter_next(&it))) {
@@ -1056,7 +1056,6 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 				||(chk_only && cfg.lb_mode && cfg.lb_auto_betatunnel && cur_er->caid>>8==0x18 && ncard->caid>>8==0x17) //accept beta card when beta-tunnel is on
 				#endif
 				) {
-			cs_debug_mask(D_TRACE,"Check ncard:id=%08X providers_count=%d hop=%d h=%d",ncard->id,ll_count(ncard->providers),ncard->hop,h);
 			if (is_sid_blocked(ncard, &cur_srvid))
 				continue;
 			
@@ -1064,7 +1063,6 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 				xcard = ncard; //remember card (D+ / 1810 fix) if request has no provider, but card has
 
 			if (!ll_count(ncard->providers)) { //card has no providers:
-				cs_debug_mask(D_TRACE,"ncard:id=%08X has no providers",ncard->id);
 				if (h < 0 || ncard->hop < h || (ncard->hop == h
 						&& cc_UA_valid(ncard->hexserial))) {
 					// ncard is closer
@@ -1092,7 +1090,6 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 	}
 	if (!card)
 			card = xcard; //18xx: if request has no provider and we have no card, we try this card
-	cs_debug_mask(D_TRACE,"[get_matching_card]card:id=%08X caid=%04X",card?card->id:0,card?card->caid:0);
 	return card;
 }
 
@@ -2350,7 +2347,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 						if (cwlastresptime > cfg.ftimeout && !cc->extended_mode) {
 							cs_debug_mask(D_READER, "%s card %04X is too slow, moving to the end...", getprefix(), card->id);
 							move_card_to_end(cl, card);
-							add_sid_block(cl, card, &srvid);
+//							add_sid_block(cl, card, &srvid);
 						}
 						
 					}

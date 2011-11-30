@@ -130,7 +130,7 @@ static void camd33_process_emm(uchar *buf, int32_t l)
   do_emm(cur_client(), &epg);
 }
 
-static void * camd33_server(struct s_client * UNUSED(client), uchar *mbuf, int32_t n)
+static void * camd33_server(struct s_client *UNUSED(client), uchar *mbuf, int32_t n)
 {
 	switch(mbuf[0]) {
 		case 2:
@@ -146,7 +146,7 @@ static void * camd33_server(struct s_client * UNUSED(client), uchar *mbuf, int32
 	return NULL;
 }
 
-static void camd33_server_init(struct s_client * UNUSED(client)) {
+static void camd33_server_init(struct s_client *UNUSED(client)) {
 	uchar camdbug[256];
 
 	camd33_auth_client(camdbug);
