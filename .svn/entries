@@ -1,15 +1,15 @@
 10
 
 dir
-6054
+6058
 http://streamboard.gmc.to/svn/oscam/trunk
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2011-11-29T14:33:20.550648Z
-6054
-docman
+2011-11-30T23:24:50.262626Z
+6058
+corsair
 has-props
 
 
@@ -507,9 +507,9 @@ file
 
 
 
-6c8259441bdbc1014f9c810b44f67159
-2011-11-28T19:02:21.264896Z
-6050
+b188d7dc74513dfcbbfa024eac8d460f
+2011-11-30T23:24:50.262626Z
+6058
 corsair
 
 reader-tongfang.c
@@ -553,9 +553,9 @@ file
 
 
 
-8a069bcf27682a2aff2e0433c1b8a81d
-2011-11-27T11:45:50.079943Z
-6041
+9dcdf5603b36e1db878321f9bed72c55
+2011-11-30T16:18:15.467410Z
+6057
 corsair
 
 cscrypt
@@ -706,10 +706,10 @@ file
 
 
 
-bb04f69593495a99db95142ee55d156e
-2011-11-27T14:46:16.710884Z
-6043
-Admin
+44edc90aeb62bb226c62044cfb476e95
+2011-11-30T12:54:43.321971Z
+6055
+corsair
 
 oscam-http.h
 file
@@ -718,10 +718,10 @@ file
 
 
 
-749a3dcb7808d9959cca567a46f9fc00
-2011-11-28T22:52:49.721230Z
-6052
-Deas
+d37cdfdfce8b8752fd532e2b400f47e9
+2011-11-30T12:54:43.321971Z
+6055
+corsair
 
 reader-irdeto.c
 file
@@ -1551,9 +1551,9 @@ file
 
 
 
-a95d20f58b0f665c685cc4ec2bc11ac8
-2011-11-27T11:45:50.079943Z
-6041
+a4922f34f851c6a4ef0b72641ea783a9
+2011-11-30T23:24:50.262626Z
+6058
 corsair
 
 module-cccam.c

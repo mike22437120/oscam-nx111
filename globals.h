@@ -360,6 +360,7 @@ extern char *RDR_CD_TXT[];
 #define DEFAULT_UPDATEINTERVAL 120
 #define DEFAULT_LB_AUTO_BETATUNNEL 1
 #define DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA 50
+#define DEFAULT_CACHEEX_WAIT_TIME 50
 
 enum {E1_GLOBAL=0, E1_USER, E1_READER, E1_SERVER, E1_LSERVER};
 enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_OFFLINE, 
@@ -1487,6 +1488,7 @@ struct s_config
 	int32_t		pand_port;
 	in_addr_t	pand_srvip;
 #endif
+	uint32_t     cacheex_wait_time; //cache wait time in ms
 };
 
 struct s_clientinit

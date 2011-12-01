@@ -273,7 +273,6 @@ int32_t is_sid_blocked(struct cc_card *card, struct cc_srvid *srvid_blocked) {
 
 int32_t is_good_sid(struct cc_card *card, struct cc_srvid *srvid_good) {
 	LL_ITER it = ll_iter_create(card->goodsids);
-	if(!ll_count(card->goodsids))return 1;
 	struct cc_srvid *srvid;
 	while ((srvid = ll_iter_next(&it))) {
 		if (sid_eq(srvid, srvid_good)) {
@@ -317,7 +316,7 @@ void remove_good_sid(struct cc_card *card, struct cc_srvid *srvid_good) {
 
 void add_good_sid(struct s_client *cl __attribute__((unused)), struct cc_card *card,
 		struct cc_srvid *srvid_good) {
-	if (is_good_sid(card, srvid_good) && ll_count(card->goodsids))
+	if (is_good_sid(card, srvid_good))
 		return;
 
 	remove_sid_block(card, srvid_good);
