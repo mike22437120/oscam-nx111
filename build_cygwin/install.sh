@@ -3,14 +3,17 @@
 plat=i686-pc-cygwin
 plat_dir=build_cygwin
 
-rm -rf oscam  CMake* *.a Makefile cscrypt csctapi *.cmake algo a.exe CopyOfCMakeCache.txt oscam-${plat}-*.tar.gz
+rm -rf oscam  CMake* *.a Makefile cscrypt csctapi algo a.exe CopyOfCMakeCache.txt oscam-${plat}-*.tar.gz *.cmake
 export OLDPATH=$PATH
 if ! echo $PATH | grep  i686-pc-cygwin >/dev/null; then 
 	export PATH=../../toolchains/i686-pc-cygwin/bin:$PATH     # 指定编译源码时要用的环境下的GCC和C++编译器路径
 fi
 make clean
 export CMAKE_LEGACY_CYGWIN_WIN32=0
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-i386-cygwin.cmake  -DWEBIF=1 ..    #用cmake命令对源码进行交叉编译
+sed  "s:.*(CMAKE_RC_COMPILER.*::g" ../toolchains/toolchain-i386-cygwin.cmake > toolchain-i386-cygwin.cmake
+windres=`which i686-pc-cygwin-windres`
+echo "SET (CMAKE_RC_COMPILER `pwd`/$windres)" >>toolchain-i386-cygwin.cmake
+cmake -DCMAKE_TOOLCHAIN_FILE=toolchain-i386-cygwin.cmake  -DWEBIF=1 ..    #用cmake命令对源码进行交叉编译
 make
 export CMAKE_LEGACY_CYGWIN_WIN32=
 export PATH=$OLDPATH
