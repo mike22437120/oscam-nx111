@@ -260,12 +260,16 @@ int32_t sid_eq(struct cc_srvid *srvid1, struct cc_srvid *srvid2) {
 	return (srvid1->sid == srvid2->sid && (srvid1->ecmlen == srvid2->ecmlen || !srvid1->ecmlen || !srvid2->ecmlen));
 }
 
+void remove_sid_block(struct cc_card *card, struct cc_srvid *srvid_blocked);
 int32_t is_sid_blocked(struct cc_card *card, struct cc_srvid *srvid_blocked) {
 	LL_ITER it = ll_iter_create(card->badsids);
 	struct cc_srvid *srvid;
 	while ((srvid = ll_iter_next(&it))) {
 		if (sid_eq(srvid, srvid_blocked)) {
-			break;
+			if(((struct cc_srvid_block *)srvid)->blocked_till < time(0))
+				remove_sid_block(card,srvid);
+			else
+				break;
 		}
 	}
 	return (srvid != 0);
