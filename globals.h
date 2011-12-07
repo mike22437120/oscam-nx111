@@ -1187,6 +1187,7 @@ struct s_reader  									//contains device info, reader info and card info
 	struct ecmrl	rlecmh[MAXECMRATELIMIT];
 	int8_t			fix_9993;
 	uint8_t			ins7E[0x1A+1];
+	uint8_t			ins7E11[0x01+1];
 
 	uint32_t		autorestartseconds;		// auto restart reader after login ,default 0  disable
 #ifdef MODULE_PANDORA
