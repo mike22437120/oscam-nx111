@@ -266,11 +266,7 @@ int32_t is_sid_blocked(struct cc_card *card, struct cc_srvid *srvid_blocked) {
 	struct cc_srvid *srvid;
 	while ((srvid = ll_iter_next(&it))) {
 		if (sid_eq(srvid, srvid_blocked)) {
-			time_t blocked_till= ((struct cc_srvid_block *)srvid)->blocked_till;
-			if( blocked_till && blocked_till < time(0) )
-				remove_sid_block(card,srvid);
-			else
-				break;
+			break;
 		}
 	}
 	return (srvid != 0);
@@ -1079,7 +1075,6 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 				LL_ITER it2 = ll_iter_create(ncard->providers);
 				struct cc_provider *provider;
 				while ((provider = ll_iter_next(&it2))) {
-					cs_debug_mask(D_TRACE,"ncard:%08X cur_er->prid:%06X provier->prov:%06X",ncard->id,cur_er->prid,provider->prov);
 					if (!cur_er->prid || !provider->prov || provider->prov	== cur_er->prid) { // provid matches
 						if (h < 0 || ncard->hop < h || (ncard->hop == h
 								&& cc_UA_valid(ncard->hexserial))) {
@@ -1172,8 +1167,8 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 		cc->ecm_busy = 1;
 		cs_debug_mask(D_READER, "cccam: ecm trylock: got lock");
 	}
-//	int32_t processed_ecms = 0;
-//	do {
+	int32_t processed_ecms = 0;
+	do {
 	cc->ecm_time = cur_time;
 	rdr->available = cc->extended_mode;
 
@@ -1291,9 +1286,9 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 		set_au_data(cl, rdr, card, cur_er);
 		cs_readunlock(&cc->cards_busy);
 		
-//		processed_ecms++;
-//		if (cc->extended_mode)
-//				continue; //process next pending ecm!
+		processed_ecms++;
+		if (cc->extended_mode)
+				continue; //process next pending ecm!
 		return 0;
 	} else {
 		//When connecting, it could happen than ecm requests come before all cards are received.
@@ -1331,7 +1326,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 	cs_readunlock(&cc->cards_busy);
 
 	//process next pending ecm!
-//	} while (cc->extended_mode || processed_ecms == 0);
+	} while (cc->extended_mode || processed_ecms == 0);
 	
 	//Now mark all waiting as unprocessed:
 	int8_t i;

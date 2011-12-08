@@ -21,7 +21,7 @@
 #define MAXLINESIZE 1024
 #define CCCAMCFGREADER    1
 #define CCCAMCFGUSER      2
-void * read_cccamcfg(int mode);
+void * read_cccamcfg(int32_t mode);
 
 static const char *cs_conf="oscam.conf";
 static const char *cs_user="oscam.user";
@@ -4991,7 +4991,7 @@ int32_t chk_cccam_cfg_F_more(char *line,struct s_auth * account)
 	return 0;
 }
 
-void * read_cccamcfg(int mode)
+void * read_cccamcfg(int32_t mode)
 {
 	struct s_auth *authptr = NULL;
 	FILE *fp;
