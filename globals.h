@@ -435,6 +435,7 @@ extern void cs_switch_led(int32_t led, int32_t action);
 #define ACTION_CLIENT_KILL		25
 #define ACTION_CLIENT_INIT		26
 #define ACTION_CLIENT_IDLE		27
+#define ACTION_CACHE_PUSH_OUT	28
 
 #define CHECK_WAKEUP			1
 #define CHECK_ANTICASCADER		2
@@ -634,6 +635,7 @@ struct s_module {
 	void 			(*c_idle)(void);	// Schlocke: called when reader is idle
 	void			(*s_idle)(struct s_client*);
 	void 			(*c_card_info)(void);	// Schlocke: request card infos
+	int32_t			(*c_cache_push)(struct s_client*, struct ecm_request_t *); //Cache push
 	int32_t  		c_port;
 	PTAB 			*ptab;
 	int32_t 		num;

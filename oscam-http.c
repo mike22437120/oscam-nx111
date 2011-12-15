@@ -1108,9 +1108,9 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 
 	// Cacheex
 	if(!apicall) {
-		tpl_addVar(vars, TPLADD, "CACHEEXCHECKED", (rdr->cacheex == 1) ? "checked" : "");
+		tpl_printf(vars, TPLADD, "CACHEEX", "%d", rdr->cacheex);
 	} else {
-		tpl_addVar(vars, TPLADD, "CACHEEXVALUE", (rdr->cacheex == 1) ? "1" : "0");
+		tpl_printf(vars, TPLADD, "CACHEEXVALUE", "%d", rdr->cacheex);
 	}
 
 	// Logport
@@ -1903,9 +1903,9 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 
 	// Cacheex
 	if(!apicall) {
-		tpl_addVar(vars, TPLADD, "CACHEEXCHECKED", (account->cacheex == 1) ? "checked" : "");
+		tpl_printf(vars, TPLADD, "CACHEEX", "%d", account->cacheex);
 	} else {
-		tpl_addVar(vars, TPLADD, "CACHEEXVALUE", (account->cacheex == 1) ? "1" : "0");
+		tpl_printf(vars, TPLADD, "CACHEEXVALUE", "%d", account->cacheex);
 	}
 
 	//Keepalive
@@ -2612,7 +2612,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 		char *cptr = getParam(params, "threadid");
 		struct s_client *cl = NULL;
 		if (strlen(cptr)>1)
-			sscanf(cptr, "%p", &cl);
+			sscanf(cptr, "%p", (void**)(void*)&cl);
 
 		if (cl && is_valid_client(cl)) {
 			kill_thread(cl);
@@ -2642,7 +2642,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	char *hide = getParam(params, "hide");
 	if(strlen(hide) > 0) {
 		struct s_client *hideidx = NULL;
-		sscanf(hide, "%p", &hideidx);
+		sscanf(hide, "%p", (void**)(void*)&hideidx);
 
 		if(hideidx && is_valid_client(hideidx))
 			hideidx->wihidden = 1;
@@ -4290,7 +4290,6 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 	return 0;
 }
 
-#pragma GCC diagnostic ignored "-Wempty-body"
 static void *serve_process(void *conn){
 	struct s_connection *myconn = (struct s_connection*)conn;
 	int32_t s = myconn->socket;

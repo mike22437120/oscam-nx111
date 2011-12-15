@@ -59,7 +59,7 @@ static int pandora_recv(struct s_client *cl, uchar *buf, int32_t l) {
 	if (cl->typ != 'c')
 		ret = recv_from_udpipe(buf);
 	else {
-		socklen_t clilen = sizeof(cl->udp_sa);
+		uint32_t clilen = sizeof(cl->udp_sa);
 		ret = recvfrom(cl->udp_fd, buf, l, 0, (struct sockaddr *) &cl->udp_sa,
 				&clilen);
 	}
@@ -204,7 +204,6 @@ int pandora_client_init(struct s_client *cl) {
 	return (0);
 }
 
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 static int pandora_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *UNUSED(buf)) {
 	uchar msgbuf[CWS_NETMSGSIZE];
 	int ret, len;
