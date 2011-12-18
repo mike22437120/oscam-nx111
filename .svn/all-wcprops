@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 30
-/svn/oscam/!svn/ver/6086/trunk
+/svn/oscam/!svn/ver/6091/trunk
 END
 module-cccam.h
 K 25
@@ -123,23 +123,17 @@ svn:wc:ra_dav:version-url
 V 46
 /svn/oscam/!svn/ver/6081/trunk/module-dvbapi.c
 END
-CMakeLists.txt
-K 25
-svn:wc:ra_dav:version-url
-V 45
-/svn/oscam/!svn/ver/5927/trunk/CMakeLists.txt
-END
 Makefile
 K 25
 svn:wc:ra_dav:version-url
 V 39
 /svn/oscam/!svn/ver/6068/trunk/Makefile
 END
-module-dvbapi.h
+CMakeLists.txt
 K 25
 svn:wc:ra_dav:version-url
-V 46
-/svn/oscam/!svn/ver/5667/trunk/module-dvbapi.h
+V 45
+/svn/oscam/!svn/ver/5927/trunk/CMakeLists.txt
 END
 config.sh
 K 25
@@ -147,11 +141,11 @@ svn:wc:ra_dav:version-url
 V 40
 /svn/oscam/!svn/ver/6011/trunk/config.sh
 END
-module-cccshare.c
+module-dvbapi.h
 K 25
 svn:wc:ra_dav:version-url
-V 48
-/svn/oscam/!svn/ver/5956/trunk/module-cccshare.c
+V 46
+/svn/oscam/!svn/ver/5667/trunk/module-dvbapi.h
 END
 module-stat.c
 K 25
@@ -159,11 +153,17 @@ svn:wc:ra_dav:version-url
 V 44
 /svn/oscam/!svn/ver/6078/trunk/module-stat.c
 END
-module-serial.c
+module-cccshare.c
 K 25
 svn:wc:ra_dav:version-url
-V 46
-/svn/oscam/!svn/ver/6015/trunk/module-serial.c
+V 48
+/svn/oscam/!svn/ver/5956/trunk/module-cccshare.c
+END
+oscam.c
+K 25
+svn:wc:ra_dav:version-url
+V 38
+/svn/oscam/!svn/ver/6091/trunk/oscam.c
 END
 oscam-reader.c
 K 25
@@ -171,23 +171,23 @@ svn:wc:ra_dav:version-url
 V 45
 /svn/oscam/!svn/ver/6078/trunk/oscam-reader.c
 END
-oscam.c
+module-serial.c
 K 25
 svn:wc:ra_dav:version-url
-V 38
-/svn/oscam/!svn/ver/6085/trunk/oscam.c
-END
-datastruct-llist.c
-K 25
-svn:wc:ra_dav:version-url
-V 49
-/svn/oscam/!svn/ver/3596/trunk/datastruct-llist.c
+V 46
+/svn/oscam/!svn/ver/6015/trunk/module-serial.c
 END
 module-constcw.c
 K 25
 svn:wc:ra_dav:version-url
 V 47
 /svn/oscam/!svn/ver/5808/trunk/module-constcw.c
+END
+datastruct-llist.c
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/oscam/!svn/ver/3596/trunk/datastruct-llist.c
 END
 reader-tongfang.c
 K 25
@@ -307,13 +307,13 @@ module-datastruct-llist.c
 K 25
 svn:wc:ra_dav:version-url
 V 56
-/svn/oscam/!svn/ver/6069/trunk/module-datastruct-llist.c
+/svn/oscam/!svn/ver/6090/trunk/module-datastruct-llist.c
 END
 globals.h
 K 25
 svn:wc:ra_dav:version-url
 V 40
-/svn/oscam/!svn/ver/6078/trunk/globals.h
+/svn/oscam/!svn/ver/6091/trunk/globals.h
 END
 reader-common.c
 K 25

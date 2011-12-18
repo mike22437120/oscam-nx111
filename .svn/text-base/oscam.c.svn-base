@@ -1641,6 +1641,9 @@ void cs_add_cache(struct s_client *cl, ECM_REQUEST *er)
 		cs_writeunlock(&ecmcache_lock);
 
 		cs_cache_push(er);  //cascade push!
+
+		cl->cwcacheexgot++;
+		first_client->cwcacheexgot++;
 	}
 	else {
 		if(er->rc < ecm->rc) {
@@ -1652,6 +1655,9 @@ void cs_add_cache(struct s_client *cl, ECM_REQUEST *er)
 			distribute_ecm(ecm, er->rc);
 			pthread_kill(timecheck_thread, OSCAM_SIGNAL_WAKEUP); 
 			cs_cache_push(er);  //cascade push!
+
+			cl->cwcacheexgot++;
+			first_client->cwcacheexgot++;
 		}
 		free_ecm(er);
 	}
@@ -1762,7 +1768,7 @@ ECM_REQUEST *get_ecmtask()
 #ifdef WITH_LB
 void send_reader_stat(struct s_reader *rdr, ECM_REQUEST *er, int32_t rc)
 {
-	if (!rdr || rc>=E_99 || rdr->cacheex)
+	if (!rdr || rc>=E_99 || rdr->cacheex==1)
 		return;
 	struct timeb tpe;
 	cs_ftime(&tpe);
@@ -2072,14 +2078,14 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 
 	ea->status |= REQUEST_ANSWERED;
 
-	//Update reader stats:
-	if (ea->rc == E_FOUND)
-		ea->reader->ecmsok++;
-	else if (ea->rc == E_NOTFOUND)
-		ea->reader->ecmsnok++;
-
-	//Reader ECMs Health Try (by Pickser)
 	if (ea->reader) {
+		//Update reader stats:
+		if (ea->rc == E_FOUND)
+			ea->reader->ecmsok++;
+		else if (ea->rc == E_NOTFOUND)
+			ea->reader->ecmsnok++;
+
+		//Reader ECMs Health Try (by Pickser)
 		if (ea->reader->ecmsok != 0 || ea->reader->ecmsnok != 0)
 		{
 			ea->reader->ecmshealthok = ((double) ea->reader->ecmsok / (ea->reader->ecmsok + ea->reader->ecmsnok)) * 100;
@@ -2658,7 +2664,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 			er->rc = E_UNHANDLED;
 	}
 
-	int8_t cacheex = client->account && client->account->cacheex;
+	int8_t cacheex = client->account?client->account->cacheex:0;
 
 	if (cacheex == 1 && er->rc == E_UNHANDLED) { //not found in cache, so wait!
 #ifdef WITH_LB
@@ -3247,6 +3253,10 @@ void * work_thread(void *ptr) {
 					"pushed ECM %04X&%06X/%04X/%02X:%04X to %s res %d", er->caid, er->prid, er->srvid, er->l,
 					htons(er->checksum), username(cl), res);
 				free(data->ptr);
+
+				cl->cwcacheexpush++;
+				first_client->cwcacheexpush++;
+
 				break;
 			}
 		}
@@ -3382,7 +3392,7 @@ static void * check_thread(void) {
 					struct s_ecm_answer *ea_list;
 
 					for(ea_list = er->matching_rdr; ea_list; ea_list = ea_list->next) {
-						if ((ea_list->status & (REQUEST_SENT|REQUEST_ANSWERED)) == REQUEST_SENT)
+						if ((ea_list->status & REQUEST_SENT) == REQUEST_SENT)
 							send_reader_stat(ea_list->reader, er, E_TIMEOUT);
 					}
 #endif
