@@ -3214,6 +3214,12 @@ void * work_thread(void *ptr) {
 				data = NULL;
 				return NULL;
 				break;
+			case ACTION_READER_RESET_FAST:
+				reader->ins7e11_fast_reset = 1;
+				reader->card_status = CARD_NEED_INIT;
+				reader_reset(reader);
+				reader->ins7e11_fast_reset = 0;
+				break;
 
 			case ACTION_CLIENT_UDP:
 				n = ph[cl->ctyp].recv(cl, data->ptr, data->len);
@@ -3406,7 +3412,7 @@ static void * check_thread(void) {
 					struct s_ecm_answer *ea_list;
 
 					for(ea_list = er->matching_rdr; ea_list; ea_list = ea_list->next) {
-						if ((ea_list->status & REQUEST_SENT) == REQUEST_SENT)
+						if ((ea_list->status & (REQUEST_SENT|REQUEST_ANSWERED)) == REQUEST_SENT) //Request send, but no answer!
 							send_reader_stat(ea_list->reader, er, E_TIMEOUT);
 					}
 #endif

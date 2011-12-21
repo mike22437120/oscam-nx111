@@ -167,7 +167,7 @@
 #endif
 #define CS_QLEN       128 // size of request queue
 #define CS_MAXCAIDTAB 32  // max. caid-defs/user
-#define CS_MAXTUNTAB  20  // max. betatunnel mappings
+#define CS_MAXTUNTAB  50  // max. betatunnel mappings
 #define CS_MAXPROV    32
 #define CS_MAXPORTS   32  // max server ports
 #define CS_MAXFILTERS   16
@@ -427,6 +427,7 @@ extern void cs_switch_led(int32_t led, int32_t action);
 #define ACTION_READER_CARDINFO	7
 #define ACTION_READER_INIT		8
 #define ACTION_READER_RESTART	9
+#define ACTION_READER_RESET_FAST	10
 
 #define ACTION_CLIENT_TCP_CONNECT	21
 #define ACTION_CLIENT_UDP		22
@@ -1192,6 +1193,7 @@ struct s_reader  									//contains device info, reader info and card info
 	int8_t			fix_9993;
 	uint8_t			ins7E[0x1A+1];
 	uint8_t			ins7E11[0x01+1];
+	int8_t			ins7e11_fast_reset;
 
 	uint32_t		autorestartseconds;		// auto restart reader after login ,default 0  disable
 #ifdef MODULE_PANDORA
