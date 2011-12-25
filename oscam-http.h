@@ -46,6 +46,46 @@ static int32_t ssl_active = 0;
 #define TPLADDONCE 2
 /* Templates: Appends a variable or adds it if doesn't exist yet. The variable will be reset to "" after being used once. See TPLADDONCE for details. */
 #define TPLAPPENDONCE 3
+/* constants for menuactivating */
+#define MNU_STATUS 0
+#define MNU_CONFIG 1
+#define MNU_READERS 2
+#define MNU_USERS 3
+#define MNU_SERVICES 4
+#define MNU_FILES 5
+#define MNU_FAILBAN 6
+#define MNU_CACHEEX 7
+#define MNU_SCRIPT 8
+#define MNU_SHUTDOWN 9
+#define MNU_TOTAL_ITEMS 10 // sum of items above
+/* constants for submenuactivating */
+#define MNU_CFG_GLOBAL 0
+#define MNU_CFG_LOADBAL 1
+#define MNU_CFG_CAMD33 2
+#define MNU_CFG_CAMD35 3
+#define MNU_CFG_CAMD35TCP 4
+#define MNU_CFG_NEWCAMD 5
+#define MNU_CFG_RADEGAST 6
+#define MNU_CFG_CCCAM 7
+#define MNU_CFG_ANTICASC 8
+#define MNU_CFG_MONITOR 9
+#define MNU_CFG_SERIAL 10
+#define MNU_CFG_DVBAPI 11
+
+#define MNU_CFG_FVERSION 12
+#define MNU_CFG_FCONF 13
+#define MNU_CFG_FUSER 14
+#define MNU_CFG_FSERVER 15
+#define MNU_CFG_FSERVICES 16
+#define MNU_CFG_FSRVID 17
+#define MNU_CFG_FPROVID 18
+#define MNU_CFG_FTIERS 19
+#define MNU_CFG_FLOGFILE 20
+#define MNU_CFG_FUSERFILE 21
+#define MNU_CFG_FACLOG 22
+#define MNU_CFG_FDVBAPI 23
+#define MNU_CFG_CSP 24
+#define MNU_CFG_TOTAL_ITEMS 25 // sum of items above. Use it for "All inactive" in function calls too.
 
 #define CSS "\
 body {background-color: white; font-family: Arial; font-size: 11px; text-align:center}\n\
@@ -113,11 +153,10 @@ TABLE.status {border-spacing:1px; border:0px; padding:0px; background-color:whit
 TABLE.config {width:750px;}\n\
 TABLE.invisible TD {border:0px; font-family:Arial; font-size: 12px; padding:5px; background-color:#EEEEEE;}\n\
 TD.menu {color:black; background-color:white; font-family: Arial; font-size:14px; font-weight:bold;}\n\
-TD.script {color:black; background-color:white; font-family: Arial; font-size:14px; font-weight:bold;}\n\
-TD.shutdown {color:black; background-color:white; font-family: Arial; font-size:14px; font-weight:bold;}\n\
-TD.shutdown A:hover {color: red;}\n\
+TD.menu_selected {color:black; background-color:#E6FEBF; font-family: Arial; font-size:14px; font-weight:bold;font-style:italic;}\n\
 TABLE.configmenu {line-height: 16px;}\n\
 TD.configmenu {color:black; background-color:white; font-family: Arial; font-size:11px; font-weight:bold;}\n\
+TD.configmenu_selected {color:black; background-color:#E6FEBF; font-family: Arial; font-size:11px; font-weight:bold;font-style:italic;}\n\
 DIV.debugmenu {line-height: 20px;}\n\
 DIV.logmenu {line-height: 20px;}\n\
 DIV.filterform {margin: 10px;}\n\
@@ -338,6 +377,35 @@ kMRadEBEgPJpXVzf5NhMxHp5pf/CYjBEpfRFLl8cObb3s4Z4LDz39qLfB13qqJENC2HXSMKddgwY\
 JosYm6oCZNJ7VBo1Lq/ue4njjQmEyw2zYcT8EmJlHeJbkNwG1QlAVogOoFSv8lb7sJDbJmgSkBJ+\
 O0uYJpimxX62v2BbRMVWNfAHT997IDXV+VUAAAAASUVORK5CYII="
 
+#define ICSPAC "data:image/gif;base64,\
+R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAQAIBRAA7"
+
+#ifdef CS_CACHEEX
+#define ICARRR "data:image/gif;base64,\
+R0lGODlhJAALALMAAAUtBRB9DxKLERB9Dxe4FpPykhaxFUjpR4Pwgh3kHHXudLD1r+L84vj++P//\
+/////yH/C05FVFNDQVBFMi4wAwEAAAAh+QQJDwAFACwAAAAAJAALAAAEarDISau9OGsNeu1gKI6k\
+OAHHoaQLwzQwvCCpyrqxDEqA4v+KRSvmWgB/whfMtUMlngmDgdBy4RYHaHRatTYWIal4YBAcEGiE\
+UCGWks1pNaI52EqDs/SBMKi38XEHOzwlhYYhG4kZg4qNGxEAIfkECQ8ABQAsAAAAACQACwAABG6w\
+yEmrvThrDXrtYCiOpDgBTbMgR6u0C8Ok9Noe7xEzBCihDdlCQSwqFjGa0FhENnwA2WxxSFgTBgNh\
+J1VVr9mtLIRAIBXZ9MAgOJTL53R23UZAywfCYIBNH1dveXt9WX8+PyWJiiEbjRmHjpEbEQAh+QQJ\
+DwAFACwAAAAAJAALAAAEbrDISau9OGsNeu1gKI6kOAEL46zsghywAqcq67jwoYASoCiLFIvBWPyO\
+v2DNQTQeeQCDgUAjqhaHhDYhpVqJt+w2FAgIDog0IqiQugOGs3ptdBugBqBLfSCUuW56c31/dx49\
+JYmKIRuNGTyOkY0RACH+L0NvcHlyaWdodCBNYXJ5IEdhcnJlbiAxOTk4DQpBTEwgUklHSFRTIFJF\
+U0VSVkVEADs="
+
+#define ICARRL "data:image/gif;base64,\
+R0lGODlhJAALALMAAAUtBRB9DxKLERB9Dxe4FpPykhaxFUjpR4Pwgh3kHHXudLD1r+L84vj++P//\
+/////yH/C05FVFNDQVBFMi4wAwEAAAAh+QQJDwAFACwAAAAAJAALAAAEb7DISau9mIKdu5dbKI5k\
+OU7h0qwrwyzHocQHorKNC8sxUIQu1muhKBoVi2BrQTwWRSqXdEEwGBLYxCEqfVWv2YMvZEOYEQeB\
+YWBtIxdntJrdNvh+m9qZqagnBgMEemZ8fgN3eCaKiyEVjR+QkZIdEQAh+QQJDwAFACwAAAAAJAAL\
+AAAEcLDISau9mIKdu5dbKI5kOU4hwTDLcSjugSxNXa/tG881UISNxUJBLCoWKxtraCQiGb0QjmAw\
+JK6JA23FXVCtWG2D6wshDgLDoMo+LhDwc3rNNrjhvt9GqKgnBgMEMnF8foCCeCgmi4wiFSEfkZKT\
+HhEAIfkECQ8ABQAsAAAAACQACwAABG2wyEmrvZiCnbuXWyiOZDlOoXKsyOK8L8Msq8q6cLwARar8\
+CxlstvgZgUJdUSFKOBMHl2y6IBgMT6h0OrMaeKHrVbFYIM6Ig8AQEI/L6LQgEOD1Nlg64RAvK9wJ\
+enxofl8oJoiJIhUhH46PkB4RACH+L0NvcHlyaWdodCBNYXJ5IEdhcnJlbiAxOTk4DQpBTEwgUklH\
+SFRTIFJFU0VSVkVEADs="
+#endif
+
 #define TPLHEADER "\
 <!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\
 <HTML>\n\
@@ -390,22 +458,25 @@ O0uYJpimxX62v2BbRMVWNfAHT997IDXV+VUAAAAASUVORK5CYII="
 #define TPLMENU "\
 	<TABLE border=0 class=\"menu\">\n\
 		<TR>\n\
-			<TD CLASS=\"menu\"><A HREF=\"status.html\">STATUS</A></TD>\n\
-			<TD CLASS=\"menu\"><A HREF=\"config.html\">CONFIGURATION</A></TD>\n\
-			<TD CLASS=\"menu\"><A HREF=\"readers.html\">READERS</A></TD>\n\
-			<TD CLASS=\"menu\"><A HREF=\"userconfig.html\">USERS</A></TD>\n\
-			<TD CLASS=\"menu\"><A HREF=\"services.html\">SERVICES</A></TD>\n\
-			<TD CLASS=\"menu\"><A HREF=\"files.html\">FILES</A></TD>\n\
-			<TD CLASS=\"menu\"><A HREF=\"failban.html\">FAILBAN</A></TD>\n\
-			<TD CLASS=\"script\"><A HREF=\"script.html\">SCRIPT</A></TD>\n\
-			<TD CLASS=\"shutdown\"><A HREF=\"shutdown.html\">SHUTDOWN</A></TD>\n\
+			<TD CLASS=\"##MENUACTIVE0##\"><A HREF=\"status.html\">STATUS</A></TD>\n\
+			<TD CLASS=\"##MENUACTIVE1##\"><A HREF=\"config.html\">CONFIGURATION</A></TD>\n\
+			<TD CLASS=\"##MENUACTIVE2##\"><A HREF=\"readers.html\">READERS</A></TD>\n\
+			<TD CLASS=\"##MENUACTIVE3##\"><A HREF=\"userconfig.html\">USERS</A></TD>\n\
+			<TD CLASS=\"##MENUACTIVE4##\"><A HREF=\"services.html\">SERVICES</A></TD>\n\
+			<TD CLASS=\"##MENUACTIVE5##\"><A HREF=\"files.html\">FILES</A></TD>\n\
+			<TD CLASS=\"##MENUACTIVE6##\"><A HREF=\"failban.html\">FAILBAN</A></TD>\n\
+##TPLCACHEEXMENUITEM##\
+			<TD CLASS=\"##MENUACTIVE8##\"><A HREF=\"script.html\">SCRIPT</A></TD>\n\
+			<TD CLASS=\"##MENUACTIVE9##\"><A HREF=\"shutdown.html\">SHUTDOWN</A></TD>\n\
 		</TR>\n\
 	</TABLE>\n"
+
+#define TPLCACHEEXMENUITEM "			<TD CLASS=\"##MENUACTIVE7##\"><A HREF=\"cacheex.html\">CACHEEX</A></TD>\n"
 
 #define TPLCONFIGMENU "\
 	<TABLE border=0 class=\"configmenu\">\n\
 		<TR>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=global\">Global</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE0##\"><A HREF=\"config.html?part=global\">Global</A></TD>\n\
 ##TPLCONFIGMENULB##\
 ##TPLCONFIGMENUCAMD33##\
 ##TPLCONFIGMENUCAMD35##\
@@ -414,8 +485,9 @@ O0uYJpimxX62v2BbRMVWNfAHT997IDXV+VUAAAAASUVORK5CYII="
 ##TPLCONFIGMENURADEGAST##\
 ##TPLCONFIGMENUCCCAM##\
 ##TPLCONFIGMENUGBOX##\
+##TPLCONFIGMENUCSP##\
 ##TPLCONFIGMENUANTICASC##\
-			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=monitor\">Monitor/WebIf</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE9##\"><A HREF=\"config.html?part=monitor\">Monitor/WebIf</A></TD>\n\
 ##TPLCONFIGMENUSERIAL##\
 ##TPLCONFIGMENUDVBAPI##\
 		</TR>\n\
@@ -424,17 +496,17 @@ O0uYJpimxX62v2BbRMVWNfAHT997IDXV+VUAAAAASUVORK5CYII="
 #define TPLFILEMENU "\
 	<TABLE border=0 class=\"configmenu\">\n\
 		<TR>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=version\">oscam.version</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE12##\"><A HREF=\"files.html?file=version\">oscam.version</A></TD>\n\
 ##TPLFILEMENUDVBAPI##\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=conf\">oscam.conf</A></TD>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=user\">oscam.user</A></TD>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=server\">oscam.server</A></TD>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=services\">oscam.services</A></TD>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=srvid\">oscam.srvid</A></TD>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=provid\">oscam.provid</A></TD>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=tiers\">oscam.tiers</A></TD>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=logfile\">logfile</A></TD>\n\
-			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=userfile\">userfile</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE13##\"><A HREF=\"files.html?file=conf\">oscam.conf</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE14##\"><A HREF=\"files.html?file=user\">oscam.user</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE15##\"><A HREF=\"files.html?file=server\">oscam.server</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE16##\"><A HREF=\"files.html?file=services\">oscam.services</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE17##\"><A HREF=\"files.html?file=srvid\">oscam.srvid</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE18##\"><A HREF=\"files.html?file=provid\">oscam.provid</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE19##\"><A HREF=\"files.html?file=tiers\">oscam.tiers</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE20##\"><A HREF=\"files.html?file=logfile\">logfile</A></TD>\n\
+			<TD CLASS=\"##CMENUACTIVE21##\"><A HREF=\"files.html?file=userfile\">userfile</A></TD>\n\
 ##TPLFILEMENUANTICASC##\
 		</TR>\n\
 	</TABLE>"
@@ -510,45 +582,49 @@ O0uYJpimxX62v2BbRMVWNfAHT997IDXV+VUAAAAASUVORK5CYII="
 		<ip ipinteger=\"##INTIP##\" user=\"##VIOLATIONUSER##\" count=\"##VIOLATIONCOUNT##\" date=\"##VIOLATIONDATE##\" secondsleft=\"\">##IPADDRESS##</ip>\n"
 
 #ifdef CS_ANTICASC
-#define TPLCONFIGMENUANTICASC "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=anticasc\">Anticascading</A></TD>\n"
-#define TPLFILEMENUANTICASC "			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=anticasc\">AC Log</A></TD>\n"
+#define TPLCONFIGMENUANTICASC "			<TD CLASS=\"##CMENUACTIVE8##\"><A HREF=\"config.html?part=anticasc\">Anticascading</A></TD>\n"
+#define TPLFILEMENUANTICASC "			<TD CLASS=\"##CMENUACTIVE22##\"><A HREF=\"files.html?file=anticasc\">AC Log</A></TD>\n"
 #endif
 
 #ifdef HAVE_DVBAPI
-#define TPLCONFIGMENUDVBAPI "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=dvbapi\">DVB-Api</A></TD>\n"
-#define TPLFILEMENUDVBAPI "			<TD CLASS=\"configmenu\"><A HREF=\"files.html?file=dvbapi\">oscam.dvbapi</A></TD>\n"
+#define TPLCONFIGMENUDVBAPI "			<TD CLASS=\"##CMENUACTIVE11##\"><A HREF=\"config.html?part=dvbapi\">DVB-Api</A></TD>\n"
+#define TPLFILEMENUDVBAPI "			<TD CLASS=\"##CMENUACTIVE23##\"><A HREF=\"files.html?file=dvbapi\">oscam.dvbapi</A></TD>\n"
 #endif
 
 #ifdef WITH_LB
-#define TPLCONFIGMENULB "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=loadbalancer\">Loadbalancer</A></TD>\n"
+#define TPLCONFIGMENULB "			<TD CLASS=\"##CMENUACTIVE1##\"><A HREF=\"config.html?part=loadbalancer\">Loadbalancer</A></TD>\n"
 #endif
 
 #ifdef MODULE_CAMD33
-#define TPLCONFIGMENUCAMD33 "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=camd33\">Camd3.3</A></TD>\n"
+#define TPLCONFIGMENUCAMD33 "			<TD CLASS=\"##CMENUACTIVE2##\"><A HREF=\"config.html?part=camd33\">Camd3.3</A></TD>\n"
 #endif
 
 #ifdef MODULE_CAMD35
-#define TPLCONFIGMENUCAMD35 "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=camd35\">Camd3.5</A></TD>\n"
+#define TPLCONFIGMENUCAMD35 "			<TD CLASS=\"##CMENUACTIVE3##\"><A HREF=\"config.html?part=camd35\">Camd3.5</A></TD>\n"
 #endif
 
 #ifdef MODULE_CAMD35_TCP
-#define TPLCONFIGMENUCAMD35TCP "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=camd35tcp\">Camd3.5 TCP</A></TD>\n"
+#define TPLCONFIGMENUCAMD35TCP "			<TD CLASS=\"##CMENUACTIVE4##\"><A HREF=\"config.html?part=camd35tcp\">Camd3.5 TCP</A></TD>\n"
+#endif
+
+#ifdef CS_CACHEEX
+#define TPLCONFIGMENUCSP "			<TD CLASS=\"##CMENUACTIVE24##\"><A HREF=\"config.html?part=csp\">CSP</A></TD>\n"
 #endif
 
 #ifdef MODULE_CCCAM
-#define TPLCONFIGMENUCCCAM "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=cccam\">CCcam</A></TD>\n"
+#define TPLCONFIGMENUCCCAM "			<TD CLASS=\"##CMENUACTIVE7##\"><A HREF=\"config.html?part=cccam\">CCcam</A></TD>\n"
 #endif
 
 #ifdef MODULE_NEWCAMD
-#define TPLCONFIGMENUNEWCAMD "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=newcamd\">Newcamd</A></TD>\n"
+#define TPLCONFIGMENUNEWCAMD "			<TD CLASS=\"##CMENUACTIVE5##\"><A HREF=\"config.html?part=newcamd\">Newcamd</A></TD>\n"
 #endif
 
 #ifdef MODULE_RADEGAST
-#define TPLCONFIGMENURADEGAST "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=radegast\">Radegast</A></TD>\n"
+#define TPLCONFIGMENURADEGAST "			<TD CLASS=\"##CMENUACTIVE6##\"><A HREF=\"config.html?part=radegast\">Radegast</A></TD>\n"
 #endif
 
 #ifdef MODULE_SERIAL
-#define TPLCONFIGMENUSERIAL "			<TD CLASS=\"configmenu\"><A HREF=\"config.html?part=serial\">Serial</A></TD>\n"
+#define TPLCONFIGMENUSERIAL "			<TD CLASS=\"##CMENUACTIVE10##\"><A HREF=\"config.html?part=serial\">Serial</A></TD>\n"
 #endif
 
 #define TPLSTATUS "\
@@ -864,7 +940,7 @@ O0uYJpimxX62v2BbRMVWNfAHT997IDXV+VUAAAAASUVORK5CYII="
 			<TR><TD>##TPLHELPPREFIX##user#betatunnel##TPLHELPSUFFIX##Betatunnel:</A></TD><TD><textarea name=\"betatunnel\" cols=\"58\" rows=\"3\" class=\"bt\">##BETATUNNELS##</textarea></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##user#suppresscmd08##TPLHELPSUFFIX##Suppresscmd08:</A></TD><TD><SELECT NAME=\"suppresscmd08\"><OPTION VALUE=\"0\">CMD08 active</OPTION><OPTION VALUE=\"1\" ##SUPPRESSCMD08##>CMD08 suppressed</OPTION></SELECT></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##user#sleepsend##TPLHELPSUFFIX##Sleepsend:</A></TD><TD><input name=\"sleepsend\" type=\"text\" size=\"3\" maxlength=\"3\" value=\"##SLEEPSEND##\"> 0 or 255</TD></TR>\n\
-			<TR><TD>##TPLHELPPREFIX##user#cacheex##TPLHELPSUFFIX##Cache-EX-Mode:</A></TD><TD><input name=\"cacheex\" type=\"text\" size=\"5\" maxlength=\"4\" value=\"##CACHEEX##\"></TD></TR>\n\
+##TPLUSEREDITCACHEEXBIT##\
 ##TPLUSEREDITANTICASC##\
 ##TPLUSEREDITCCCAM##\
 			<TR><TD>##TPLHELPPREFIX##user#keepalive##TPLHELPSUFFIX##Keepalive:</A></TD><TD><SELECT NAME=\"keepalive\"><OPTION VALUE=\"0\">OFF</OPTION><OPTION VALUE=\"1\" ##KEEPALIVE##>ON</OPTION></SELECT></TD></TR>\n\
@@ -877,6 +953,26 @@ O0uYJpimxX62v2BbRMVWNfAHT997IDXV+VUAAAAASUVORK5CYII="
 ##TPLFOOTER##"
 
 #define TPLUSEREDITRDRSELECTED "						<option value=\"##READERNAME##\" ##SELECTED##>##READERNAME##</option>"
+
+#ifdef CS_CACHEEX
+#define TPLUSEREDITCACHEEXBIT "				<TR><TD>##TPLHELPPREFIX##user#cacheex##TPLHELPSUFFIX##Cache-EX-Mode:</A></TD>\n\
+												<TD><select name=\"cacheex\">\n\
+														<option value=\"0\" ##CACHEEXSELECTED0##>0 - No CacheEX</option>\n\
+														<option value=\"1\" ##CACHEEXSELECTED1##>1 - CACHE PULL</option>\n\
+														<option value=\"2\" ##CACHEEXSELECTED2##>2 - CACHE PUSH</option>\n\
+														<option value=\"3\" ##CACHEEXSELECTED3##>3 - REVERSE CACHE PUSH</option>\n\
+													</select>\n\
+												</TD></TR>\n"
+
+#define TPLREADEREDITCACHEEXBIT "			<TR><TD>##TPLHELPPREFIX##server#cacheex##TPLHELPSUFFIX##Cache-EX-Mode:</A></TD>\n\
+												<TD><select name=\"cacheex\">\n\
+														<option value=\"0\" ##CACHEEXSELECTED0##>0 - No CacheEX</option>\n\
+														<option value=\"1\" ##CACHEEXSELECTED1##>1 - CACHE PULL</option>\n\
+														<option value=\"2\" ##CACHEEXSELECTED2##>2 - CACHE PUSH</option>\n\
+														<option value=\"3\" ##CACHEEXSELECTED3##>3 - REVERSE CACHE PUSH</option>\n\
+													</select>\n\
+												</TD></TR>\n"
+#endif
 
 #define TPLUSEREDITSIDOKBIT "\
 						<TR>\n\
@@ -978,10 +1074,8 @@ O0uYJpimxX62v2BbRMVWNfAHT997IDXV+VUAAAAASUVORK5CYII="
 ##ADDPROTOCOL##\n\
 					</select>\n\
 				</TD>\n\
-				<TD COLSPAN=\"7\" class=\"centered\"><input type=\"submit\" name=\"action\" value=\"Add\" ##BTNDISABLED##></TD>\n\
-				<TD></TD>\n\
-				<TD></TD>\n\
-				<TD></TD>\n\
+				<TD COLSPAN=\"5\" class=\"centered\"><input type=\"submit\" name=\"action\" value=\"Add\" ##BTNDISABLED##></TD>\n\
+				<TD COLSPAN=\"5\"></TD>\n\
 			</TR>\n\
 		</TABLE>\n\
 	</form>\n\
@@ -1213,7 +1307,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 				<TR><TD>##TPLHELPPREFIX##server#resetcycle##TPLHELPSUFFIX##Reset after No. ECM:</A></TD><TD><input name=\"resetcycle\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##RESETCYCLE##\">\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Restart after ECMs:<input name=\"restartforresetcycle\" type=\"hidden\"  value=\"0\"><input name=\"restartforresetcycle\" type=\"checkbox\"  value=\"1\" ##RESTARTFORRESETRECYCLE##></TD></TR>\n\
 			<TR><TD>Auto Restart after</A></TD><TD><input name=\"autorestartseconds\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##AUTORESTARTSECONDS##\">&nbsp;seconds</TD></TR>\n\
             <TR><TD>##TPLHELPPREFIX##server#disablecrccws##TPLHELPSUFFIX##Skip CWs checksum test:</A><input name=\"disablecrccws\" type=\"hidden\" value=\"0\"></TD><TD><input name=\"disablecrccws\" type=\"checkbox\" value=\"1\" ##DISABLECRCCWSCHECKED##></TD></TR>\n\
-			<TR><TD>##TPLHELPPREFIX##server#cacheex##TPLHELPSUFFIX##Cache-EX-Mode:</A></TD><TD><input name=\"cacheex\" type=\"text\" size=\"5\" maxlength=\"4\" value=\"##CACHEEX##\"></TD></TR>\n\
+			##TPLREADEREDITCACHEEXBIT##\
 			<TR><TH>&nbsp;</TH><TH>Reader specific settings for protocol ##PROTOCOL##</TH></TR>\n\
 ##READERDEPENDINGCONFIG##\n\
 			<TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" name=\"action\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
@@ -1652,12 +1746,17 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<TR><TD>##TPLHELPPREFIX##conf#serialreadertimeout##TPLHELPSUFFIX##Serial reader timeout:</A></TD><TD><input name=\"serialreadertimeout\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##SERIALTIMEOUT##\"> ms</TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#readerrestartseconds##TPLHELPSUFFIX##Reader restart seconds:</A></TD><TD><input name=\"readerrestartseconds\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##READERRESTARTSECONDS##\"> s waittime to restart a reader</TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#dropdups##TPLHELPSUFFIX##Drop duplicate users:</A></TD><TD><SELECT NAME=\"dropdups\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##DROPDUPSCHECKED##>YES</OPTION></SELECT></TD></TR>\n\
-			<TR><TD>##TPLHELPPREFIX##conf#cacheexwaittime##TPLHELPSUFFIX##Cacheex wait time:</A></TD><TD><input name=\"cacheexwaittime\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##CACHEEXWAITTIME##\"> ms max waittime for a cache entry</TD></TR>\n\
+##TPLCACHEEXWAITTIME##\
 ##TPLDOUBLECHECKBIT##\
 			<TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
 		</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
+
+#ifdef CS_CACHEEX
+#define TPLCACHEEXWAITTIME "\
+			<TR><TD>##TPLHELPPREFIX##conf#cacheexwaittime##TPLHELPSUFFIX##Cacheex wait time:</A></TD><TD><input name=\"cacheexwaittime\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##CACHEEXWAITTIME##\"> ms max waittime for a cache entry</TD></TR>\n"
+#endif
 
 #ifdef CS_WITH_DOUBLECHECK
 #define TPLDOUBLECHECKBIT "\
@@ -1779,6 +1878,26 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<TR><TD>##TPLHELPPREFIX##conf#port_4##TPLHELPSUFFIX##Port:</A></TD><TD><input name=\"port\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##PORT##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#serverip_5##TPLHELPSUFFIX##Serverip:</A></TD><TD><input name=\"serverip\" type=\"text\" size=\"15\" maxlength=\"15\" value=\"##SERVERIP##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#suppresscmd08##TPLHELPSUFFIX##Suppress cmd08:</A></TD><TD><input name=\"suppresscmd08\" type=\"checkbox\" value=\"1\" ##SUPPRESSCMD08TCP##></TD></TR>\n\
+			<TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
+		</TABLE>\n\
+	</form>\n\
+##TPLFOOTER##"
+#endif
+
+#ifdef CS_CACHEEX
+#define TPLCONFIGCSP "\
+##TPLHEADER##\
+##TPLMENU##\
+##TPLCONFIGMENU##\
+##MESSAGE##\
+	<form action=\"config.html\" method=\"get\">\n\
+		<input name=\"part\" type=\"hidden\" value=\"csp\">\n\
+		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
+		<TABLE class=\"config\">\n\
+			<TR><TH COLSPAN=\"2\">Edit CSP CacheEX Config</TH></TR>\n\
+			<TR><TD>##TPLHELPPREFIX##conf#port_9##TPLHELPSUFFIX##Port:</A></TD><TD><input name=\"port\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##PORT##\"></TD></TR>\n\
+			<TR><TD>##TPLHELPPREFIX##conf#serverip_9##TPLHELPSUFFIX##Serverip:</A></TD><TD><input name=\"serverip\" type=\"text\" size=\"15\" maxlength=\"15\" value=\"##SERVERIP##\"></TD></TR>\n\
+			<TR><TD>##TPLHELPPREFIX##conf#wait_time##TPLHELPSUFFIX##Wait time:</A></TD><TD><input name=\"wait_time\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##WAIT_TIME##\"></TD></TR>\n\
 			<TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
 		</TABLE>\n\
 	</form>\n\
@@ -2185,6 +2304,29 @@ function isNumber(a) {\n\
 </script>\
 </svg>"
 
+#ifdef CS_CACHEEX
+#define TPLCACHEEXPAGE "\
+##TPLHEADER##\
+##TPLMENU##\
+##MESSAGE##\
+	<BR><BR>\n\
+	<TABLE CLASS=\"stats\">\n\
+			<TR><TH COLSPAN=\"6\">CacheEX Stats</TH></TR>\n\
+			<TR><TH>Direction</TH><TH>Type</TH><TH>Name</TH><TH>Level</TH><TH>Push</TH><TH>Got</TH></TR>\n\
+##TABLECLIENTROWS##\
+##TABLEREADERROWS##\
+	</TABLE>\n\
+	<BR><BR>\n\
+	<TABLE>\n\
+		<TR><TH>Total push</TH><TH>Total got</TH></TR>\n\
+		<TR><TD class=\"centered\">##TOTAL_CACHEXPUSH##</TD><TD class=\"centered\">##TOTAL_CACHEXGOT##</TD></TR>\n\
+	</TABLE>\n\
+	<BR><BR>\n\
+##TPLFOOTER##"
+
+#define TPLCACHEEXTABLEROW "			<TR><TD>&nbsp;&nbsp;##DIRECTIONIMG##&nbsp;&nbsp;</TD><TD>##TYPE##</TD><TD>##NAME##</TD><TD>##LEVEL##</TD><TD>##PUSH##</TD><TD>##GOT##</TD></TR>\n"
+#endif
+
 enum refreshtypes {REFR_ACCOUNTS, REFR_CLIENTS, REFR_SERVER, REFR_ANTICASC, REFR_SERVICES};
 
 char *tpl[]={
@@ -2325,6 +2467,18 @@ char *tpl[]={
 #ifdef LCDSUPPORT
 	,"LCDOPTIONS"
 #endif
+#ifdef CS_CACHEEX
+	,"USEREDITCACHEEXBIT"
+	,"READEREDITCACHEEXBIT"
+	,"CACHEEXWAITTIME"
+	,"CACHEEXPAGE"
+	,"CACHEEXTABLEROW"
+	,"CACHEEXMENUITEM"
+	,"CONFIGMENUCSP"
+	,"CONFIGCSP"
+	,"ICARRR"
+	,"ICARRL"
+#endif
 	,"ICMAI"
 	,"ICSTA"
 	,"ICDEL"
@@ -2336,6 +2490,7 @@ char *tpl[]={
 	,"ICENA"
 	,"ICHID"
 	,"ICRES"
+	,"ICSPAC"
 };
 
 char *tplmap[]={
@@ -2476,6 +2631,18 @@ char *tplmap[]={
 #ifdef LCDSUPPORT
 	,TPLLCDOPTIONS
 #endif
+#ifdef CS_CACHEEX
+	,TPLUSEREDITCACHEEXBIT
+	,TPLREADEREDITCACHEEXBIT
+	,TPLCACHEEXWAITTIME
+	,TPLCACHEEXPAGE
+	,TPLCACHEEXTABLEROW
+	,TPLCACHEEXMENUITEM
+	,TPLCONFIGMENUCSP
+	,TPLCONFIGCSP
+	,ICARRR
+	,ICARRL
+#endif
 	,ICMAI
 	,ICSTA
 	,ICDEL
@@ -2487,6 +2654,7 @@ char *tplmap[]={
 	,ICENA
 	,ICHID
 	,ICRES
+	,ICSPAC
 };
 
 struct templatevars {

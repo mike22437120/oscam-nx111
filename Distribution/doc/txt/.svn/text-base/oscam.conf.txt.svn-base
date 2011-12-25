@@ -136,6 +136,9 @@ DESCRIPTIONS
 	  0 = tell camd 3.5x, 3.57x and 3.78x clients not to request again for rejected CAID, service ID and provider
 	  ID combination, 1 = disable, can be overwritten per user in oscam.user, default:0
 
+       cacheexwaittime = delay
+	  maximum wait time for a cache entry in milli seconds, default:50
+
        lb_mode = mode
 	  load balancing mode:
 
@@ -322,6 +325,13 @@ DESCRIPTIONS
 
        lcd_writeintervall = seconds
 	  LCD refresh interval (minimum 5), default:10
+
+   The [csp] section
+       port = port
+	  TCP port of Cardservproxy for cache exchange, default:none
+
+       serverip = IP
+	  IP address of Cardservproxy for cache exchange, default:none
 
    The [camd33] section
        port = 0|port

@@ -157,8 +157,41 @@ char *get_ecm_fullhistorystring(struct s_client *cl){
 		return "";
 	}
 }
+
+/*
+ * Set the active menu to a different CSS class
+ */
+static void setActiveMenu(struct templatevars *vars, int8_t active)
+{
+	int8_t i;
+	for(i = 0; i < MNU_TOTAL_ITEMS; i++) {
+		tpl_printf(vars, TPLADD, "TMP", "MENUACTIVE%d", i);
+		if (i == active)
+			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "menu_selected");
+		else
+			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "menu");
+	}
+}
+
+/*
+ * Set the active submenu to a different CSS class
+ */
+static void setActiveSubMenu(struct templatevars *vars, int8_t active)
+{
+	int8_t i;
+	for(i = 0; i < MNU_CFG_TOTAL_ITEMS; i++) {
+		tpl_printf(vars, TPLADD, "TMP", "CMENUACTIVE%d", i);
+		if (i == active)
+			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "configmenu_selected");
+		else
+			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "configmenu");
+	}
+}
+
 static char *send_oscam_config_global(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_GLOBAL);
 
 	if (strcmp(getParam(params, "action"), "execute") == 0) {
 		for(i = 0; i < (*params).paramcount; ++i) {
@@ -234,7 +267,9 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 		tpl_addVar(vars, TPLADD, "DCHECKCSELECTED", "selected");
 #endif
 
+#ifdef CS_CACHEEX
 	tpl_printf(vars, TPLADD, "CACHEEXWAITTIME", "%d", cfg.cacheex_wait_time);
+#endif
 
 	return tpl_getTpl(vars, "CONFIGGLOBAL");
 }
@@ -242,6 +277,8 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 #ifdef WITH_LB
 static char *send_oscam_config_loadbalancer(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_LOADBAL);
 
 	if (strcmp(getParam(params, "button"), "Load Stats") == 0) {
 		clear_all_stat();
@@ -311,6 +348,8 @@ static char *send_oscam_config_loadbalancer(struct templatevars *vars, struct ur
 static char *send_oscam_config_camd33(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
 
+	setActiveSubMenu(vars, MNU_CFG_CAMD33);
+
 	if (strcmp(getParam(params, "action"), "execute") == 0) {
 		for(i = 0; i < (*params).paramcount; ++i) {
 			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
@@ -341,6 +380,9 @@ static char *send_oscam_config_camd33(struct templatevars *vars, struct uriparam
 #ifdef MODULE_CAMD35
 static char *send_oscam_config_camd35(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_CAMD35);
+
 	if ((strcmp(getParam(params, "action"),"execute") == 0) && (getParam(params, "port"))[0]) {
 		for(i = 0; i < (*params).paramcount; ++i) {
 			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
@@ -369,6 +411,9 @@ static char *send_oscam_config_camd35(struct templatevars *vars, struct uriparam
 #ifdef MODULE_CAMD35_TCP
 static char *send_oscam_config_camd35tcp(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_CAMD35TCP);
+
 	if ((strcmp(getParam(params, "action"),"execute") == 0) && (getParam(params, "port"))[0]) {
 		for(i = 0; i < (*params).paramcount; ++i) {
 			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
@@ -397,9 +442,43 @@ static char *send_oscam_config_camd35tcp(struct templatevars *vars, struct uripa
 }
 #endif
 
+#ifdef CS_CACHEEX
+static char *send_oscam_config_csp(struct templatevars *vars, struct uriparams *params) {
+	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_CSP);
+
+	if ((strcmp(getParam(params, "action"),"execute") == 0) && (getParam(params, "port"))[0]) {
+		for(i = 0; i < (*params).paramcount; ++i) {
+			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
+				//we use the same function as used for parsing the config tokens
+				chk_t_csp((*params).params[i], (*params).values[i]);
+			}
+		}
+		tpl_addVar(vars, TPLAPPEND, "MESSAGE", "<BR><BR><B>Configuration CSP done. You should restart OSCam now.</B><BR><BR>");
+		if(write_config()==0) refresh_oscam(REFR_SERVER);
+		else tpl_addVar(vars, TPLAPPEND, "MESSAGE", "<B>Write Config failed</B><BR><BR>");
+	}
+
+	if (cfg.csp_srvip != 0)
+		tpl_addVar(vars, TPLAPPEND, "SERVERIP", cs_inet_ntoa(cfg.csp_srvip));
+
+	if (cfg.csp_port)
+		tpl_printf(vars, TPLADD, "PORT", "%d", cfg.csp_port);
+
+	if (cfg.csp_wait_time)
+		tpl_printf(vars, TPLADD, "WAIT_TIME", "%d", cfg.csp_wait_time);
+
+	return tpl_getTpl(vars, "CONFIGCSP");
+}
+#endif
+
 #ifdef MODULE_NEWCAMD
 static char *send_oscam_config_newcamd(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_NEWCAMD);
+
 	if (strcmp(getParam(params, "action"),"execute") == 0) {
 		for(i = 0; i < (*params).paramcount; ++i) {
 			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
@@ -439,6 +518,9 @@ static char *send_oscam_config_newcamd(struct templatevars *vars, struct uripara
 #ifdef MODULE_RADEGAST
 static char *send_oscam_config_radegast(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_RADEGAST);
+
 	if (strcmp(getParam(params, "action"),"execute") == 0) {
 		for(i = 0; i < (*params).paramcount; ++i) {
 			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
@@ -465,6 +547,8 @@ static char *send_oscam_config_radegast(struct templatevars *vars, struct uripar
 
 #ifdef MODULE_CCCAM
 static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams *params) {
+
+	setActiveSubMenu(vars, MNU_CFG_CCCAM);
 
 	if (strcmp(getParam(params, "button"), "Refresh global list") == 0) {
 		cs_debug_mask(D_TRACE, "Entitlements: Refresh Shares start");
@@ -541,6 +625,9 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 
 static char *send_oscam_config_monitor(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_MONITOR);
+
 	if (strcmp(getParam(params, "action"),"execute") == 0) {
 		for(i = 0; i < (*params).paramcount; ++i) {
 			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
@@ -648,6 +735,9 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 #ifdef MODULE_SERIAL
 static char *send_oscam_config_serial(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_SERIAL);
+
 	char *saveptr1 = NULL;
 	if (strcmp(getParam(params, "action"),"execute") == 0) {
 		for(i = 0; i < (*params).paramcount; ++i) {
@@ -682,6 +772,9 @@ static char *send_oscam_config_serial(struct templatevars *vars, struct uriparam
 #ifdef HAVE_DVBAPI
 static char *send_oscam_config_dvbapi(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_DVBAPI);
+
 	if (strcmp(getParam(params, "action"),"execute") == 0) {
 		for(i = 0; i < (*params).paramcount; ++i) {
 			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
@@ -723,6 +816,9 @@ static char *send_oscam_config_dvbapi(struct templatevars *vars, struct uriparam
 #ifdef CS_ANTICASC
 static char *send_oscam_config_anticasc(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
+
+	setActiveSubMenu(vars, MNU_CFG_ANTICASC);
+
 	if (strcmp(getParam(params, "action"),"execute") == 0) {
 		for(i = 0; i < (*params).paramcount; ++i) {
 			if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
@@ -751,6 +847,9 @@ static char *send_oscam_config_anticasc(struct templatevars *vars, struct uripar
 #endif
 
 static char *send_oscam_config(struct templatevars *vars, struct uriparams *params) {
+
+	setActiveMenu(vars, MNU_CONFIG);
+
 	char *part = getParam(params, "part");
 	if (!strcmp(part,"monitor")) return send_oscam_config_monitor(vars, params);
 #ifdef MODULE_CAMD33
@@ -761,6 +860,9 @@ static char *send_oscam_config(struct templatevars *vars, struct uriparams *para
 #endif
 #ifdef MODULE_CAMD35_TCP
 	else if (!strcmp(part,"camd35tcp")) return send_oscam_config_camd35tcp(vars, params);
+#endif
+#ifdef CS_CACHEEX
+	else if (!strcmp(part,"csp")) return send_oscam_config_csp(vars, params);
 #endif
 #ifdef MODULE_NEWCAMD
 	else if (!strcmp(part,"newcamd")) return send_oscam_config_newcamd(vars, params);
@@ -795,6 +897,8 @@ static void inactivate_reader(struct s_reader *rdr)
 static char *send_oscam_reader(struct templatevars *vars, struct uriparams *params, int32_t apicall) {
 	struct s_reader *rdr;
 	int32_t i;
+
+	if(!apicall) setActiveMenu(vars, MNU_READERS);
 
 	if ((strcmp(getParam(params, "action"), "disable") == 0) || (strcmp(getParam(params, "action"), "enable") == 0)) {
 		if(cfg.http_readonly) {
@@ -996,6 +1100,8 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 
 	struct s_reader *rdr;
 
+	if(!apicall) setActiveMenu(vars, MNU_READERS);
+
 	if(strcmp(getParam(params, "action"), "Add") == 0) {
 		// Add new reader
 		struct s_reader *newrdr;
@@ -1108,12 +1214,15 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 		tpl_addVar(vars, TPLADD, "FALLBACKVALUE", (rdr->fallback == 1) ? "1" : "0");
 	}
 
+#ifdef CS_CACHEEX
 	// Cacheex
 	if(!apicall) {
-		tpl_printf(vars, TPLADD, "CACHEEX", "%d", rdr->cacheex);
+		tpl_printf(vars, TPLADD, "TMP", "CACHEEXSELECTED%d", rdr->cacheex);
+		tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
 	} else {
-		tpl_printf(vars, TPLADD, "CACHEEXVALUE", "%d", rdr->cacheex);
+		tpl_printf(vars, TPLADD, "CACHEEX", "%d", rdr->cacheex);
 	}
+#endif
 
 	// Logport
 	tpl_printf(vars, TPLADD, "LOGPORT", "%d", rdr->log_port);
@@ -1471,6 +1580,8 @@ static char *send_oscam_reader_stats(struct templatevars *vars, struct uriparams
 	struct s_reader *rdr = get_reader_by_label(getParam(params, "label"));
 	if(!rdr) return "0";
 
+	if(!apicall) setActiveMenu(vars, MNU_READERS);
+
 #ifdef WITH_LB
 	char *stxt[]={"found", "cache1", "cache2", "emu",
 			"not found", "timeout", "sleeping",
@@ -1708,6 +1819,8 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 
 	int32_t i;
 
+	if(!apicall) setActiveMenu(vars, MNU_USERS);
+
 	if (strcmp(getParam(params, "action"), "Save As") == 0) cs_strncpy(user, getParam(params, "newuser"), sizeof(user)/sizeof(char));
 	else cs_strncpy(user, getParam(params, "user"), sizeof(user)/sizeof(char));
 
@@ -1905,12 +2018,16 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 	//Sleepsend
 	tpl_printf(vars, TPLADD, "SLEEPSEND", "%u", account->c35_sleepsend);
 
+#ifdef CS_CACHEEX
 	// Cacheex
 	if(!apicall) {
-		tpl_printf(vars, TPLADD, "CACHEEX", "%d", account->cacheex);
+		tpl_printf(vars, TPLADD, "TMP", "CACHEEXSELECTED%d", account->cacheex);
+		tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
+
 	} else {
-		tpl_printf(vars, TPLADD, "CACHEEXVALUE", "%d", account->cacheex);
+		tpl_printf(vars, TPLADD, "CACHEEX", "%d", account->cacheex);
 	}
+#endif
 
 	//Keepalive
 	if(!apicall){
@@ -1973,6 +2090,8 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 	struct s_client *cl;
 	char *user = getParam(params, "user");
 	int32_t found = 0, hideclient = 10;
+
+	if(!apicall) setActiveMenu(vars, MNU_USERS);
 
 	if (cfg.mon_hideclient_to > 10)
 	hideclient = cfg.mon_hideclient_to;
@@ -2276,6 +2395,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 #define ENTITLEMENT_PAGE_SIZE 500
 
 static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams *params, int32_t apicall) {
+	if(!apicall) setActiveMenu(vars, MNU_READERS);
 	char *reader_ = getParam(params, "label");
 #ifdef MODULE_CCCAM	
 	char *sharelist_ = getParam(params, "globallist");
@@ -2611,6 +2731,8 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	int32_t lsec, isec, chsec, con, cau = 0;
 	time_t now = time((time_t*)0);
 	struct tm lt;
+
+	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 
 	if (strcmp(getParam(params, "action"), "kill") == 0) {
 		char *cptr = getParam(params, "threadid");
@@ -3110,6 +3232,8 @@ static char *send_oscam_services_edit(struct templatevars *vars, struct uriparam
 	char label[sizeof(cfg.sidtab->label)];
 	int32_t i;
 
+	setActiveMenu(vars, MNU_SERVICES);
+
 	cs_strncpy(label, strtolower(getParam(params, "service")), sizeof(label));
 
 	for (sidtab = cfg.sidtab; sidtab != NULL && strcmp(label, sidtab->label) != 0; sidtab=sidtab->next);
@@ -3191,6 +3315,8 @@ static char *send_oscam_services(struct templatevars *vars, struct uriparams *pa
 	char *service = getParam(params, "service");
 	char channame[32];
 	int32_t i, counter = 0;
+
+	setActiveMenu(vars, MNU_SERVICES);
 
 	if (strcmp(getParam(params, "action"), "delete") == 0) {
 		if(cfg.http_readonly) {
@@ -3285,6 +3411,7 @@ static char *send_oscam_savetpls(struct templatevars *vars) {
 }
 
 static char *send_oscam_shutdown(struct templatevars *vars, FILE *f, struct uriparams *params, int8_t apicall, int8_t *keepalive) {
+	if(!apicall) setActiveMenu(vars, MNU_SHUTDOWN);
 	if (strcmp(strtolower(getParam(params, "action")), "shutdown") == 0) {
 		*keepalive = 0;
 		if(!apicall){
@@ -3342,7 +3469,7 @@ static char *send_oscam_shutdown(struct templatevars *vars, FILE *f, struct urip
 }
 
 static char *send_oscam_script(struct templatevars *vars) {
-
+	setActiveMenu(vars, MNU_SCRIPT);
 	char *result = "not found";
 	int32_t rc = 0;
 	if(!cfg.http_readonly) {
@@ -3367,7 +3494,7 @@ static char *send_oscam_script(struct templatevars *vars) {
 }
 
 static char *send_oscam_scanusb(struct templatevars *vars) {
-
+	setActiveMenu(vars, MNU_READERS);
 #ifndef OS_CYGWIN32
 	FILE *fp;
 	int32_t err=0;
@@ -3405,6 +3532,8 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 	int32_t writable=0;
 	//int8_t apicall = 0; //remove before flight
 
+	if(!apicall) setActiveMenu(vars, MNU_FILES);
+
 	tpl_addVar(vars, TPLADD, "APIFILENAME", "null");
 	tpl_addVar(vars, TPLADD, "APIWRITABLE", "0");
 
@@ -3430,54 +3559,63 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 	char targetfile[256];
 
 	if (strcmp(getParam(params, "file"), "conf") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FCONF);
 		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.conf");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.conf");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "version") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FVERSION);
 		snprintf(targetfile, 255,"%s%s", get_tmp_dir(), "/oscam.version");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.version");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "0");
 	}
 
 	else if (strcmp(getParam(params, "file"), "user") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FUSER);
 		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.user");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.user");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "server") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FSERVER);
 		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.server");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.server");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "services") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FSERVICES);
 		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.services");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.services");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "srvid") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FSRVID);
 		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.srvid");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.srvid");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "provid") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FPROVID);
 		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.provid");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.provid");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "tiers") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FTIERS);
 		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.tiers");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.tiers");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (!apicall && strcmp(getParam(params, "file"), "logfile") == 0) {
+		setActiveSubMenu(vars, MNU_CFG_FLOGFILE);
 		snprintf(targetfile, 255,"%s", cfg.logfile);
 
 		if (strcmp(getParam(params, "clear"), "logfile") == 0) {
@@ -3523,6 +3661,7 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 
 	}
 	else if (!apicall && strcmp(getParam(params, "file"), "userfile") == 0) {
+		setActiveSubMenu(vars, MNU_CFG_FUSERFILE);
 		snprintf(targetfile, 255,"%s", cfg.usrfile);
 		if (strcmp(getParam(params, "clear"), "usrfile") == 0) {
 			if(strlen(targetfile) > 0) {
@@ -3551,19 +3690,27 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 
 	}
 #ifdef CS_ANTICASC
-	else if (!apicall && strcmp(getParam(params, "file"), "anticasc") == 0)
+	else if (!apicall && strcmp(getParam(params, "file"), "anticasc") == 0){
+		setActiveSubMenu(vars, MNU_CFG_FACLOG);
 		snprintf(targetfile, 255,"%s", cfg.ac_logfile);
+	}
 #endif
 
 #ifdef HAVE_DVBAPI
 	else if (strcmp(getParam(params, "file"), "dvbapi") == 0) {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FDVBAPI);
 		snprintf(targetfile, 255, "%s%s", cs_confdir, "oscam.dvbapi");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.dvbapi");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 #endif
-	else targetfile[0] = '\0';
+	else {
+		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FVERSION);
+		snprintf(targetfile, 255,"%s%s", get_tmp_dir(), "/oscam.version");
+		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.version");
+		tpl_addVar(vars, TPLADD, "APIWRITABLE", "0");
+	}
 
 	if (!strstr(targetfile, "/dev/")) {
 
@@ -3628,6 +3775,8 @@ static char *send_oscam_failban(struct templatevars *vars, struct uriparams *par
 	LL_ITER itr = ll_iter_create(cfg.v_list);
 	V_BAN *v_ban_entry;
 	//int8_t apicall = 0; //remove before flight
+
+	if(!apicall) setActiveMenu(vars, MNU_FAILBAN);
 
 	if (strcmp(getParam(params, "action"), "delete") == 0) {
 
@@ -3882,6 +4031,53 @@ static char *send_oscam_graph(struct templatevars *vars) {
 	return tpl_getTpl(vars, "GRAPH");
 }
 
+#ifdef CS_CACHEEX
+static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *params, int8_t apicall) {
+
+	if(!apicall) setActiveMenu(vars, MNU_CACHEEX);
+
+	if (strcmp(getParam(params, "x"), "x") == 0) {
+		// avoid compilerwarning unused vars
+	}
+
+	char *level[]= {"NONE","CACHE PULL","CACHE PUSH","REVERSE CACHE PUSH"};
+
+	int16_t i;
+	struct s_client *cl;
+
+	for (i = 0, cl = first_client; cl ; cl = cl->next, i++) {
+
+		if (cl->typ=='c') {
+			if (cl->account && cl->account->cacheex){
+				tpl_addVar(vars, TPLADD, "TYPE", "Client");
+				tpl_addVar(vars, TPLADD, "NAME", cl->account->usr);
+				tpl_addVar(vars, TPLADD, "LEVEL", level[cl->account->cacheex]);
+				tpl_printf(vars, TPLADD, "PUSH", "%ld", cl->cwcacheexpush);
+				tpl_printf(vars, TPLADD, "GOT", "%ld", cl->cwcacheexgot);
+				tpl_addVar(vars, TPLADD, "DIRECTIONIMG", "<IMG SRC=\"image?i=ICARRR\" ALT=\"Pushing\">");
+				tpl_addVar(vars, TPLAPPEND, "TABLECLIENTROWS", tpl_getTpl(vars, "CACHEEXTABLEROW"));
+			}
+		}
+		else if (cl->typ=='p' || cl->typ=='r') {
+			if (cl->reader && cl->reader->cacheex){
+				tpl_addVar(vars, TPLADD, "TYPE", "Reader");
+				tpl_addVar(vars, TPLADD, "NAME", cl->reader->label);
+				tpl_addVar(vars, TPLADD, "LEVEL", level[cl->reader->cacheex]);
+				tpl_printf(vars, TPLADD, "PUSH", "%ld", cl->cwcacheexpush);
+				tpl_printf(vars, TPLADD, "GOT", "%ld", cl->cwcacheexgot);
+				tpl_addVar(vars, TPLADD, "DIRECTIONIMG", "<IMG SRC=\"image?i=ICARRL\" ALT=\"Getting\">");
+				tpl_addVar(vars, TPLAPPEND, "TABLEREADERROWS", tpl_getTpl(vars, "CACHEEXTABLEROW"));
+			}
+		}
+	}
+
+	tpl_printf(vars, TPLADD, "TOTAL_CACHEXPUSH", "%ld", first_client->cwcacheexpush);
+	tpl_printf(vars, TPLADD, "TOTAL_CACHEXGOT", "%ld", first_client->cwcacheexgot);
+
+	return tpl_getTpl(vars, "CACHEEXPAGE");
+}
+#endif
+
 static int8_t check_request(char *result, int32_t read) {
 	if(read < 50) return 0;
 	result[read]='\0';
@@ -4091,7 +4287,8 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 			"/image",
 			"/favicon.ico",
 			"/graph.svg",
-			"/oscamapi.xml"};
+			"/oscamapi.xml",
+			"/cacheex.html"};
 	
 		int32_t pagescnt = sizeof(pages)/sizeof(char *); // Calculate the amount of items in array
 		int32_t i, bufsize, len, pgidx = -1;
@@ -4272,6 +4469,9 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 				case 20: result = send_oscam_image(vars, f, &params, "ICMAI", modifiedheader, etagheader); break;
 				case 21: result = send_oscam_graph(vars); break;
 				case 22: result = send_oscam_api(vars, f, &params, keepalive); break; //oscamapi.xml
+#ifdef CS_CACHEEX
+				case 23: result = send_oscam_cacheex(vars, &params, 0); break;
+#endif
 				default: result = send_oscam_status(vars, &params, 0); break;
 			}
 			if(pgidx != 19 && pgidx != 20) cs_writeunlock(&http_lock);

@@ -143,10 +143,12 @@ static int32_t camd35_recv(struct s_client *client, uchar *buf, int32_t l)
 	client->last=time((time_t *) 0);
 
 	switch(rc) {
+		case 0: 	break;
 		case -1:	cs_log("packet to small (%d bytes)", rs);		break;
 		case -2:	cs_auth_client(client, 0, "unknown user");	break;
 		case -3:	cs_log("incomplete request !");			break;
 		case -4:	cs_log("checksum error (wrong password ?)");	break;
+		default:	cs_debug_mask(D_TRACE, "camd35_recv returns rc=%d", rc); break;
 	}
 
 	return(rc);
@@ -351,7 +353,10 @@ static int32_t tcp_connect()
 	if (!cl->reader->tcp_connected) {
 		int32_t handle=0;
 		handle = network_tcp_connection_open(cl->reader);
-		if (handle<0) return(0);
+		if (handle<0)  {
+			block_connect(cl->reader);
+			return(0);
+		}
 
 		cl->reader->tcp_connected = 1;
 		cl->reader->card_status = CARD_INSERTED;
@@ -368,6 +373,7 @@ static int32_t tcp_connect()
 	return(1);
 }
 
+#ifdef CS_CACHEEX
 int32_t camd35_cache_push_out(struct s_client *cl, struct ecm_request_t *er)
 {
 	if (!cl->udp_fd) return(-1);
@@ -385,12 +391,12 @@ int32_t camd35_cache_push_out(struct s_client *cl, struct ecm_request_t *er)
 	i2b_buf(2, er->caid, buf + 10);
 	i2b_buf(4, er->prid, buf + 12);
 	i2b_buf(2, er->idx, buf + 16); // Not relevant...?
-	memcpy(buf + 20, er->ecm, er->l);
-	memcpy(buf + 20 + er->l, er->cw, 16);
 
-	int32_t buflen = er->l;
-	if (er->rc < E_NOTFOUND)
-		buflen += 16;
+	memcpy(buf + 20, er->ecmd5, sizeof(er->ecmd5)); //16
+	memcpy(buf + 20 + sizeof(er->ecmd5), &er->csp_hash, sizeof(er->csp_hash)); //4
+	memcpy(buf + 20 + sizeof(er->ecmd5) + sizeof(er->csp_hash), er->cw, sizeof(er->cw)); //16
+
+	int32_t buflen = sizeof(er->ecmd5) + sizeof(er->csp_hash) + sizeof(er->cw);
 	buf[1]=buflen & 0xff;
 	buf[2]=buflen >> 8;
 
@@ -407,6 +413,12 @@ void camd35_cache_push_in(struct s_client *cl, uchar *buf)
 		return;
 
 	ECM_REQUEST *er;
+	int16_t testlen = buf[1] | (buf[2] << 8);
+	if (testlen != sizeof(er->ecmd5) + sizeof(er->csp_hash) + sizeof(er->cw)) {
+		cs_log("%s received old cash-push format! data ignored!", username(cl));
+		return;
+	}
+
 	if (!(er = get_ecmtask()))
 		return;
 
@@ -416,26 +428,27 @@ void camd35_cache_push_in(struct s_client *cl, uchar *buf)
 	er->pid  = b2i(2, buf+16);
 	er->rc = buf[3];
 
-	er->l = buf[1] | buf[2] << 8;
-	if (er->rc < E_NOTFOUND)
-		er->l -= 16;
+	er->l = 0;
+	memcpy(er->ecmd5, buf + 20, sizeof(er->ecmd5)); //16
+	memcpy(&er->csp_hash, buf + 20 + sizeof(er->ecmd5), sizeof(er->csp_hash)); //4
+	memcpy(er->cw, buf + 20 + sizeof(er->ecmd5) + sizeof(er->csp_hash), sizeof(er->cw)); //16
 
-	memcpy(er->ecm, buf + 20, er->l);
-	memcpy(er->cw, buf+20 +er->l, 16);
-
-	cs_add_cache(cl, er);
+	cs_add_cache(cl, er, 0);
 }
+#endif
 
-static void * camd35_server(struct s_client *client, uchar *mbuf, int32_t n)
+static void * camd35_server(struct s_client *client __attribute__((unused)), uchar *mbuf, int32_t n)
 {
 	switch(mbuf[0]) {
 		case  0:	// ECM
 		case  3:	// ECM (cascading)
 			camd35_process_ecm(mbuf);
 			break;
+#ifdef CS_CACHEEX
 		case 0x3f:  // Cache-push
 			camd35_cache_push_in(client, mbuf);
 			break;
+#endif
 		case  6:	// EMM
 		case 19:  // EMM
 			camd35_process_emm(mbuf);
@@ -560,17 +573,11 @@ static int32_t camd35_send_emm(EMM_PACKET *ep)
 	return((camd35_send(buf, 0)<1) ? 0 : 1);
 }
 
-static int32_t camd35_recv_chk(struct s_client *client, uchar *dcw, int32_t *rc, uchar *buf, int32_t rc2)
+static int32_t camd35_recv_chk(struct s_client *client, uchar *dcw, int32_t *rc, uchar *buf, int32_t rc2 __attribute__((unused)))
 {
 	uint16_t idx;
 	static const char *typtext[]={"ok", "invalid", "sleeping"};
 	struct s_reader *rdr = client->reader;
-
-	if (rc2 < 0) {
-		if (rc2 == -4 || rc2 == -2) //checksum error / unknown user
-			network_tcp_connection_close(rdr);
-		return rc2;
-	}
 
 	// reading CMD05 Emm request and set serial
 	if (buf[0] == 0x05 && buf[1] == 111) {
@@ -628,10 +635,12 @@ static int32_t camd35_recv_chk(struct s_client *client, uchar *dcw, int32_t *rc,
 				rdr->label, buf[21], buf[21], typtext[client->stopped]);
 	}
 
+#ifdef CS_CACHEEX
 	if (buf[0] == 0x3f) { //cache-push
 		camd35_cache_push_in(client, buf);
 		return -1;
 	}
+#endif
 
 	// CMD44: old reject command introduced in mpcs
 	// keeping this for backward compatibility
@@ -704,7 +713,9 @@ void module_camd35(struct s_module *ph)
   ph->c_send_emm=camd35_send_emm;
   ph->c_init_log=camd35_client_init_log;
   ph->c_recv_log=camd35_recv_log;
+#ifdef CS_CACHEEX
   ph->c_cache_push=camd35_cache_push_out;
+#endif
   ph->num=R_CAMD35;
 }
 
@@ -729,6 +740,8 @@ void module_camd35_tcp(struct s_module *ph)
   ph->c_send_emm=camd35_send_emm;
   ph->c_init_log=camd35_client_init_log;
   ph->c_recv_log=camd35_recv_log;
+#ifdef CS_CACHEEX
   ph->c_cache_push=camd35_cache_push_out;
+#endif
   ph->num=R_CS378X;
 }

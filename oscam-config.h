@@ -159,6 +159,10 @@
 #endif
 #endif
 
+#ifndef CS_CACHEEX
+//#define CS_CACHEEX
+#endif
+
 #ifndef QBOXHD_LED
 //#define QBOXHD_LED
 #endif

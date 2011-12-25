@@ -60,6 +60,9 @@ typedef enum cs_proto_type
 #ifdef MODULE_PANDORA
 	TAG_PANDORA,	// pandora
 #endif
+#ifdef CS_CACHEEX
+	TAG_CSP,	// CSP
+#endif
 	TAG_CONSTCW,	// constcw
 	TAG_DVBAPI,	// dvbapi
 	TAG_WEBIF,	// webif
@@ -74,6 +77,9 @@ static const char *cctag[]={"global", "monitor", "camd33", "camd35", "newcamd", 
 #endif
 #ifdef MODULE_PANDORA
 		      "pandora",
+#endif
+#ifdef CS_CACHEEX
+		      "csp",
 #endif
 		      "constcw", "dvbapi", "webif", "anticasc",
 #ifdef LCDSUPPORT
@@ -630,10 +636,12 @@ void chk_t_global(const char *token, char *value)
 		return;
 	}
 
+#ifdef CS_CACHEEX
 	if (!strcmp(token, "cacheexwaittime")) {
 			cfg.cacheex_wait_time = strToIntVal(value, DEFAULT_CACHEEX_WAIT_TIME);
 			return;
 		}
+#endif
 
 #ifdef WITH_LB
 	if (!strcmp(token, "readerautoloadbalance") || !strcmp(token, "lb_mode")) {
@@ -1047,6 +1055,34 @@ void chk_t_camd33(char *token, char *value)
 		fprintf(stderr, "Warning: keyword '%s' in camd33 section not recognized\n",token);
 }
 
+#ifdef CS_CACHEEX
+void chk_t_csp(char *token, char *value)
+{
+	if (!strcmp(token, "port")) {
+		cfg.csp_port = strToIntVal(value, 0);
+		return;
+	}
+
+	if (!strcmp(token, "serverip")) {
+		if(strlen(value) == 0) {
+			cfg.csp_srvip = 0;
+			return;
+		} else {
+			cfg.csp_srvip = cs_inet_addr(value);
+			return;
+		}
+	}
+
+	if (!strcmp(token, "wait_time")) {
+		cfg.csp_wait_time = strToIntVal(value, 0);
+		return;
+	}
+
+	if (token[0] != '#')
+		fprintf(stderr, "Warning: keyword '%s' in csp section not recognized\n", token);
+}
+#endif
+
 void chk_t_camd35(char *token, char *value)
 {
 	if (!strcmp(token, "port")) {
@@ -1101,7 +1137,7 @@ void chk_t_camd35_tcp(char *token, char *value)
 	}
 
 	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in camd35 tcp section not recognized\n", token);
+		fprintf(stderr, "Warning: keyword '%s' in CSP section not recognized\n", token);
 }
 
 void chk_t_newcamd(char *token, char *value)
@@ -1502,6 +1538,9 @@ static void chk_token(char *token, char *value, int32_t tag)
 #ifdef MODULE_PANDORA
 		case TAG_PANDORA : chk_t_pandora(token, value); break;
 #endif
+#ifdef CS_CACHEEX
+		case TAG_CSP     : chk_t_csp(token, value); break;
+#endif
 		case TAG_GBOX    : chk_t_gbox(token, value); break;
 
 #ifdef HAVE_DVBAPI
@@ -1693,7 +1732,9 @@ int32_t init_config()
 	cfg.lb_auto_betatunnel_prefer_beta = DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA;
 	//end loadbalancer defaults
 #endif
+#ifdef CS_CACHEEX
 	cfg.cacheex_wait_time = DEFAULT_CACHEEX_WAIT_TIME;
+#endif
 
 #ifdef LCDSUPPORT
 	cfg.lcd_hide_idle = 0;
@@ -1780,6 +1821,7 @@ void chk_account(const char *token, char *value, struct s_auth *account)
 				else if (!strcmp(ptr, "cs378x"))	account->allowedprotocols |= LIS_CAMD35TCP;
 				else if (!strcmp(ptr, "newcamd"))	account->allowedprotocols |= LIS_NEWCAMD;
 				else if (!strcmp(ptr, "cccam"))		account->allowedprotocols |= LIS_CCCAM;
+				else if (!strcmp(ptr, "csp"))		account->allowedprotocols |= LIS_CSPUDP;
 				else if (!strcmp(ptr, "gbox"))		account->allowedprotocols |= LIS_GBOX;
 				else if (!strcmp(ptr, "radegast"))	account->allowedprotocols |= LIS_RADEGAST;
 				// these have no listener ports so it doesn't make sense
@@ -1821,10 +1863,12 @@ void chk_account(const char *token, char *value, struct s_auth *account)
 		return;
 	}
 
+#ifdef CS_CACHEEX
 	if (!strcmp(token, "cacheex")) {
 		account->cacheex = strToIntVal(value, 0);
 		return;
 	}
+#endif
 
 	if (!strcmp(token, "sleep")) {
 		account->tosleep = strToIntVal(value, cfg.tosleep);
@@ -2166,8 +2210,10 @@ int32_t write_config()
 		fprintf_conf(f, "readerrestartseconds", "%d\n", cfg.reader_restart_seconds);
 	if (cfg.dropdups || cfg.http_full_cfg)
 		fprintf_conf(f, "dropdups", "%d\n", cfg.dropdups);
+#ifdef CS_CACHEEX
 	if (cfg.cacheex_wait_time != DEFAULT_CACHEEX_WAIT_TIME || cfg.http_full_cfg)
 		fprintf_conf(f, "cacheexwaittime", "%d\n", cfg.cacheex_wait_time);
+#endif
 
 #ifdef WITH_LB
 	if (cfg.lb_mode != DEFAULT_LB_MODE || cfg.http_full_cfg)
@@ -2291,6 +2337,19 @@ int32_t write_config()
 		free_mk_t(value);
 		fprintf(f,"\n");
 	}
+
+	/*camd3.5*/
+#ifdef CS_CACHEEX
+	if ( cfg.csp_port > 0) {
+		fprintf(f,"[csp]\n");
+		fprintf_conf(f, "port", "%d\n", cfg.csp_port);
+		if (cfg.csp_srvip != 0)
+			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.csp_srvip));
+		if (cfg.csp_wait_time > 0 || cfg.http_full_cfg)
+			fprintf_conf(f, "wait_time", "%d\n", cfg.csp_wait_time);
+		fprintf(f,"\n");
+	}
+#endif
 
 	/*camd3.5*/
 	if ( cfg.c35_port > 0) {
@@ -2593,8 +2652,10 @@ int32_t write_userdb()
 		if (account->uniq || cfg.http_full_cfg)
 			fprintf_conf(f, "uniq", "%d\n", account->uniq);
 
+#ifdef CS_CACHEEX
 		if (account->cacheex || cfg.http_full_cfg)
 			fprintf_conf(f, "cacheex", "%d\n", account->cacheex);
+#endif
 
 		if (account->tosleep != cfg.tosleep || cfg.http_full_cfg)
 			fprintf_conf(f, "sleep", "%d\n", account->tosleep);
@@ -2807,8 +2868,10 @@ int32_t write_server()
 			if (rdr->fallback || cfg.http_full_cfg)
 				fprintf_conf(f, "fallback", "%d\n", rdr->fallback);
 
+#ifdef CS_CACHEEX
 			if (rdr->cacheex || cfg.http_full_cfg)
 				fprintf_conf(f, "cacheex", "%d\n", rdr->cacheex);
+#endif
 
 			if (rdr->log_port || cfg.http_full_cfg)
 				fprintf_conf(f, "logport", "%d\n", rdr->log_port);
@@ -3145,6 +3208,11 @@ void write_versionfile() {
 	  fprintf(fp, "IPv6 support:               yes\n");
 #else
 	  fprintf(fp, "IPv6 support:               no\n");
+#endif
+#ifdef CS_CACHEEX
+	  fprintf(fp, "Cache exchange support:     yes\n");
+#else
+	  fprintf(fp, "Cache exchange support:     no\n");
 #endif
 #ifdef MODULE_CAMD33
 	  fprintf(fp, "camd 3.3x:                  yes\n");
@@ -4121,10 +4189,12 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 		return;
 	}
 
+#ifdef CS_CACHEEX
 	if (!strcmp(token, "cacheex")) {
 		rdr->cacheex  = strToIntVal(value, 0);
 		return;
 	}
+#endif
 
 	if (!strcmp(token, "logport")) {
 		rdr->log_port  = strToIntVal(value, 0);
