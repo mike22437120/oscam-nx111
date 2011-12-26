@@ -4,7 +4,7 @@ plat_dir=build_i686Linux
 rm -f oscam oscam-$plat-svn*.tar.gz oscam-$plat-svn*.deb
 
 make clean
-cmake  -DCS_CONFDIR=/var/etc -DWEBIF=1 ..    #用cmake命令对源码进行交叉编译
+cmake  -DCS_CONFDIR=/var/etc ..    #用cmake命令对源码进行交叉编译
 make
 
 [ -d image/usr/bin ] || mkdir -p image/usr/bin

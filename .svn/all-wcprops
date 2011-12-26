@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 30
-/svn/oscam/!svn/ver/6136/trunk
+/svn/oscam/!svn/ver/6148/trunk
 END
 module-cccam.h
 K 25
@@ -19,7 +19,7 @@ module-camd35.c
 K 25
 svn:wc:ra_dav:version-url
 V 46
-/svn/oscam/!svn/ver/6133/trunk/module-camd35.c
+/svn/oscam/!svn/ver/6144/trunk/module-camd35.c
 END
 reader-viaccess.c
 K 25
@@ -133,7 +133,7 @@ CMakeLists.txt
 K 25
 svn:wc:ra_dav:version-url
 V 45
-/svn/oscam/!svn/ver/5927/trunk/CMakeLists.txt
+/svn/oscam/!svn/ver/6146/trunk/CMakeLists.txt
 END
 config.sh
 K 25
@@ -163,7 +163,7 @@ oscam.c
 K 25
 svn:wc:ra_dav:version-url
 V 38
-/svn/oscam/!svn/ver/6135/trunk/oscam.c
+/svn/oscam/!svn/ver/6144/trunk/oscam.c
 END
 oscam-reader.c
 K 25
@@ -289,7 +289,7 @@ oscam-http.c
 K 25
 svn:wc:ra_dav:version-url
 V 43
-/svn/oscam/!svn/ver/6134/trunk/oscam-http.c
+/svn/oscam/!svn/ver/6148/trunk/oscam-http.c
 END
 .gitignore
 K 25
@@ -301,7 +301,7 @@ oscam-http.h
 K 25
 svn:wc:ra_dav:version-url
 V 43
-/svn/oscam/!svn/ver/6134/trunk/oscam-http.h
+/svn/oscam/!svn/ver/6148/trunk/oscam-http.h
 END
 reader-irdeto.c
 K 25
@@ -343,7 +343,7 @@ module-cccam.c
 K 25
 svn:wc:ra_dav:version-url
 V 45
-/svn/oscam/!svn/ver/6136/trunk/module-cccam.c
+/svn/oscam/!svn/ver/6144/trunk/module-cccam.c
 END
 module-datastruct-llist.h
 K 25

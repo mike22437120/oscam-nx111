@@ -1,15 +1,15 @@
 10
 
 dir
-6136
+6148
 http://streamboard.gmc.to/svn/oscam/trunk
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2011-12-25T12:20:08.648644Z
-6136
-corsair
+2011-12-26T10:29:40.092769Z
+6148
+alno
 has-props
 
 
@@ -84,6 +84,9 @@ file
 6122
 corsair
 
+cmake
+dir
+
 openxcas
 dir
 
@@ -93,10 +96,10 @@ file
 
 
 
-2011-12-25T04:32:03.875095Z
-d90c4ff681a572df5e138b2d54f46589
-2011-12-24T16:32:13.733440Z
-6133
+2011-12-26T10:20:10.604597Z
+ba13fccddebc8e2984d3614f9e15f905
+2011-12-25T20:06:20.538212Z
+6144
 corsair
 
 
@@ -119,7 +122,7 @@ corsair
 
 
 
-20783
+20879
 
 reader-viaccess.c
 file
@@ -507,9 +510,9 @@ file
 
 
 
-446df575eb31239142e9770abc4a0088
-2011-12-25T12:19:15.041239Z
-6135
+66cb4f739cb57f9c3e39ae840f2d70c5
+2011-12-25T20:06:20.538212Z
+6144
 corsair
 
 reader-tongfang.c
@@ -706,10 +709,10 @@ file
 
 
 
-b5ab7c0c417f27b5c73729e20732a0d2
-2011-12-25T06:13:46.428113Z
-6134
-corsair
+9570222c6503ed1ba80f98e8b4e9a2ca
+2011-12-26T10:29:40.092769Z
+6148
+alno
 
 oscam-http.h
 file
@@ -718,10 +721,10 @@ file
 
 
 
-0313e066c38b5b52d295cf57e1fb7a9b
-2011-12-25T06:13:46.428113Z
-6134
-corsair
+af1f73237a1974f6a8585d1578aefbaf
+2011-12-26T10:29:40.092769Z
+6148
+alno
 
 reader-irdeto.c
 file
@@ -1094,10 +1097,10 @@ file
 
 
 
-d7482af98370fb70d3c8da4d2d70cf12
-2011-08-23T15:18:46.478105Z
-5927
-neoen
+b1121c589cbbf4f3fbbd06191edc6194
+2011-12-26T09:41:06.570834Z
+6146
+nightmann
 
 config.sh
 file
@@ -1575,9 +1578,9 @@ file
 
 
 
-6b25adf6f767ca230d7edf251a0bb0c7
-2011-12-25T12:20:08.648644Z
-6136
+0379964706fba696f867c26f6aa3cc88
+2011-12-25T20:06:20.538212Z
+6144
 corsair
 has-props
 

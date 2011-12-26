@@ -8,7 +8,7 @@ if ! echo $PATH | grep  mipsel-azbox >/dev/null; then
 	export PATH=../../toolchains/mipsel-azbox/bin:$PATH     # 指定编译源码时要用的azbox mipsel环境下的GCC和C++编译器路径
 fi
 make clean
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-mips-azbox.cmake -DWEBIF=1 ..    #用cmake命令对源码进行交叉编译
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-mips-azbox.cmake ..    #用cmake命令对源码进行交叉编译
 make
 export PATH=$OLDPATH
 

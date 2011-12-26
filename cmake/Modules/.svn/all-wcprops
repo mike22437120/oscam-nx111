@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/oscam/!svn/ver/6146/trunk/cmake/Modules
+END
+FindLibusb.cmake
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/oscam/!svn/ver/6146/trunk/cmake/Modules/FindLibusb.cmake
+END
+UseConfig.cmake
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/oscam/!svn/ver/6146/trunk/cmake/Modules/UseConfig.cmake
+END
+FindLibrt.cmake
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/oscam/!svn/ver/6146/trunk/cmake/Modules/FindLibrt.cmake
+END

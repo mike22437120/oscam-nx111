@@ -1,14 +1,14 @@
 10
 
 dir
-6136
+6148
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2011-12-23T10:29:52.805546Z
-6124
+2011-12-25T19:15:31.600240Z
+6142
 docman
 
 
@@ -203,9 +203,9 @@ file
 
 
 
-386ec63dd8aadfefbdec361540b58b11
-2011-12-23T10:29:52.805546Z
-6124
+8db5ed948545f0b61c14f24838f0f57a
+2011-12-25T19:15:31.600240Z
+6142
 docman
 
 oscam.dvbapi.txt
