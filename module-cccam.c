@@ -486,9 +486,9 @@ int32_t cc_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen) {
 	if (handle <= 0 || maxlen < 4)
 		return -1;
 
-	if (!cl->cc || cc->mode == CCCAM_MODE_SHUTDOWN) return -1;
+	if (!cl->cc || cl->kill) return -1;
 	cs_writelock(&cc->lockcmd);
-	if (!cl->cc || cc->mode == CCCAM_MODE_SHUTDOWN) {
+	if (!cl->cc || cl->kill) {
 		cs_writeunlock(&cc->lockcmd);
 		return -1;
 	}
@@ -556,9 +556,9 @@ int32_t cc_cmd_send(struct s_client *cl, uint8_t *buf, int32_t len, cc_msg_type_
 	uint8_t *netbuf = cs_malloc(&netbuf, len + 4, 0);
 	struct cc_data *cc = cl->cc;
 
-	if (!cl->cc || cl->kill || cc->mode == CCCAM_MODE_SHUTDOWN) return -1;
+	if (!cl->cc || cl->kill) return -1;
 	cs_writelock(&cc->lockcmd);
-	if (!cl->cc || cl->kill || cc->mode == CCCAM_MODE_SHUTDOWN) {
+	if (!cl->cc || cl->kill) {
 		cs_writeunlock(&cc->lockcmd);
 		return -1;
 	}
@@ -1206,7 +1206,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 						"%s unlocked-cycleconnection! timeout %dms",
 						getprefix(), tt);
 				//cc_cycle_connection();
-				cc_cli_close(cl, TRUE);
+				//cc_cli_close(cl, TRUE);
 				return 0;
 			}
 		}
@@ -1589,8 +1589,6 @@ void cc_free(struct s_client *cl) {
 	struct cc_data *cc = cl->cc;
 	if (!cc) return;
 	
-	cc->mode = CCCAM_MODE_SHUTDOWN;
-	
 	cl->cc=NULL;
 	
 	cs_writelock(&cc->lockcmd);
@@ -1679,9 +1677,7 @@ void cc_idle() {
 	struct cc_data *cc = cl->cc;
 	
 	if (rdr && rdr->cc_keepalive && !rdr->tcp_connected) {
-		if (cc_cli_connect(cl) != 0) {
-			cs_sleepms(cfg.reader_restart_seconds*1000);
-		}
+		cc_cli_connect(cl);
 	}
 		
 	if (!rdr || !rdr->tcp_connected || !cl || !cc)
@@ -1691,6 +1687,7 @@ void cc_idle() {
 	if (rdr->cc_keepalive) {
 		if (cc->answer_on_keepalive + 55 <= now) {
 			cc_cmd_send(cl, NULL, 0, MSG_KEEPALIVE);
+			cl->last = now;
 			cs_debug_mask(D_READER, "cccam: keepalive");
 			cc->answer_on_keepalive = now;
 			return;
@@ -1957,7 +1954,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 	int32_t ret = buf[1];
 	struct cc_data *cc = cl->cc;
 	tmp_dbg(33);
-	if (!cc || cc->mode == CCCAM_MODE_SHUTDOWN)
+	if (!cc || cl->kill)
 		return -1;
 
 	char msgname[20];
@@ -2132,7 +2129,8 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 
 			if (!old_card) {
 			    card->card_type = CT_REMOTECARD;
-				card->hop++; //inkrementing hop
+				if(card->reshare == 0)card->reshare = 1;
+					card->hop++; //inkrementing hop
 				ll_append(cc->cards, card);
 				set_au_data(cl, rdr, card, NULL);
 				cc->card_added_count++;
@@ -2862,7 +2860,7 @@ int32_t cc_srv_wakeup_readers(struct s_client *cl) {
 			continue;
 		if (rdr->cc_keepalive) //if reader has keepalive but is NOT connected, reader can't connect. so don't ask him
 			continue;
-		if((client = rdr->client) == NULL || (cc = client->cc) == NULL || cc->mode == CCCAM_MODE_SHUTDOWN)	//reader is in shutdown
+		if((client = rdr->client) == NULL || (cc = client->cc) == NULL || client->kill)	//reader is in shutdown
 			continue;
 		if(is_connect_blocked(rdr))	//reader cannot be waked up currently because its blocked
 			continue;
@@ -2894,7 +2892,6 @@ int32_t cc_srv_connect(struct s_client *cl) {
 	cc_init_locks(cc);
 	uint8_t *buf = cc->send_buffer;
 	
-	cc->mode = CCCAM_MODE_NOTINIT;
 	cc->server_ecm_pending = 0;
 	cc->extended_mode = 0;
 	cc->ecm_busy = 0;
@@ -3082,7 +3079,6 @@ int32_t cc_srv_connect(struct s_client *cl) {
 		return -1;
 	cs_ftime(&cc->ecm_time);
 
-	cc->mode = CCCAM_MODE_NORMAL;
 	//some clients, e.g. mgcamd, does not support keepalive. So if not answered, keep connection
 	// check for client timeout, if timeout occurs try to send keepalive
 	cs_debug_mask(D_TRACE, "ccc connected and waiting for data %s", usr);
@@ -3118,9 +3114,6 @@ int32_t cc_cli_connect(struct s_client *cl) {
 	struct s_reader *rdr = cl->reader;
 	struct cc_data *cc = cl->cc;
 	rdr->card_status = CARD_FAILURE;
-
-	if (cc && cc->mode == CCCAM_MODE_SHUTDOWN)
-		return -99;
 
 	if (!cc) {
 		// init internals data struct
@@ -3284,7 +3277,6 @@ int32_t cc_cli_connect(struct s_client *cl) {
 	rdr->available = 1;
 
 	cc->just_logged_in = 1;
-	cc->mode = CCCAM_MODE_NORMAL;
 	cl->crypted = 1;
 	cc->ecm_busy = 0;
 
@@ -3313,12 +3305,8 @@ int32_t cc_cli_init_int(struct s_client *cl) {
 }
 
 int32_t cc_cli_init(struct s_client *cl) {
-	struct cc_data *cc = cl->cc;
 	struct s_reader *reader = cl->reader;
 	
-	if ((cc && cc->mode == CCCAM_MODE_SHUTDOWN))
-		return -1;
-		
 	int32_t res = cc_cli_init_int(cl); //Create socket
 	
 	if (res == 0 && reader && (reader->cc_keepalive || !cl->cc) && !reader->tcp_connected) {
@@ -3393,9 +3381,6 @@ void cc_card_info() {
 }
 
 void cc_cleanup(struct s_client *cl) {
-	struct cc_data *cc = cl->cc;
-	if (cc) cc->mode = CCCAM_MODE_SHUTDOWN;
-	
 	if (cl->typ != 'c') {
 		cc_cli_close(cl, FALSE); // we need to close open fd's 
 	}
