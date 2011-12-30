@@ -44,7 +44,6 @@ pid_t server_pid=0;
 CS_MUTEX_LOCK sr_lock;
 #endif
 CS_MUTEX_LOCK system_lock;
-CS_MUTEX_LOCK get_cw_lock;
 CS_MUTEX_LOCK gethostbyname_lock;
 CS_MUTEX_LOCK clientlist_lock;
 CS_MUTEX_LOCK readerlist_lock;
@@ -269,9 +268,6 @@ static void usage()
 #endif
 #ifdef LCDSUPPORT
   fprintf(stderr, "lcd ");
-#endif
-#ifdef CS_CACHEEX
-  fprintf(stderr, "cache-exchange ");
 #endif
   fprintf(stderr, "\n\tinbuilt protocols: ");
 #ifdef MODULE_CAMD33
@@ -1085,7 +1081,6 @@ static void init_first_client()
 #endif
   cs_lock_create(&sc8in1_lock, 10, "sc8in1_lock");
   cs_lock_create(&system_lock, 5, "system_lock");
-  cs_lock_create(&get_cw_lock, 5, "get_cw_lock");  
   cs_lock_create(&gethostbyname_lock, 10, "gethostbyname_lock");
   cs_lock_create(&clientlist_lock, 5, "clientlist_lock");
   cs_lock_create(&readerlist_lock, 5, "readerlist_lock");
@@ -1432,7 +1427,6 @@ static void cs_fake_client(struct s_client *client, char *usr, int32_t uniq, in_
 				if (cl->failban & BAN_DUPLICATE) {
 					cs_add_violation(cl, usr);
 				}
-				kill_thread(cl);
 				if (cfg.dropdups){
 					cs_writeunlock(&fakeuser_lock);
 					kill_thread(cl);
@@ -1578,7 +1572,7 @@ int32_t cs_auth_client(struct s_client * client, struct s_auth *account, const c
 				}
 			}
 		}
-		if (client->ctyp != 6)
+
 		cs_log("%s %s-client %s%s (%s, %s)",
 			client->crypted ? t_crypt : t_plain,
 			e_txt ? e_txt : ph[client->ctyp].desc,
@@ -1905,12 +1899,10 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 	}
 
 	int32_t res = 0;
-	cs_readlock(&ecmcache_lock);
 	if (er->client && !er->client->kill) {
 		add_job(er->client, ACTION_CLIENT_ECM_ANSWER, ea, sizeof(struct s_ecm_answer));
 		res = 1;
 	}
-    cs_readunlock(&ecmcache_lock);
 
 	if (reader && rc == E_FOUND && reader->resetcycle > 0)
 	{
@@ -2012,7 +2004,6 @@ static void add_cascade_data(struct s_client *client, ECM_REQUEST *er)
 
 int32_t send_dcw(struct s_client * client, ECM_REQUEST *er)
 {
-	if(client->ctyp != 6) 
 	if (!client || client->kill || client->typ != 'c')
 		return 0;
 
@@ -2027,9 +2018,7 @@ int32_t send_dcw(struct s_client * client, ECM_REQUEST *er)
 	char channame[32];
 	struct timeb tpe;
 
-	
 	snprintf(uname,sizeof(uname)-1, "%s", username(client));
-	
 
 	if (er->rc < E_NOTFOUND)
 		checkCW(er);
@@ -2185,13 +2174,7 @@ int32_t send_dcw(struct s_client * client, ECM_REQUEST *er)
 	if (is_fake)
 		er->rc = E_FAKE;
 
-
-
-	if(client->ctyp == 6){
-		cs_log("%s (%04X&%06X/%04X/%02X:%04X): %s (%d ms)%s (%d of %d)%s%s",
-			client->reader->r_usr, er->caid, er->prid, er->srvid, er->l, htons(er->checksum),
-			er->rcEx?erEx:stxt[er->rc], client->cwlastresptime, sby, er->reader_count, er->reader_avail, schaninfo, sreason);
-	} else if (er->reader_avail == 1) {
+	if (er->reader_avail == 1) {
 		cs_log("%s (%04X&%06X/%04X/%02X:%04X): %s (%d ms)%s %s%s",
 			uname, er->caid, er->prid, er->srvid, er->l, htons(er->checksum),
 			er->rcEx?erEx:stxt[er->rc], client->cwlastresptime, sby, schaninfo, sreason);
@@ -2616,6 +2599,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 {
 	int32_t i, j, m;
 	time_t now = time((time_t*)0);
+	uint32_t line = 0;
 
 	er->client = client;
 
@@ -2692,6 +2676,12 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 		er->rc = E_DISABLED;
 	}
 
+	if (!chk_global_whitelist(er, &line)) {
+		cs_debug_mask(D_TRACE, "whitelist filtered: %s (%04X&%06X/%04X/%02X:%04X) line %d",
+					username(client), er->caid, er->prid, er->srvid, er->l, htons(er->checksum),
+					line);
+		er->rc = E_INVALID;
+	}
 
 	// rc<100 -> ecm error
 	if (er->rc >= E_UNHANDLED) {
@@ -2779,17 +2769,6 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 			}
 		}
 	}
-
-#ifdef WITH_LB
-    //Use locking - now default=FALSE, activate on problems!
-	int32_t locked;
-	if (cfg.lb_mode && cfg.lb_use_locking && er->btun != 2) {
-			cs_writelock(&get_cw_lock);
-			locked=1;
-	}
-	else
-			locked=0;
-#endif
 
 	//Schlocke: above checks could change er->rc so
 	if (er->rc >= E_UNHANDLED) {
@@ -2917,12 +2896,6 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 	int8_t cacheex = client->account?client->account->cacheex:0;
 
 	if ((cacheex == 1 || cfg.csp_wait_time) && er->rc == E_UNHANDLED) { //not found in cache, so wait!
-#ifdef WITH_LB
-		if (locked) {
-			cs_writeunlock(&get_cw_lock);
-			locked = 0;
-		}
-#endif
 		uint32_t max_wait = (cacheex == 1)?cfg.cacheex_wait_time:cfg.csp_wait_time;
 		while (max_wait > 0 && !client->kill) {
 			cs_sleepms(50);
@@ -2967,12 +2940,6 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 		}
 #endif
 	}
-
-
-#ifdef WITH_LB
-	if (locked)
-		cs_writeunlock(&get_cw_lock);
-#endif
 
 	uint16_t *lp;
 	for (lp=(uint16_t *)er->ecm+(er->l>>2), er->checksum=0; lp>=(uint16_t *)er->ecm; lp--)
@@ -4255,6 +4222,8 @@ int32_t main (int32_t argc, char *argv[])
     cs_log("openxcas: could not init");
   }
 #endif
+
+  global_whitelist_read();
 
   for (i=0; i<CS_MAX_MOD; i++)
     if( (ph[i].type & MOD_CONN_NET) && ph[i].ptab )

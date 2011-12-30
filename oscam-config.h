@@ -160,7 +160,7 @@
 #endif
 
 #ifndef CS_CACHEEX
-//#define CS_CACHEEX
+#define CS_CACHEEX
 #endif
 
 #ifndef QBOXHD_LED
