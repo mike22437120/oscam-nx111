@@ -361,6 +361,7 @@ struct cc_extended_ecm_idx *add_extended_ecm_idx(struct s_client *cl,
 	eei->card = card;
 	eei->srvid = srvid;
 	eei->free_card = free_card;
+	cs_ftime(&eei->tps);
 	ll_append(cc->extended_ecm_idx, eei);
 	//cs_debug_mask(D_TRACE, "%s add extended ecm-idx: %d:%d", getprefix(), send_idx, ecm_idx);
 	return eei;
@@ -1077,7 +1078,10 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 	LL_ITER it = ll_iter_create(cc->cards);
 	struct cc_card *card = NULL, *ncard, *xcard = NULL;
 	while ((ncard = ll_iter_next(&it))) {
-		if (ncard->caid == cur_er->caid  // caid matches
+		if ((ncard->caid == cur_er->caid // caid matches
+				|| (rdr->cc_want_emu && (ncard->caid & 0x00FF) == 0x0000 && (ncard->caid == (cur_er->caid & 0xFF00))))
+						// or system matches if caid ends with 00
+	                    // needed for wantemu
 				#ifdef WITH_LB  
 				||(chk_only && cfg.lb_mode && cfg.lb_auto_betatunnel && cur_er->caid>>8==0x18 && ncard->caid>>8==0x17) //accept beta card when beta-tunnel is on
 				#endif
@@ -1314,15 +1318,14 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 				send_idx = cc->g_flag;
 			}
 
-			struct cc_extended_ecm_idx *eei = get_extended_ecm_idx(cl, send_idx,
-					FALSE);
+			struct cc_extended_ecm_idx *eei = get_extended_ecm_idx(cl, send_idx, FALSE);
 			if (eei) {
 				eei->ecm_idx = cur_er->idx;
 				eei->card = card;
 				eei->srvid = cur_srvid;
 			} else
-				add_extended_ecm_idx(cl, send_idx, cur_er->idx, card, cur_srvid,
-						0);
+				eei = add_extended_ecm_idx(cl, send_idx, cur_er->idx, card, cur_srvid, 0);
+			eei->tps = cur_er->tps;
 
 			rdr->cc_currenthops = card->hop;
 			rdr->card_status = CARD_INSERTED;
@@ -2267,22 +2270,34 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 			struct cc_srvid srvid = eei->srvid;
 			free(eei);
 
+			struct timeb tpe;
+			cs_ftime(&tpe);
+			int32_t cwlastresptime = 1000*(tpe.time-eei->tps.time)+tpe.millitm-eei->tps.millitm;
+
 			if (card) {
 				if (buf[1] == MSG_CW_NOK1) //MSG_CW_NOK1: share no more available
 					cc_card_removed(cl, card->id);
-				else if (cc->cmd05NOK) {
+				else if (cc->cmd05NOK)
+				{
 					move_card_to_end(cl, card);
-					add_sid_block(cl, card, &srvid);
+					if (cwlastresptime < 5000 || card->tout_counter > 5)
+						add_sid_block(cl, card, &srvid);
+					else
+						card->tout_counter++;
 				}
 				else if (!is_good_sid(card, &srvid)) //MSG_CW_NOK2: can't decode
-					{
+				{
 					move_card_to_end(cl, card);
-					add_sid_block(cl, card, &srvid);
-					}
-				else	{
+					if (cwlastresptime < 5000 || card->tout_counter > 5)
+						add_sid_block(cl, card, &srvid);
+					else
+						card->tout_counter++;
+				}
+				else
+				{
 					move_card_to_end(cl, card);
 					remove_good_sid(card, &srvid);
-					}
+				}
 
 				if (cfg.cc_forward_origin_card && card->origin_reader == rdr) { 
 						//this card is from us but it can't decode this ecm
@@ -2458,7 +2473,6 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 						if (cwlastresptime > cfg.ftimeout && !cc->extended_mode) {
 							cs_debug_mask(D_READER, "%s card %04X is too slow, moving to the end...", getprefix(), card->id);
 							move_card_to_end(cl, card);
-							//add_sid_block(cl, card, &srvid); Do not block slow cards!
 						}
 						
 					}
@@ -3156,16 +3170,12 @@ int32_t cc_cli_connect(struct s_client *cl) {
 	// connect
 	handle = network_tcp_connection_open(rdr);
 	if (handle <= 0) {
-//		block_connect(rdr);
 		cs_log("%s network connect error!", rdr->label);
-//		rdr->tcp_block_delay = 10*60*1000;	//5 minutes
-//		block_connect(rdr);
 		return -1;
 	}
 	if (errno == EISCONN) {
 		cc_cli_close(cl, FALSE);
-		
-//		block_connect(rdr);
+		block_connect(rdr);
 		return -1;
 	}
 

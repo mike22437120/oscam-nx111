@@ -2543,7 +2543,8 @@ int32_t write_config()
 			fprintf_conf(f, "httpreadonly", "%d\n", cfg.http_readonly);
 		if(cfg.http_full_cfg)
 			fprintf_conf(f, "httpsavefullcfg", "%d\n", cfg.http_full_cfg);
-
+		if(cs_http_use_utf8)
+			fprintf_conf(f,"httputf8","%d\n",cs_http_use_utf8);
 		fputc((int)'\n', f);
 	}
 #endif
@@ -6160,7 +6161,7 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 	char token[128], str1[128];
 	char type;
 	int32_t i, ret, count=0;
-	struct s_global_whitelist *new_whitelist = NULL, *entry = NULL, *last = NULL;
+	struct s_global_whitelist *new_whitelist = NULL, *entry, *last=NULL;
 	uint32_t line = 0;
 
 	const char *cs_whitelist="oscam.whitelist";

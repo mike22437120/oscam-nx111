@@ -709,6 +709,9 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
 	else
 		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", "en");
+	
+	if(cs_http_use_utf8)
+		tpl_addVar(vars,TPLADD,"HTTPUTF8","selected");
 
 	tpl_printf(vars, TPLADD, "HTTPREFRESH", "%d", cfg.http_refresh);
 	tpl_addVar(vars, TPLADD, "HTTPTPL", cfg.http_tpl);
@@ -1316,6 +1319,13 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	value = mk_t_ecmwhitelist(rdr->ecmWhitelist);
 	tpl_addVar(vars, TPLADD, "ECMWHITELIST", value);
 	free_mk_t(value);
+
+	// Deprecated
+	if(!apicall) {
+		tpl_addVar(vars, TPLADD, "DEPRECATEDCHECKED", (rdr->deprecated == 1) ? "checked" : "");
+	} else {
+		tpl_addVar(vars, TPLADD, "DEPRECATEDVALUE", (rdr->deprecated == 1) ? "1" : "0");
+	}
 
 	// Smargopatch
 	if(!apicall) {
