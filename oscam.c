@@ -64,8 +64,6 @@ char    *processUsername = NULL;
 char    *loghist = NULL;     // ptr of log-history
 char    *loghistptr = NULL;
 
-int8_t keep_threads_alive = 0;
-
 #ifdef CS_CACHEEX
 int32_t cs_add_cacheex_stats(struct s_client *cl, uint16_t caid, uint16_t srvid, uint32_t prid, uint8_t direction) {
 
@@ -289,7 +287,7 @@ static void usage()
   fprintf(stderr, "pandora ");
 #endif
 #ifdef CS_CACHEEX
-  fprintf(stderr, "CacheEx ");
+  fprintf(stderr, "cache-exchange ");
 #endif
 #ifdef MODULE_GBOX
   fprintf(stderr, "gbox ");
@@ -613,7 +611,6 @@ void cleanup_thread(void *var)
 	// Remove client from client list. kill_thread also removes this client, so here just if client exits itself...
 	struct s_client *prev, *cl2;
 	cs_writelock(&clientlist_lock);
-	cl->thread_active = 0;
 	cl->kill = 1;
 	for (prev=first_client, cl2=first_client->next; prev->next != NULL; prev=prev->next, cl2=cl2->next)
 		if (cl == cl2)
@@ -1356,7 +1353,7 @@ static int32_t restart_cardreader_int(struct s_reader *rdr, int32_t restart) {
 		cl->typ='r';
 		//client[i].ctyp=99;
 
-		add_job(rdr->client, ACTION_READER_INIT, NULL, 0);
+		add_job(cl, ACTION_READER_INIT, NULL, 0);
 
 		return 1;
 	}
@@ -1591,7 +1588,10 @@ void cs_disconnect_client(struct s_client * client)
 	if (client->ip)
 		snprintf(buf, sizeof(buf), " from %s", cs_inet_ntoa(client->ip));
 	cs_log("%s disconnected %s", username(client), buf);
-	cs_exit(0);
+	if (client == cur_client())
+		cs_exit(0);
+	else
+		kill_thread(client);
 }
 
 #ifdef CS_CACHEEX
@@ -1638,6 +1638,9 @@ void cs_cache_push(ECM_REQUEST *er)
 	if (er->rc >= E_NOTFOUND) //Maybe later we could support other rcs
 		return;
 
+	if (er->cacheex_pushed || (er->ecmcacheptr && er->ecmcacheptr->cacheex_pushed))
+		return;
+
 	//cacheex=2 mode: push (server->remote)
 	struct s_client *cl;
 	for (cl=first_client->next; cl; cl=cl->next) {
@@ -1667,6 +1670,9 @@ void cs_cache_push(ECM_REQUEST *er)
 			}
 		}
 	}
+
+	er->cacheex_pushed = 1;
+	if (er->ecmcacheptr) er->ecmcacheptr->cacheex_pushed = 1;
 }
 #endif
 
@@ -2399,7 +2405,8 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 #endif
 
 #ifdef CS_CACHEEX
-	cs_cache_push(ert);
+	if (ea->rc < E_NOTFOUND)
+		cs_cache_push(ert);
 #endif
 
 	if (ert->rc < E_99) {
@@ -3300,12 +3307,12 @@ void * work_thread(void *ptr) {
 		if (data)
 			cs_debug_mask(D_TRACE, "data from add_job action=%d", data->action);
 
-		if (!cl || !is_valid_client(cl)) {
-			if (data && data!=&tmp_data)
-				free(data);
-			data = NULL;
-			return NULL;
-		}
+//		if (!cl || !is_valid_client(cl)) {
+//			if (data && data!=&tmp_data)
+//				free(data);
+//			data = NULL;
+//			return NULL;
+//		}
 
 		if (cl->kill) {
 			cs_debug_mask(D_TRACE, "ending thread");
@@ -3319,9 +3326,6 @@ void * work_thread(void *ptr) {
 		}
 
 		if (!data) {
-			if (keep_threads_alive)
-				check_status(cl);
-
 			pthread_mutex_lock(&cl->thread_lock);
 			if (cl->joblist && ll_count(cl->joblist)>0) {
 				LL_ITER itr = ll_iter_create(cl->joblist);
@@ -3329,13 +3333,12 @@ void * work_thread(void *ptr) {
 				ll_iter_remove(&itr);
 				cs_debug_mask(D_TRACE, "start next job from list action=%d", data->action);
 			}
-
-			if (!keep_threads_alive && !data)
-				cl->thread_active=0;
 			pthread_mutex_unlock(&cl->thread_lock);
 		}
 
-		if (keep_threads_alive && !data) {
+		if (!data) {
+			if (!cl->pfd)
+				break;
 			pfd[0].fd = cl->pfd;
 			pfd[0].events = POLLIN | POLLPRI | POLLHUP;
 
@@ -3350,22 +3353,19 @@ void * work_thread(void *ptr) {
 				cs_debug_mask(D_TRACE, "data on socket");
 				data=&tmp_data;
 				
-				data->action = ACTION_CLIENT_TCP;
+				if (reader)
+					data->action = ACTION_READER_REMOTE;
+				else
+					data->action = ACTION_CLIENT_TCP;
 				data->ptr = NULL;
 
-				if (pfd[0].revents & (POLLHUP | POLLNVAL)) {
+				if (pfd[0].revents & (POLLHUP | POLLNVAL))
 					cl->kill = 1;
-					continue;
-				}
 			}
 		}
 
-		if (!data) {
-			if (keep_threads_alive) 
-				continue;
-			else
-				break;
-		}
+		if (!data || cl->kill)
+			continue;
 
 		if (data->action < 20 && !reader) {
 			if (data!=&tmp_data)
@@ -3535,14 +3535,14 @@ void * work_thread(void *ptr) {
 		data = NULL;
 	}
 
-	if (!keep_threads_alive && thread_pipe[1]){
+	if (thread_pipe[1]){
 		if(write(thread_pipe[1], mbuf, 1) == -1){ //wakeup client check
 			cs_debug_mask(D_TRACE, "Writing to pipe failed (errno=%d %s)", errno, strerror(errno));
 		}
 	}
 	
 	cs_debug_mask(D_TRACE, "ending thread");
-
+	cl->thread_active = 0;
 	pthread_exit(NULL);
 	return NULL;
 }
@@ -3568,8 +3568,7 @@ void add_job(struct s_client *cl, int8_t action, void *ptr, int32_t len) {
 		ll_append(cl->joblist, data);
 		cs_debug_mask(D_TRACE, "add %s job action %d", action > 20 ? "client" : "reader", action);
 		pthread_mutex_unlock(&cl->thread_lock);
-		if (keep_threads_alive)
-			pthread_kill(cl->thread, OSCAM_SIGNAL_WAKEUP);
+		pthread_kill(cl->thread, OSCAM_SIGNAL_WAKEUP);
 		return;
 	}
 

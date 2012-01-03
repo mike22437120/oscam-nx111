@@ -3733,8 +3733,8 @@ int32_t init_srvid()
 			len+=strlen(ptr1)+1;
 		}
 
-		char *tmpptr;
-		if (!cs_malloc(&tmpptr, len, 0))
+		char *tmpptr = NULL;
+		if (len > 0 && !cs_malloc(&tmpptr, len, 0))
 			continue;
 
 		srvid->data=tmpptr;
