@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 30
-/svn/oscam/!svn/ver/6189/trunk
+/svn/oscam/!svn/ver/6197/trunk
 END
 module-cccam.h
 K 25
@@ -123,23 +123,17 @@ svn:wc:ra_dav:version-url
 V 46
 /svn/oscam/!svn/ver/6081/trunk/module-dvbapi.c
 END
-Makefile
-K 25
-svn:wc:ra_dav:version-url
-V 39
-/svn/oscam/!svn/ver/6184/trunk/Makefile
-END
 CMakeLists.txt
 K 25
 svn:wc:ra_dav:version-url
 V 45
 /svn/oscam/!svn/ver/6157/trunk/CMakeLists.txt
 END
-config.sh
+Makefile
 K 25
 svn:wc:ra_dav:version-url
-V 40
-/svn/oscam/!svn/ver/6105/trunk/config.sh
+V 39
+/svn/oscam/!svn/ver/6184/trunk/Makefile
 END
 module-dvbapi.h
 K 25
@@ -147,11 +141,11 @@ svn:wc:ra_dav:version-url
 V 46
 /svn/oscam/!svn/ver/5667/trunk/module-dvbapi.h
 END
-module-stat.c
+config.sh
 K 25
 svn:wc:ra_dav:version-url
-V 44
-/svn/oscam/!svn/ver/6167/trunk/module-stat.c
+V 40
+/svn/oscam/!svn/ver/6105/trunk/config.sh
 END
 module-cccshare.c
 K 25
@@ -159,17 +153,11 @@ svn:wc:ra_dav:version-url
 V 48
 /svn/oscam/!svn/ver/6154/trunk/module-cccshare.c
 END
-oscam.c
+module-stat.c
 K 25
 svn:wc:ra_dav:version-url
-V 38
-/svn/oscam/!svn/ver/6188/trunk/oscam.c
-END
-oscam-reader.c
-K 25
-svn:wc:ra_dav:version-url
-V 45
-/svn/oscam/!svn/ver/6175/trunk/oscam-reader.c
+V 44
+/svn/oscam/!svn/ver/6197/trunk/module-stat.c
 END
 module-serial.c
 K 25
@@ -177,17 +165,29 @@ svn:wc:ra_dav:version-url
 V 46
 /svn/oscam/!svn/ver/6015/trunk/module-serial.c
 END
-module-constcw.c
+oscam-reader.c
 K 25
 svn:wc:ra_dav:version-url
-V 47
-/svn/oscam/!svn/ver/6174/trunk/module-constcw.c
+V 45
+/svn/oscam/!svn/ver/6196/trunk/oscam-reader.c
+END
+oscam.c
+K 25
+svn:wc:ra_dav:version-url
+V 38
+/svn/oscam/!svn/ver/6197/trunk/oscam.c
 END
 datastruct-llist.c
 K 25
 svn:wc:ra_dav:version-url
 V 49
 /svn/oscam/!svn/ver/3596/trunk/datastruct-llist.c
+END
+module-constcw.c
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/oscam/!svn/ver/6174/trunk/module-constcw.c
 END
 reader-tongfang.c
 K 25
@@ -289,7 +289,7 @@ oscam-http.c
 K 25
 svn:wc:ra_dav:version-url
 V 43
-/svn/oscam/!svn/ver/6176/trunk/oscam-http.c
+/svn/oscam/!svn/ver/6193/trunk/oscam-http.c
 END
 .gitignore
 K 25

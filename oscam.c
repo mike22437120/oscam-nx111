@@ -1773,19 +1773,17 @@ void cs_add_cache(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 		er->checksum^=*lp;
 
 	er->grp = cl->grp;
-	er->ocaid = er->caid;
+//	er->ocaid = er->caid;
 	er->rc = E_CACHEEX;
 	er->cacheex_src = cl;
 
-	if (!csp) {
+	if (er->l > 0) {
 		int32_t offset = 3;
 		if ((er->caid >> 8) == 0x17)
 			offset = 13;
-		if (er->l > 0) {
-			unsigned char md5tmp[MD5_DIGEST_LENGTH];
-			memcpy(er->ecmd5, MD5(er->ecm+offset, er->l-offset, md5tmp), CS_ECMSTORESIZE);
-			er->csp_hash = csp_ecm_hash(er);
-		}
+		unsigned char md5tmp[MD5_DIGEST_LENGTH];
+		memcpy(er->ecmd5, MD5(er->ecm+offset, er->l-offset, md5tmp), CS_ECMSTORESIZE);
+		er->csp_hash = csp_ecm_hash(er);
 		//csp has already initialized these hashcode
 	}
 
@@ -1801,6 +1799,8 @@ void cs_add_cache(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 		ecmtask = er;
 		cs_writeunlock(&ecmcache_lock);
 
+		er->selected_reader = cl->reader;
+
 		cs_cache_push(er);  //cascade push!
 
 		cl->cwcacheexgot++;
@@ -1813,14 +1813,11 @@ void cs_add_cache(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 	}
 	else {
 		if(er->rc < ecm->rc) {
-			cs_readlock(&ecmcache_lock);
-			memcpy(ecm->cw, er->cw, sizeof(er->cw));
-			memcpy(ecm->msglog, er->msglog, sizeof(er->msglog));
-			ecm->rc = er->rc;
-			ecm->cacheex_src = cl;
-			cs_readunlock(&ecmcache_lock);
-			distribute_ecm(ecm, er->rc);
-			pthread_kill(timecheck_thread, OSCAM_SIGNAL_WAKEUP); 
+			er->ecmcacheptr = ecm;
+			er->client = ecm->client;
+			write_ecm_answer(cl->reader, er, er->rc, er->rcEx, er->cw, ecm->msglog);
+			//distribute_ecm(ecm, er->rc);
+			//pthread_kill(timecheck_thread, OSCAM_SIGNAL_WAKEUP);
 			cs_cache_push(er);  //cascade push!
 
 			cs_add_cacheex_stats(cl, er->caid, er->srvid, er->prid, 1);
@@ -3307,12 +3304,12 @@ void * work_thread(void *ptr) {
 		if (data)
 			cs_debug_mask(D_TRACE, "data from add_job action=%d", data->action);
 
-//		if (!cl || !is_valid_client(cl)) {
-//			if (data && data!=&tmp_data)
-//				free(data);
-//			data = NULL;
-//			return NULL;
-//		}
+		if (!cl || !is_valid_client(cl)) {
+			if (data && data!=&tmp_data)
+				free(data);
+			data = NULL;
+			return NULL;
+		}
 
 		if (cl->kill) {
 			cs_debug_mask(D_TRACE, "ending thread");
@@ -3326,12 +3323,13 @@ void * work_thread(void *ptr) {
 		}
 
 		if (!data) {
+			check_status(cl);
 			pthread_mutex_lock(&cl->thread_lock);
 			if (cl->joblist && ll_count(cl->joblist)>0) {
 				LL_ITER itr = ll_iter_create(cl->joblist);
 				data = ll_iter_next(&itr);
 				ll_iter_remove(&itr);
-				cs_debug_mask(D_TRACE, "start next job from list action=%d", data->action);
+				//cs_debug_mask(D_TRACE, "start next job from list action=%d", data->action);
 			}
 			pthread_mutex_unlock(&cl->thread_lock);
 		}
@@ -3346,21 +3344,21 @@ void * work_thread(void *ptr) {
 			rc = poll(pfd, 1, 3000);
 			pthread_sigmask(SIG_BLOCK, &newmask, NULL);
 
-			if (rc == -1)
-				cs_debug_mask(D_TRACE, "poll wakeup");
+			//if (rc == -1)
+			//	cs_debug_mask(D_TRACE, "poll wakeup");
 
 			if (rc>0) {
-				cs_debug_mask(D_TRACE, "data on socket");
+			//	cs_debug_mask(D_TRACE, "data on socket");
 				data=&tmp_data;
+				data->ptr = NULL;
 				
 				if (reader)
 					data->action = ACTION_READER_REMOTE;
-				else
+				else {
 					data->action = ACTION_CLIENT_TCP;
-				data->ptr = NULL;
-
-				if (pfd[0].revents & (POLLHUP | POLLNVAL))
-					cl->kill = 1;
+					if (pfd[0].revents & (POLLHUP | POLLNVAL))
+						cl->kill = 1;
+				}
 			}
 		}
 
@@ -3876,7 +3874,7 @@ void * client_check(void) {
 
 void * reader_check(void) {
 	struct s_client *cl;
-
+	struct s_reader *rdr;
 	while (1) {
 		for (cl=first_client->next; cl ; cl=cl->next) {
 			if (!cl->thread_active)
@@ -3893,7 +3891,17 @@ void * reader_check(void) {
 				restart_cardreader(rdr, 1);
 			}
 		}
-
+		cs_readlock(&readerlist_lock);
+		for (rdr=first_active_reader; rdr; rdr=rdr->next) {
+			if (rdr->enable) {
+				cl = rdr->client;
+				if (!cl || cl->kill)
+					restart_cardreader(rdr, 0);
+				else if (!cl->thread_active)
+					check_status(cl);
+			}
+		}
+		cs_readunlock(&readerlist_lock);
 		cs_sleepms(1000);
 	}
 }
