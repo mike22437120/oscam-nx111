@@ -341,7 +341,6 @@ void cc_cli_close(struct s_client *cl, int32_t UNUSED(call_conclose)) {
 	rdr->tcp_connected = 0;
 	rdr->card_status = NO_CARD;
 	rdr->available = 0;
-	rdr->ncd_msgid = 0;
 	rdr->last_s = rdr->last_g = 0;
 	
 	network_tcp_connection_close(rdr); 
@@ -3256,6 +3255,8 @@ int32_t cc_cli_connect(struct s_client *cl) {
 
 	if ((n = cc_recv_to(cl, data, 20)) != 20) {
 		cs_log("%s login failed, pwd ack not received (n = %d)", getprefix(), n);
+		cc_cli_close(cl, FALSE);
+		block_connect(rdr);
 		return -2;
 	}
 	cc_crypt(&cc->block[DECRYPT], data, 20, DECRYPT);
@@ -3263,6 +3264,8 @@ int32_t cc_cli_connect(struct s_client *cl) {
 
 	if (memcmp(data, buf, 5)) { // check server response
 		cs_log("%s login failed, usr/pwd invalid", getprefix());
+		cc_cli_close(cl, FALSE);
+		block_connect(rdr);
 		return -2;
 	} else {
 		cs_debug_mask(D_READER, "%s login succeeded", getprefix());
@@ -3275,6 +3278,8 @@ int32_t cc_cli_connect(struct s_client *cl) {
 
 	if (cc_send_cli_data(cl) <= 0) {
 		cs_log("%s login failed, could not send client data", getprefix());
+		cc_cli_close(cl, FALSE);
+		block_connect(rdr);
 		return -3;
 	}
 
