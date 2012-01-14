@@ -32,6 +32,7 @@ void add_good_bad_sids(struct s_sidtab *ptr, SIDTABBITS sidtabno, struct cc_card
                 struct cc_srvid *srvid;
                 cs_malloc(&srvid,sizeof(struct cc_srvid), QUITERROR);
                 srvid->sid = ptr->srvid[l];
+                srvid->chid = 0;
                 srvid->ecmlen = 0; //0=undefined, also not used with "O" CCcam
                 if (!ll_contains_data(card->goodsids, srvid, sizeof(struct cc_srvid)))
                 	ll_append(card->goodsids, srvid);
@@ -58,6 +59,7 @@ void add_good_bad_sids(struct s_sidtab *ptr, SIDTABBITS sidtabno, struct cc_card
                                         struct cc_srvid *srvid;
                                         cs_malloc(&srvid,sizeof(struct cc_srvid), QUITERROR);
                                         srvid->sid = ptr_no->srvid[l];
+                                        srvid->chid = 0;
                                         srvid->ecmlen = 0; //0=undefined, also not used with "O" CCcam
                                         if (!ll_contains_data(card->badsids, srvid, sizeof(struct cc_srvid)))
                                         	ll_append(card->badsids, srvid);
@@ -1056,7 +1058,8 @@ void update_card_list() {
 				}
             }
 
-            if (rdr->typ == R_CCCAM && (cfg.cc_reshare_services<2 || cfg.cc_reshare_services==4) && rdr->card_status != CARD_FAILURE) {
+            if (rdr->typ == R_CCCAM && rdr->tcp_connected &&
+            		(cfg.cc_reshare_services<2 || cfg.cc_reshare_services==4) && rdr->card_status != CARD_FAILURE) {
 
                 cs_debug_mask(D_TRACE, "asking reader %s for cards...", rdr->label);
 
@@ -1077,7 +1080,7 @@ void update_card_list() {
                             struct cc_provider *prov;
                             while ((prov = ll_iter_next(&it2))) {
                     			uint32_t prid = prov->prov;
-                                if (!chk_srvid_by_caid_prov(rdr->client, card->caid, prid)) {
+                                if (!chk_srvid_by_caid_prov(rc, card->caid, prid)) {
                                 	ignore = 1;
                                     break;
 								}
@@ -1187,7 +1190,8 @@ void share_updater()
 				struct s_reader *rdr;
 				struct cc_data *cc;
 				for (rdr=first_active_reader; rdr; rdr=rdr->next) {
-						if (rdr->client && (cc=rdr->client->cc)) { //check cccam-cardlist:
+						struct s_client *cl = rdr->client;
+						if (cl && (cc=cl->cc)) { //check cccam-cardlist:
 								cur_card_check += cc->card_added_count;
 								cur_card_check += cc->card_removed_count;
 								card_count += ll_count(cc->cards);

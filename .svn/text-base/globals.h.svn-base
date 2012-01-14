@@ -195,7 +195,7 @@
 
 #define CS_MAXEMMBLOCKBYLEN 10
 
-#define CS_EMMCACHESIZE  64 //nr of EMMs that each client will cache; cache is per client, so memory-expensive...
+#define CS_EMMCACHESIZE  127 //nr of EMMs that each client will cache; cache is per client, so memory-expensive...
 #define MSGLOGSIZE 64	//size of string buffer for a ecm to return messages
 
 #define D_TRACE     1 // Generate very detailed error/trace messages per routine
@@ -422,7 +422,9 @@ extern void cs_switch_led(int32_t led, int32_t action);
 #define ACTION_READER_INIT		8
 #define ACTION_READER_RESTART	9
 #define ACTION_READER_RESET_FAST	10
+#define ACTION_READER_CHECK_HEALTH	11
 
+#define ACTION_CLIENT_FIRST     20
 #define ACTION_CLIENT_TCP_CONNECT	21
 #define ACTION_CLIENT_UDP		22
 #define ACTION_CLIENT_TCP		23
@@ -883,6 +885,7 @@ struct s_client {
 	uint32_t		pcrc;        		// pwd crc
 	AES_KEY			aeskey;      		// encryption key needed by monitor and used by camd33, camd35
 	AES_KEY			aeskey_decrypt;		// decryption key needed by monitor and used by camd33, camd35
+    uint16_t        ncd_msgid;
 	char			ncd_client_id[5];
 	uchar			ncd_skey[16];
 
@@ -1197,6 +1200,7 @@ struct s_reader  									//contains device info, reader info and card info
 	//ratelimit
 	int32_t			ratelimitecm;
 	int32_t			ratelimitseconds;
+	time_t			lastdvbapirateoverride;
 	int32_t			ecmsok;
 	int32_t			ecmsnok;
 	uint32_t			ecmshealthok;
@@ -1328,6 +1332,19 @@ struct s_ip
 	in_addr_t 		ip[2];
 	struct s_ip 	*next;
 };
+
+struct s_global_whitelist
+{
+	uint32_t line; //linenr of oscam.whitelist file, starting with 1
+	char type; // w or i or l
+	uint16_t caid;
+	uint32_t provid;
+	uint16_t srvid;
+	uint16_t chid;
+	uint16_t pid;
+	uint16_t ecmlen;
+	struct s_global_whitelist *next;
+} GLOBAL_WHITELIST;
 
 struct s_config
 {
@@ -1522,6 +1539,10 @@ struct s_config
 	uint32_t	cacheex_wait_time; 		//cache wait time in ms
 	uint8_t		cacheex_enable_stats;	//enable stats
 #endif
+
+	//Global whitelist:
+	struct s_global_whitelist *global_whitelist;
+	int8_t global_whitelist_use_l;
 };
 
 struct s_clientinit

@@ -394,13 +394,13 @@ int32_t casc_process_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	cl->ecmtask[n].matching_rdr = NULL; //This avoids double free of matching_rdr!
 	cl->ecmtask[n].parent = er;
 
-	//if( reader->typ == R_NEWCAMD )
-	//	cl->ecmtask[n].idx=(reader->ncd_msgid==0)?2:reader->ncd_msgid+1;
-	//else {
+	if( reader->typ == R_NEWCAMD )
+		cl->ecmtask[n].idx=(cl->ncd_msgid==0)?2:cl->ncd_msgid+1;
+	else {
 		if (!cl->idx)
     			cl->idx = 1;
 		cl->ecmtask[n].idx=cl->idx++;
-	//}
+	}
 
 	cl->ecmtask[n].rc=10;
 	cs_debug_mask(D_TRACE, "---- ecm_task %d, idx %d, sflag=%d, level=%d", n, cl->ecmtask[n].idx, sflag, er->level);
@@ -514,13 +514,22 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 				} 
 			}
 		}
-			#ifdef HAVE_DVBAPI
+		#ifdef HAVE_DVBAPI
 		//overide ratelimit priority for dvbapi request
 		if ((foundspace < 0) && (cfg.dvbapi_enabled == 1) && (strcmp(er->client->account->usr,cfg.dvbapi_usr) == 0)) {
-			cs_debug_mask(D_READER, "Overiding ratelimit priority for DVBAPI request User=%s",er->client->account->usr);
-			foundspace=0;
-			}
-			#endif
+			if(reader->lastdvbapirateoverride < time(NULL) - reader->ratelimitseconds){
+				time_t minecmtime = time(NULL);			
+				for (h=0;h<reader->ratelimitecm;h++) {
+					if(reader->rlecmh[h].last < minecmtime){
+						foundspace = h;
+						minecmtime = reader->rlecmh[h].last;
+					}
+				}
+				reader->lastdvbapirateoverride = time(NULL);
+				cs_debug_mask(D_READER, "Prioritizing DVBAPI User %s over other watching client on reader %s.",er->client->account->usr, reader->label);
+			} else cs_debug_mask(D_READER, "DVBAPI User %s is switching too fast for ratelimit and can't be prioritized on reader %s.",er->client->account->usr, reader->label);
+		}
+		#endif
 		
 		if (foundspace<0) {
 			//drop
@@ -544,7 +553,7 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	int32_t rc = reader_ecm(reader, er, &ea);
 	if(rc == ERROR){
 		char buf[32];
-		cs_log("Error processing ecm for caid %04X, srvid %04X (servicename: %s) on reader %s.", er->caid, er->srvid, get_servicename(reader->client, er->srvid, er->caid, buf), reader->label);
+		cs_log("Error processing ecm for caid %04X, srvid %04X (servicename: %s) on reader %s.", er->caid, er->srvid, get_servicename(cl, er->srvid, er->caid, buf), reader->label);
 		ea.rc = E_NOTFOUND;
 	} else
 		ea.rc = E_FOUND;
@@ -673,8 +682,9 @@ void reader_do_idle(struct s_reader * reader)
 		time(&now);
 		time_diff = abs(now - reader->last_s);
 		if (time_diff>(reader->tcp_ito*60)) {
-			if (reader->client && reader->tcp_connected && reader->ph.type==MOD_CONN_TCP) {
-				cs_debug_mask(D_READER, "%s inactive_timeout, close connection (fd=%d)", reader->ph.desc, reader->client->pfd);
+			struct s_client *cl = reader->client;
+			if (cl && reader->tcp_connected && reader->ph.type==MOD_CONN_TCP) {
+				cs_debug_mask(D_READER, "%s inactive_timeout, close connection (fd=%d)", reader->ph.desc, cl->pfd);
 				network_tcp_connection_close(reader);
 			} else
 				reader->last_s = now;

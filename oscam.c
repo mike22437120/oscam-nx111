@@ -215,7 +215,7 @@ static const char *logo = "  ___  ____   ___                \n / _ \\/ ___| / __
 static void usage()
 {
   fprintf(stderr, "%s\n\n", logo);
-  fprintf(stderr, "OSCam cardserver v%s, build #%s (%s) - (w) 2009-2011 Streamboard SVN\n", CS_VERSION_X, CS_SVN_VERSION, CS_OSTYPE);
+  fprintf(stderr, "OSCam cardserver v%s, build #%s (%s) - (w) 2009-2012 Streamboard SVN\n", CS_VERSION_X, CS_SVN_VERSION, CS_OSTYPE);
   fprintf(stderr, "\tsee http://streamboard.gmc.to/oscam/ for more details\n");
   fprintf(stderr, "\tbased on Streamboard mp-cardserver v0.9d - (w) 2004-2007 by dukat\n");
   fprintf(stderr, "\tThis program is distributed under GPL.\n");
@@ -610,6 +610,7 @@ void cleanup_thread(void *var)
 {
 	struct s_client *cl = var;
 	if(!cl) return;
+	struct s_reader *rdr = cl->reader;
 
 	// Remove client from client list. kill_thread also removes this client, so here just if client exits itself...
 	struct s_client *prev, *cl2;
@@ -623,20 +624,18 @@ void cleanup_thread(void *var)
 	cs_writeunlock(&clientlist_lock);
 		
 	// Clean reader. The cleaned structures should be only used by the reader thread, so we should be save without waiting
-	if (cl->reader){
-		remove_reader_from_active(cl->reader);
-		if(cl->reader->ph.cleanup)
-			cl->reader->ph.cleanup(cl);
+	if (rdr){
+		struct s_client *rdrcl = rdr->client;
+		remove_reader_from_active(rdr);
+		if(rdr->ph.cleanup)
+			rdr->ph.cleanup(cl);
 		if (cl->typ == 'r')
-			ICC_Async_Close(cl->reader);
+			ICC_Async_Close(rdr);
 		if (cl->typ == 'p')
-			network_tcp_connection_close(cl->reader);
-		cl->reader->client = NULL;
+			network_tcp_connection_close(rdr);
+		if(rdrcl) rdrcl = NULL;
 		cl->reader = NULL;
 	}
-	if (!pthread_mutex_trylock(&cl->thread_lock))
-		pthread_mutex_unlock(&cl->thread_lock);
-	pthread_mutex_destroy(&cl->thread_lock);
 
 	// Clean client specific data
 	if(cl->typ == 'c'){
@@ -657,8 +656,11 @@ void cleanup_thread(void *var)
 			
 	// Clean all remaining structures
 
-
+	pthread_mutex_lock(&cl->thread_lock);
 	ll_destroy(cl->joblist);
+	cl->joblist = NULL;
+	pthread_mutex_unlock(&cl->thread_lock);
+	pthread_mutex_destroy(&cl->thread_lock);
 
 	cleanup_ecmtasks(cl);
 	add_garbage(cl->emmcache);
@@ -695,8 +697,11 @@ static void cs_cleanup()
 	//cleanup readers:
 	struct s_reader *rdr;
 	for (rdr=first_active_reader; rdr ; rdr=rdr->next) {
-		cs_log("killing reader %s", rdr->label);
-		kill_thread(rdr->client);
+		cl = rdr->client;
+		if(cl){
+			cs_log("killing reader %s", rdr->label);
+			kill_thread(cl);
+		}
 	}
 	first_active_reader = NULL;
 
@@ -1357,8 +1362,9 @@ void add_reader_to_active(struct s_reader *rdr) {
 static int32_t restart_cardreader_int(struct s_reader *rdr, int32_t restart) {
 	if (restart){
 		remove_reader_from_active(rdr);		//remove from list
-		if (rdr->client) {		//kill old thread
-			kill_thread(rdr->client);
+		struct s_client *cl = rdr->client;
+		if (cl) {		//kill old thread
+			kill_thread(cl);
 			rdr->client = NULL;
 		}
 	}
@@ -1705,13 +1711,14 @@ void cs_cache_push(ECM_REQUEST *er)
 	//cacheex=3 mode: reverse push (reader->server)
 	struct s_reader *rdr;
 	for (rdr = first_active_reader; rdr; rdr = rdr->next) {
-		if (rdr->client && er->cacheex_src != rdr->client && rdr->cacheex == 3) { //send cache over reader
+		struct s_client *cl = rdr->client;
+		if (cl && er->cacheex_src != cl && rdr->cacheex == 3) { //send cache over reader
 			if (rdr->ph.c_cache_push
 				&& (!er->grp || (rdr->grp & er->grp)) //Group-check
-				&& chk_srvid(rdr->client, er) //Service-check
+				&& chk_srvid(cl, er) //Service-check
 				&& chk_ctab(er->caid, &rdr->ctab))  //Caid-check
 			{
-				cs_cache_push_to_client(rdr->client, er);
+				cs_cache_push_to_client(cl, er);
 			}
 		}
 	}
@@ -1888,6 +1895,7 @@ void cs_add_cache(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, uint8_t rcEx, uchar *cw, char *msglog)
 {
 	int32_t i;
+	int8_t found = 1;
 	uchar c;
 	struct s_ecm_answer *ea = NULL, *ea_list;
 
@@ -1898,6 +1906,7 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 
 	if (!ea) {
 		ea = cs_malloc(&ea, sizeof(struct s_ecm_answer), -1); //Free by ACTION_CLIENT_ECM_ANSWER!
+		found = 0;
 	}
 
 	if (cw)
@@ -1947,10 +1956,11 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 	}
 
 	int32_t res = 0;
-	if (er->client && !er->client->kill) {
-		add_job(er->client, ACTION_CLIENT_ECM_ANSWER, ea, sizeof(struct s_ecm_answer));
+	struct s_client *cl = er->client;
+	if (cl && !cl->kill) {
+		add_job(cl, ACTION_CLIENT_ECM_ANSWER, ea, sizeof(struct s_ecm_answer));
 		res = 1;
-	}
+	} else if (found == 0) free(ea);
 
 	if (reader && rc == E_FOUND && reader->resetcycle > 0)
 	{
@@ -2296,18 +2306,20 @@ static void request_cw(ECM_REQUEST *er)
 				if ((ea->status & READER_ACTIVE) != READER_ACTIVE)
 					continue;
 			}
-
-			cs_debug_mask(D_TRACE, "request_cw stage=%d to reader %s ecm=%04X", er->stage, ea->reader->label, htons(er->checksum));
+			struct s_reader *rdr = ea->reader;
+			cs_debug_mask(D_TRACE, "request_cw stage=%d to reader %s ecm=%04X", er->stage, rdr?rdr->label:"", htons(er->checksum));
 			write_ecm_request(ea->reader, er);
 			ea->status |= REQUEST_SENT;
 
-			//set sent=1 only if reader is active/connected. If not, switch to next stage!
-			if (!sent && ea->reader && ea->reader->client) {
-				struct s_client *rcl = ea->reader->client;
-				if (rcl->typ=='r' && ea->reader->card_status==CARD_INSERTED)
-					sent = 1;
-				else if (rcl->typ=='p' && (ea->reader->card_status==CARD_INSERTED ||ea->reader->tcp_connected))
-					sent = 1;
+			//set sent=1 only if reader is active/connected. If not, switch to next stage!			
+			if (!sent && rdr) {
+				struct s_client *rcl = rdr->client;
+				if(rcl){
+					if (rcl->typ=='r' && rdr->card_status==CARD_INSERTED)
+						sent = 1;
+					else if (rcl->typ=='p' && (rdr->card_status==CARD_INSERTED ||rdr->tcp_connected))
+						sent = 1;
+				}
 			}
 		}
 		if (sent || er->stage >= 4)
@@ -2322,37 +2334,41 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 
 	ECM_REQUEST *ert = ea->er;
 	struct s_ecm_answer *ea_list;
+	struct s_reader *eardr = ea->reader;
+	if(!ert)
+		return;
+	struct s_client *eacl = eardr?eardr->client:NULL; //reader is null on timeouts
 
-	if (ea->reader) {
-		cs_debug_mask(D_TRACE, "ecm answer from reader %s for ecm %04X rc=%d", ea->reader->label, htons(ert->checksum), ea->rc);
+	if (eardr) {
+		cs_debug_mask(D_TRACE, "ecm answer from reader %s for ecm %04X rc=%d", eardr->label, htons(ert->checksum), ea->rc);
 		//cs_ddump_mask(D_TRACE, ea->cw, sizeof(ea->cw), "received cw from %s caid=%04X srvid=%04X hash=%08X",
-		//		ea->reader->label, ert->caid, ert->srvid, ert->csp_hash);
+		//		eardr->label, ert->caid, ert->srvid, ert->csp_hash);
 		//cs_ddump_mask(D_TRACE, ert->ecm, ert->l, "received cw for ecm from %s caid=%04X srvid=%04X hash=%08X",
-		//		ea->reader->label, ert->caid, ert->srvid, ert->csp_hash);
+		//		eardr->label, ert->caid, ert->srvid, ert->csp_hash);
 	}
 
 	ea->status |= REQUEST_ANSWERED;
 
-	if (ea->reader) {
+	if (eardr) {
 		//Update reader stats:
 		if (ea->rc == E_FOUND) {
-			ea->reader->ecmsok++;
+			eardr->ecmsok++;
 #ifdef CS_CACHEEX
-			if (ea->reader->cacheex == 1 && !ert->cacheex_done) {
-				ea->reader->client->cwcacheexgot++;
-				cs_add_cacheex_stats(ea->reader->client, ea->er->caid, ea->er->srvid, ea->er->prid, 1);
+			if (eardr->cacheex == 1 && !ert->cacheex_done && eacl) {
+				eacl->cwcacheexgot++;
+				cs_add_cacheex_stats(eacl, ea->er->caid, ea->er->srvid, ea->er->prid, 1);
 				first_client->cwcacheexgot++;
 			}
 #endif
 		}
 		else if (ea->rc == E_NOTFOUND)
-			ea->reader->ecmsnok++;
+			eardr->ecmsnok++;
 
 		//Reader ECMs Health Try (by Pickser)
-		if (ea->reader->ecmsok != 0 || ea->reader->ecmsnok != 0)
+		if (eardr->ecmsok != 0 || eardr->ecmsnok != 0)
 		{
-			ea->reader->ecmshealthok = ((double) ea->reader->ecmsok / (ea->reader->ecmsok + ea->reader->ecmsnok)) * 100;
-			ea->reader->ecmshealthnok = ((double) ea->reader->ecmsnok / (ea->reader->ecmsok + ea->reader->ecmsnok)) * 100;
+			eardr->ecmshealthok = ((double) eardr->ecmsok / (eardr->ecmsok + eardr->ecmsnok)) * 100;
+			eardr->ecmshealthnok = ((double) eardr->ecmsnok / (eardr->ecmsok + eardr->ecmsnok)) * 100;
 		}
 
 		//Reader Dynamic Loadbalancer Try (by Pickser)
@@ -2360,14 +2376,14 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 		 * todo: config-option!
 		 *
 #ifdef WITH_LB
-		if (ea->reader->ecmshealthok >= 75) {
-			ea->reader->lb_weight = 100;
-		} else if (ea->reader->ecmshealthok >= 50) {
-			ea->reader->lb_weight = 75;
-		} else if (ea->reader->ecmshealthok >= 25) {
-			ea->reader->lb_weight = 50;
+		if (eardr->ecmshealthok >= 75) {
+			eardr->lb_weight = 100;
+		} else if (eardr->ecmshealthok >= 50) {
+			eardr->lb_weight = 75;
+		} else if (eardr->ecmshealthok >= 25) {
+			eardr->lb_weight = 50;
 		} else {
-			ea->reader->lb_weight = 25;
+			eardr->lb_weight = 25;
 		}
 #endif
 		*/
@@ -2375,7 +2391,7 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 
 	if (ert->rc<E_99) {
 #ifdef WITH_LB
-		send_reader_stat(ea->reader, ert, ea->rc);
+		send_reader_stat(eardr, ert, ea->rc);
 #endif
 		return; // already done
 	}
@@ -2393,7 +2409,7 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 			memcpy(ert->cw, ea->cw, 16);
 			ert->rcEx=0;
 			ert->rc = ea->rc;
-			ert->selected_reader = ea->reader;
+			ert->selected_reader = eardr;
 			break;
 		case E_TIMEOUT:
 			ert->rc = E_TIMEOUT;
@@ -2402,7 +2418,7 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 		case E_NOTFOUND:
 			ert->rcEx=ea->rcEx;
 			cs_strncpy(ert->msglog, ea->msglog, sizeof(ert->msglog));
-			ert->selected_reader=ea->reader;
+			ert->selected_reader = eardr;
 #ifdef CS_CACHEEX
 			uchar has_cacheex = 0;
 #endif
@@ -2443,7 +2459,7 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 	}
 
 #ifdef WITH_LB
-	send_reader_stat(ea->reader, ert, ea->rc);
+	send_reader_stat(eardr, ert, ea->rc);
 #endif
 
 #ifdef CS_CACHEEX
@@ -3297,7 +3313,7 @@ static void check_status(struct s_client *cl) {
 			//check for card inserted or card removed on pysical reader
 			if (!rdr || !rdr->enable)
 				break;
-			reader_checkhealth(rdr);
+			add_job(cl, ACTION_READER_CHECK_HEALTH, NULL, 0);
 			break;
 #endif
 		case 'p':
@@ -3497,6 +3513,9 @@ void * work_thread(void *ptr) {
 				reader_reset(reader);
 				reader->ins7e11_fast_reset = 0;
 				break;
+			case ACTION_READER_CHECK_HEALTH:
+				reader_checkhealth(reader);
+				break;
 
 			case ACTION_CLIENT_UDP:
 				n = ph[cl->ctyp].recv(cl, data->ptr, data->len);
@@ -3546,10 +3565,13 @@ void * work_thread(void *ptr) {
 			case ACTION_CACHE_PUSH_OUT: {
 				ECM_REQUEST *er = data->ptr;
 
-				int32_t res, stats = -1;
+				int32_t res=0, stats = -1;
 				if (reader) {
-					res = reader->ph.c_cache_push(cl, er);
-					stats = cs_add_cacheex_stats(reader->client, er->caid, er->srvid, er->prid, 0);
+					struct s_client *cl = reader->client;
+					if(cl){
+						res = reader->ph.c_cache_push(cl, er);
+						stats = cs_add_cacheex_stats(cl, er->caid, er->srvid, er->prid, 0);
+					}
 				}
 				else
 					res = ph[cl->ctyp].c_cache_push(cl, er);
@@ -3608,7 +3630,7 @@ void add_job(struct s_client *cl, int8_t action, void *ptr, int32_t len) {
 			cl->joblist = ll_create("joblist");
 
 		ll_append(cl->joblist, data);
-		cs_debug_mask(D_TRACE, "add %s job action %d", action > 20 ? "client" : "reader", action);
+		cs_debug_mask(D_TRACE, "add %s job action %d", action > ACTION_CLIENT_FIRST ? "client" : "reader", action);
 		pthread_mutex_unlock(&cl->thread_lock);
 		pthread_kill(cl->thread, OSCAM_SIGNAL_WAKEUP);
 		return;
@@ -3622,10 +3644,10 @@ void add_job(struct s_client *cl, int8_t action, void *ptr, int32_t len) {
 	pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE);
 #endif
 
-	cs_debug_mask(D_TRACE, "start %s thread action %d", action > 20 ? "client" : "reader", action);
+	cs_debug_mask(D_TRACE, "start %s thread action %d", action > ACTION_CLIENT_FIRST ? "client" : "reader", action);
 
 	if (pthread_create(&cl->thread, &attr, work_thread, (void *)data)) {
-		cs_log("ERROR: can't create thread for %s", action > 20 ? "client" : "reader");
+		cs_log("ERROR: can't create thread for %s", action > ACTION_CLIENT_FIRST ? "client" : "reader");
 	} else
 		pthread_detach(cl->thread);
 
@@ -3881,18 +3903,22 @@ void * client_check(void) {
 			// either an ecm answer, a keepalive or connection closed from a proxy
 			// physical reader ('r') should never send data without request
 			rdr = NULL;
-			if (cl && cl->typ == 'p')
+			struct s_client *cl2 = NULL;
+			if (cl && cl->typ == 'p'){
 				rdr = cl->reader;
+				if(rdr)
+					cl2 = rdr->client;
+			}
 
-			if (rdr && rdr->client && rdr->client->init_done) {
-				if (rdr->client->pfd && pfd[i].fd == rdr->client->pfd && (pfd[i].revents & (POLLHUP | POLLNVAL))) {
+			if (rdr && cl2 && cl2->init_done) {
+				if (cl2->pfd && pfd[i].fd == cl2->pfd && (pfd[i].revents & (POLLHUP | POLLNVAL))) {
 					//connection to remote proxy was closed
 					//oscam should check for rdr->tcp_connected and reconnect on next ecm request sent to the proxy
 					network_tcp_connection_close(rdr);
 					cs_debug_mask(D_READER, "connection to %s closed.", rdr->label);
 				}
-				if (rdr->client->pfd && pfd[i].fd == rdr->client->pfd && (pfd[i].revents & (POLLIN | POLLPRI))) {
-					add_job(rdr->client, ACTION_READER_REMOTE, NULL, 0);
+				if (cl2->pfd && pfd[i].fd == cl2->pfd && (pfd[i].revents & (POLLIN | POLLPRI))) {
+					add_job(cl2, ACTION_READER_REMOTE, NULL, 0);
 				}
 			}
 

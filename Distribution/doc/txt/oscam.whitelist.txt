@@ -3,17 +3,22 @@ oscam.whitelist(5)										   oscam.whitelist(5)
 
 
 NAME
-       oscam.whitelist - global whitelisting configuration file for OSCam
+       oscam.whitelist - global ECM length whitelisting configuration file for OSCam
 
 SYNOPSIS
-       whitelisting
+       ECM length whitelisting
 
 DESCRIPTIONS
        w:[CAID][:][provider ID][:][service ID][:][ECM PID][:][CHID][:][ECM length 1[,ECM length 2]...]]
-	   entry for whitelisting
+	   ECM length whitelisting
+
+       l:[CAID][:][provider ID][:][service ID][:][ECM PID][:][CHID][:][ECM length 1[,ECM length 2]...]]
+	   ECM length whitelisting, does not proceed with any other ECM length
+	   whitelisting when matching, abbreviation for normal ECM length
+	   whitelisting using w parameter
 
        i:[CAID][:][provider ID][:][service ID][:][ECM PID][:][CHID][:][ECM length 1[,ECM length 2]...]]
-	   ignore entry
+	   ignore ECM length
 
 ANNONTATIONS
        Please use Unix text file format only.

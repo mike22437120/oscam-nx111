@@ -18,9 +18,10 @@
 #endif
 
 #define CONFVARWIDTH 30
-#define MAXLINESIZE 1024
+#define MAXLINESIZE 16384
 #define CCCAMCFGREADER    1
 #define CCCAMCFGUSER      2
+
 void * read_cccamcfg(int32_t mode);
 
 static const char *cs_conf="oscam.conf";
@@ -1576,14 +1577,16 @@ void init_len4caid()
 {
 	int32_t nr;
 	FILE *fp;
-	char *value;
-	char token[MAXLINESIZE];
+	char *value, *token;
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return;	
 
 	memset(len4caid, 0, sizeof(uint16_t)<<8);
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_l4ca);
-	if (!(fp = fopen(token, "r")))
+	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_l4ca);
+	if (!(fp = fopen(token, "r"))){
+		free(token);
 		return;
-	for(nr = 0; fgets(token, sizeof(token), fp);) {
+	}
+	for(nr = 0; fgets(token, MAXLINESIZE, fp);) {
 		int32_t i, c;
 		char *ptr;
 		if (!(value=strchr(token, ':')))
@@ -1602,6 +1605,7 @@ void init_len4caid()
 		len4caid[i] = c;
 		nr++;
 	}
+	free(token);
 	fclose(fp);
 	cs_log("%d lengths for caid guessing loaded", nr);
 	return;
@@ -1652,8 +1656,8 @@ int32_t init_config()
 {
 	int32_t tag=TAG_GLOBAL;
 	FILE *fp;
-	char *value=NULL;
-	char token[MAXLINESIZE];
+	char *value=NULL, *token;
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;	
 
 #ifndef CS_EMBEDDED
 #ifdef PRIO_PROCESS
@@ -1742,12 +1746,12 @@ int32_t init_config()
 	cfg.lcd_write_intervall = 10;
 #endif
 
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_conf);
+	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_conf);
 	if (!(fp = fopen(token, "r"))) {
 		fprintf(stderr, "Cannot open config file '%s' (errno=%d %s)\n", token, errno, strerror(errno));
 		exit(1);
 	}
-	while (fgets(token, sizeof(token), fp)) {
+	while (fgets(token, MAXLINESIZE, fp)) {
 		int32_t i, l;
 		//void *ptr;
 		if ((l = strlen(trim(token))) < 3)
@@ -1763,6 +1767,7 @@ int32_t init_config()
 		*value++ ='\0';
 		chk_token(trim(strtolower(token)), trim(value), tag);
 	}
+	free(token);
 	fclose(fp);
 
 	if (cfg.logfile == NULL && cfg.logtostdout == 0 && cfg.logtosyslog == 0) {
@@ -3355,23 +3360,22 @@ struct s_auth *init_userdb()
 	int32_t checked=0;
 	//int32_t first=1;
 	FILE *fp;
-	char *value;
+	char *value, *token;
 	struct s_auth *account = NULL;
 	struct s_auth *probe = NULL;
-	char token[MAXLINESIZE];
-
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return authptr;
 
 	if(cfg.cc_cfgfile)
 		authptr=(struct s_auth*)read_cccamcfg(CCCAMCFGUSER);
 	
 	for(account=authptr;account;account=account->next);
 
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_user);
+	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_user);
 	if (!(fp = fopen(token, "r"))) {
 		cs_log("Cannot open file \"%s\" (errno=%d %s)", token, errno, strerror(errno));
 	}
 	else{
-	   while (fgets(token, sizeof(token), fp)) {
+	while (fgets(token, MAXLINESIZE, fp)) {
 		int32_t i, l;
 		void *ptr;
 		if ((l=strlen(trim(token))) < 3)
@@ -3381,7 +3385,10 @@ struct s_auth *init_userdb()
 			token[l - 1] = 0;
 			tag = (!strcmp("account", strtolower(token + 1)));
 			checked=0;
-			if(!cs_malloc(&ptr, sizeof(struct s_auth), -1)) return authptr;
+			if(!cs_malloc(&ptr, sizeof(struct s_auth), -1)){
+				free(token);
+				return authptr;
+			}
 			if (account)
 				account->next = ptr;
 			else
@@ -3408,7 +3415,7 @@ struct s_auth *init_userdb()
 #endif
 			for (i = 1; i < CS_MAXCAIDTAB; account->ctab.mask[i++] = 0xffff);
 			for (i = 1; i < CS_MAXTUNTAB; account->ttab.bt_srvid[i++] = 0x0000);
-
+			nr++;
 			continue;
 		}
 
@@ -3450,11 +3457,10 @@ struct s_auth *init_userdb()
 			else
 				cs_debug_mask(D_TRACE,"Clean up duplicate usr:%s",account->usr);
 		}
-
 	    }
 	    fclose(fp);
 	}
-
+	free(token);
 	for(account = authptr; account; account = account->next){
 		if(account->expirationdate && account->expirationdate < time(NULL))
 			++expired;
@@ -3546,15 +3552,16 @@ void init_free_sidtab() {
 int32_t init_sidtab() {
 	int32_t nr, nro, nrr;
 	FILE *fp;
-	char *value;
-	char token[MAXLINESIZE];
+	char *value, *token;
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;
 	struct s_sidtab *ptr;
 	struct s_sidtab *sidtab=(struct s_sidtab *)0;
 
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_sidt);
+	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_sidt);
 	if (!(fp=fopen(token, "r")))
 	{
 		cs_log("Cannot open file \"%s\" (errno=%d %s)", token, errno, strerror(errno));
+		free(token);
 		return(1);
 	}
 	for (nro=0, ptr=cfg.sidtab; ptr; nro++)
@@ -3565,7 +3572,7 @@ int32_t init_sidtab() {
 		ptr=ptr_next;
 	}
 	nr = 0; nrr = 0;
-	while (fgets(token, sizeof(token), fp))
+	while (fgets(token, MAXLINESIZE, fp))
 	{
 		int32_t l;
 		void *ptr;
@@ -3578,7 +3585,10 @@ int32_t init_sidtab() {
 				nr++;
 				nrr++;
 			} else {
-				if (!cs_malloc(&ptr, sizeof(struct s_sidtab), -1)) return(1);
+				if (!cs_malloc(&ptr, sizeof(struct s_sidtab), -1)) {
+					free(token);
+					return(1);
+				}
 				if (sidtab)
 					sidtab->next=ptr;
 				else
@@ -3594,6 +3604,7 @@ int32_t init_sidtab() {
 		*value++='\0';
 		chk_sidtab(trim(strtolower(token)), trim(strtolower(value)), sidtab);
 	}
+	free(token);
 	fclose(fp);
 
 #ifdef DEBUG_SIDTAB
@@ -3607,17 +3618,18 @@ int32_t init_sidtab() {
 int32_t init_provid() {
 	int32_t nr;
 	FILE *fp;
-	char *payload, *saveptr1 = NULL;
-	char token[MAXLINESIZE];
+	char *payload, *saveptr1 = NULL, *token;
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;	
 	static struct s_provid *provid=(struct s_provid *)0;
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_provid);
+	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_provid);
 
 	if (!(fp=fopen(token, "r"))) {
 		cs_log("can't open file \"%s\" (err=%d %s), no provids's loaded", token, errno, strerror(errno));
+		free(token);
 		return(0);
 	}
 	nr=0;
-	while (fgets(token, sizeof(token), fp)) {
+	while (fgets(token, MAXLINESIZE, fp)) {
 
 		int32_t l;
 		void *ptr;
@@ -3631,7 +3643,10 @@ int32_t init_provid() {
 
 		*payload++ = '\0';
 
-		if (!cs_malloc(&ptr, sizeof(struct s_provid), -1)) return(1);
+		if (!cs_malloc(&ptr, sizeof(struct s_provid), -1)) {
+			free(token);
+			return(1);
+		}
 		if (provid)
 			provid->next = ptr;
 		else
@@ -3660,7 +3675,7 @@ int32_t init_provid() {
 		provid->caid = a2i(token, 3);
 		nr++;
 	}
-
+	free(token);
 	fclose(fp);
 	if (nr>0)
 		cs_log("%d provid's loaded", nr);
@@ -3674,10 +3689,10 @@ int32_t init_srvid()
 {
 	int32_t nr = 0, i;
 	FILE *fp;
-	char *payload, *tmp, *saveptr1 = NULL;
-	char token[MAXLINESIZE];
+	char *payload, *tmp, *saveptr1 = NULL, *token;
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
 	struct s_srvid *srvid=NULL, *new_cfg_srvid[16], *last_srvid[16];
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_srid);
+	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_srid);
 	// A cache for strings within srvids. A checksum is calculated which is the start point in the array (some kind of primitive hash algo).
 	// From this point, a sequential search is done. This greatly reduces the amount of string comparisons.
 	char **stringcache[1024];
@@ -3691,10 +3706,11 @@ int32_t init_srvid()
 
 	if (!(fp=fopen(token, "r"))) {
 		cs_log("can't open file \"%s\" (err=%d %s), no service-id's loaded", token, errno, strerror(errno));
+		free(token);
 		return(0);
 	}
 
-	while (fgets(token, sizeof(token), fp)) {
+	while (fgets(token, MAXLINESIZE, fp)) {
 		int32_t l, j, len=0, len2, srvidtmp;
 		uint32_t pos;
 		char *srvidasc;
@@ -3706,7 +3722,10 @@ int32_t init_srvid()
 		if (!(payload=strchr(token, '|'))) continue;
 		*payload++ = '\0';
 
-		if (!cs_malloc(&srvid, sizeof(struct s_srvid), -1)) return(1);
+		if (!cs_malloc(&srvid, sizeof(struct s_srvid), -1)){
+			free(token);
+			return(1);
+		}
 
 		char tmptxt[128];
 
@@ -3791,6 +3810,7 @@ int32_t init_srvid()
 	for(i = 0; i < 1024; ++i){
 		if(allocated[i] > 0) free(stringcache[i]);
 	}
+	free(token);
 
 	cs_ftime(&te);
 	int32_t time = 1000*(te.time-ts.time)+te.millitm-ts.millitm;
@@ -3831,18 +3851,19 @@ int32_t init_tierid()
 {
 	int32_t nr;
 	FILE *fp;
-	char *payload, *saveptr1 = NULL;
-	char token[MAXLINESIZE];
+	char *payload, *saveptr1 = NULL, *token;
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;	
 	static struct s_tierid *tierid=NULL, *new_cfg_tierid=NULL;
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_trid);
+	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_trid);
 
 	if (!(fp=fopen(token, "r"))) {
 		cs_log("can't open file \"%s\" (err=%d %s), no tier-id's loaded", token, errno, strerror(errno));
+		free(token);
 		return(0);
 	}
 
 	nr=0;
-	while (fgets(token, sizeof(token), fp)) {
+	while (fgets(token, MAXLINESIZE, fp)) {
 
 		int32_t l;
 		void *ptr;
@@ -3855,7 +3876,10 @@ int32_t init_tierid()
 		if (!(tieridasc = strchr(token, ':'))) continue;
 		*payload++ = '\0';
 
-		if (!cs_malloc(&ptr,sizeof(struct s_tierid), -1)) return(1);
+		if (!cs_malloc(&ptr,sizeof(struct s_tierid), -1)){
+			free(token);
+			return(1);
+		}
 		if (tierid)
 			tierid->next = ptr;
 		else
@@ -3880,7 +3904,7 @@ int32_t init_tierid()
 		}
 		nr++;
 	}
-
+	free(token);
 	fclose(fp);
 	if (nr>0)
 		cs_log("%d tier-id's loaded", nr);
@@ -5093,9 +5117,6 @@ void * read_cccamcfg(int32_t mode)
 	struct s_auth *account=NULL;
 	struct s_reader *rdr;
 
-	if(!configured_readers && mode==CCCAMCFGREADER)
-			configured_readers = ll_create("configured_readers");
-
 	while (fgets(token,sizeof(token),fp)) {
 		void *ptr;
 		char *p=strchr(token,'#');
@@ -5106,24 +5127,24 @@ void * read_cccamcfg(int32_t mode)
 		if((line[0] == 'C' || line[0] == 'L' || line[0] == 'N' || line[0] == 'R' ) && line[1] == ':' && (mode == CCCAMCFGREADER)){
 
 			int32_t paracount=0;
-			int32_t rtyp='\0';
+			int32_t proto=0;
 			ret=0;
 			uchar ncd_key[13+sizeof(uint)];
 			memset(ncd_key,0,sizeof(ncd_key));
 			int32_t reshare=-1;
 			switch(line[0]){
 				case 'C':
-					rtyp = R_CCCAM;
+					proto = TAG_CCCAM;
 					ret=sscanf(line,"%c:%s%d%s%s",&typ,host,&port,uname,upass);
 					paracount=5;
 					break;
 				case 'L':
-					rtyp = R_CAMD35;
+					proto = TAG_CAMD35;
 					ret=sscanf(line,"%c:%s%d%s%s%x%x%d",&typ,host,&port,uname,upass,&caid,&prid,&reshare);
 					paracount=5;
 					break;
 				case 'N':
-					rtyp = R_NEWCAMD;
+					proto = TAG_NEWCAMD;
 					ret=sscanf(line,"%c:%s%d%s%s%x%x%x%x%x%x%x%x%x%x%x%x%x%x%d",&typ,host,&port,uname,upass,
 						(uint*) &ncd_key[0], (uint*) &ncd_key[1], (uint*) &ncd_key[2], (uint*) &ncd_key[3],(uint*) &ncd_key[4],
 						(uint*) &ncd_key[5], (uint*) &ncd_key[6], (uint*) &ncd_key[7], (uint*) &ncd_key[8],(uint*) &ncd_key[9],
@@ -5131,13 +5152,13 @@ void * read_cccamcfg(int32_t mode)
 					paracount=5;
 					break;
 				case 'R':
-					rtyp = R_RADEGAST;
+					proto = TAG_RADEGAST;
 					ret=sscanf(line,"%c:%s%d%x%x%d",&typ,host,&port,&caid,&prid,&reshare);
 					paracount=3;
 					break;
 			}
 
-			if(!rtyp || ret<paracount)continue;
+			if(!proto || ret<paracount)continue;
 
 			int32_t found=0;
 			LL_ITER itr = ll_iter_create(configured_readers);
@@ -5153,57 +5174,48 @@ void * read_cccamcfg(int32_t mode)
 			if(found)
 				continue;
 
-			if(rdr){
-				struct s_reader *newreader;
-				if(cs_malloc(&newreader,sizeof(struct s_reader),-1)){
-					rdr = newreader; //and advance to end of list
-				}
-				else 
-					continue;
-			}
-			else 
-				if(!cs_malloc(&rdr,sizeof(struct s_reader),-1))
+			if(!cs_malloc(&rdr,sizeof(struct s_reader),-1))
 					continue;
 
 			memset(rdr, 0, sizeof(struct s_reader));
 
-			rdr->typ = rtyp;
-			if(rtyp == R_NEWCAMD)
-				rdr->ncd_proto = NCD_525;
-			memcpy(rdr->ncd_key,ncd_key,14);
-			rdr->tcp_rto = 30;
+			memset(rdr->hexserial, 0, sizeof(rdr->hexserial));
+			memset(rdr->rom, 0, sizeof(rdr->rom));
+			rdr->enable = 1;
+			rdr->tcp_rto = DEFAULT_TCP_RECONNECT_TIMEOUT;
 			rdr->show_cls = 10;
 			rdr->nagra_read = 0;
 			rdr->mhz = 357;
 			rdr->cardmhz = 357;
+#ifdef AZBOX
+			rdr->mode = -1;
+#endif
 			rdr->deprecated = 0;
 			rdr->force_irdeto = 0;
-#ifdef MODULE_CCCAM	
-			if(reshare>=0)
-				rdr->cc_reshare=reshare;
-			else
-				rdr->cc_reshare = cfg.cc_reshare; //set global value as init value
-			rdr->cc_keepalive = 120;
-			rdr->cc_maxhop = 10;
+#ifdef MODULE_CCCAM
+			rdr->cc_reshare = DEFAULT_CC_RESHARE;
+			rdr->cc_maxhop  = DEFAULT_CC_MAXHOP;
 			rdr->cc_mindown = 0;
 #endif
 #ifdef WITH_LB
 			rdr->lb_weight = 100;
 #endif
-			cs_strncpy(rdr->pincode, "none",sizeof(rdr->pincode));
+			cs_strncpy(rdr->pincode, "none", sizeof(rdr->pincode));
 			rdr->ndsversion = 0;
+			rdr->ecmWhitelist = NULL;
 			for (i=1; i<CS_MAXCAIDTAB; rdr->ctab.mask[i++]=0xffff);
+
+			chk_reader("protocol",(char*)cctag[proto],rdr);
 			cs_strncpy(rdr->device,host,sizeof(rdr->device));
 			rdr->r_port = port;
 			cs_strncpy(rdr->r_usr,uname,sizeof(rdr->r_usr));
 			cs_strncpy(rdr->r_pwd,upass,sizeof(rdr->r_pwd));
 			snprintf(token,sizeof(token),"%s_%d",host,port);
 			cs_strncpy(rdr->label,token,sizeof(rdr->label));
-			rdr->enable = 1;
 			rdr->grp = 1;	
 
 			ll_append(configured_readers, rdr);
-			cs_debug_mask(D_READER,"Add reader device=%s,%d(type:%04X)from CCcam.cfg",rdr->device,rdr->r_port,rdr->typ);
+			cs_debug_mask(D_READER,"Add reader device=%s,%d(type:0x%X,protocol=%s)from CCcam.cfg",rdr->device,rdr->r_port,rdr->typ,rdr->crdr.desc);
 		}
 		else if (line[0]=='F' && line[1]==':' && mode==CCCAMCFGUSER){
 			ret=sscanf(line,"F:%s%s%d%d%d",uname,upass,&uhops,&uemu,&uemm);
@@ -5304,8 +5316,8 @@ int32_t init_readerdb()
 	int32_t tag = 0;
 	int32_t checked=0;
 	FILE *fp;
-	char *value;
-	char token[MAXLINESIZE];
+	char *value, *token;
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;	
 
 	if(!configured_readers)
 		configured_readers = ll_create("configured_readers");
@@ -5313,17 +5325,17 @@ int32_t init_readerdb()
 	if(cfg.cc_cfgfile)
 		read_cccamcfg(CCCAMCFGREADER);
 
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_srvr);
+	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_srvr);
 	if (!(fp=fopen(token, "r"))) {
 		cs_log("can't open file \"%s\" (errno=%d %s)\n", token, errno, strerror(errno));
 	}
 	else{
 
-	  struct s_reader *rdr;
-	  cs_malloc(&rdr, sizeof(struct s_reader), SIGINT);
+	struct s_reader *rdr;
+	cs_malloc(&rdr, sizeof(struct s_reader), SIGINT);
 
-	  ll_append(configured_readers, rdr);
-	  while (fgets(token, sizeof(token), fp)) {
+	ll_append(configured_readers, rdr);
+	while (fgets(token, MAXLINESIZE, fp)) {
 		int32_t i, l;
 		if ((l = strlen(trim(token))) < 3)
 			continue;
@@ -5391,9 +5403,10 @@ int32_t init_readerdb()
 			else
 				cs_debug_mask(D_READER,"Clean up duplicate reader:(%s,%d)",rdr->device,rdr->r_port);
 		}
-	  }
-	  fclose(fp);
+	    }
+	    fclose(fp);
 	}
+	free(token);
 	struct s_reader *rdr;
 	LL_ITER itr = ll_iter_create(configured_readers);
 	while((rdr = ll_iter_next(&itr))) { //build active readers list
@@ -5416,20 +5429,21 @@ void init_ac()
 {
   int32_t nr;
   FILE *fp;
-  char *saveptr1 = NULL;
-  char token[MAXLINESIZE];
+  char *saveptr1 = NULL, *token;
+  if(!cs_malloc(&token, MAXLINESIZE, -1)) return;	
 
-  snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_ac);
+  snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_ac);
   if (!(fp=fopen(token, "r")))
   {
     cs_log("can't open file \"%s\" (errno=%d %s) anti-cascading table not loaded",
             token, errno, strerror(errno));
+    free(token);
     return;
   }
   
   struct s_cpmap *cur_cpmap, *first_cpmap = NULL, *last_cpmap = NULL;
 
-  for(nr=0; fgets(token, sizeof(token), fp);)
+  for(nr=0; fgets(token, MAXLINESIZE, fp);)
   {
     int32_t i, skip;
     uint16_t caid, sid, chid, dwtime;
@@ -5488,6 +5502,7 @@ void init_ac()
       if (!cs_malloc(&cur_cpmap, sizeof(struct s_cpmap), -1)){
       	for(cur_cpmap = first_cpmap; cur_cpmap; cur_cpmap = cur_cpmap->next)
       		free(cur_cpmap);
+      	free(token);
       	return;
       }
       if(last_cpmap)
@@ -5508,6 +5523,7 @@ void init_ac()
       nr++;
     }
   }
+  free(token);
   fclose(fp);
   
   last_cpmap = cfg.cpmap;
@@ -6106,37 +6122,45 @@ void free_mk_t(char *value){
 	if(strlen(value) > 0) free(value);
 }
 
-struct s_global_whitelist
-{
-	uint32_t line; //linenr of oscam.whitelist file, starting with 1
-	char type; // w or i
-	uint16_t caid;
-	uint32_t provid;
-	uint16_t srvid;
-	uint16_t chid;
-	uint16_t pid;
-	uint16_t ecmlen;
-	struct s_global_whitelist *next;
-} GLOBAL_WHITELIST;
-
-struct s_global_whitelist *global_whitelist = NULL;
-
 int32_t match_whitelist(ECM_REQUEST *er, struct s_global_whitelist *entry) {
 	return ((!entry->caid || entry->caid == er->caid)
 			&& (!entry->provid || entry->provid == er->prid)
 			&& (!entry->srvid || entry->srvid == er->srvid)
 			&& (!entry->chid || entry->chid == er->chid)
-			&& (!entry->ecmlen || entry->ecmlen == er->l)
-			&& (!entry->pid || entry->pid == er->pid));
+			&& (!entry->pid || entry->pid == er->pid)
+			&& (!entry->ecmlen || entry->ecmlen == er->l));
 }
 
 int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line)
 {
 	*line = -1;
-	if (!global_whitelist)
+	if (!cfg.global_whitelist)
 		return 1;
 
-	struct s_global_whitelist *entry = global_whitelist;
+	struct s_global_whitelist *entry;
+	if (cfg.global_whitelist_use_l) { //Check caid/prov/srvid etc matching, except ecm-len:
+		entry = cfg.global_whitelist;
+		int8_t caidprov_matches = 0;
+		while (entry) {
+			if (entry->type == 'l') {
+				if (match_whitelist(er, entry)) {
+					*line = entry->line;
+					return 1;
+				}
+				if ((!entry->caid || entry->caid == er->caid)
+						&& (!entry->provid || entry->provid == er->prid)
+						&& (!entry->srvid || entry->srvid == er->srvid)
+						&& (!entry->chid || entry->chid == er->chid)
+						&& (!entry->pid || entry->pid == er->pid))
+					caidprov_matches = 1;
+			}
+			entry = entry->next;
+		}
+		if (caidprov_matches) //...but not ecm-len!
+			return 0;
+	}
+
+	entry = cfg.global_whitelist;
 	while (entry) {
 		if (match_whitelist(er, entry)) {
 			*line = entry->line;
@@ -6155,6 +6179,8 @@ int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line)
 //w:caid:prov:srvid:pid:chid:ecmlen
 //Ignore-Entry:
 //i:caid:prov:srvid:pid:chid:ecmlen
+//ECM len check - Entry:
+//l:caid:prov:srvid:pid:chid:ecmlen
 
 static struct s_global_whitelist *global_whitelist_read_int() {
 	FILE *fp;
@@ -6165,6 +6191,7 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 	uint32_t line = 0;
 
 	const char *cs_whitelist="oscam.whitelist";
+	cfg.global_whitelist_use_l = 0;
 
 	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_whitelist);
 	fp=fopen(token, "r");
@@ -6191,12 +6218,6 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 			}
 		}
 
-		//Format:
-		//Whitelist-Entry:
-		//w:caid:prov:srvid:pid:chid:ecmlen
-		//Ignore-Entry:
-		//i:caid:prov:srvid:pid:chid:ecmlen
-
 		type = 'w';
 		uint32_t caid=0, provid=0, srvid=0, pid=0, chid=0, ecmlen=0;
 		memset(str1, 0, sizeof(str1));
@@ -6207,7 +6228,8 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 
 		//w=whitelist
 		//i=ignore
-		if (ret<1 || (type != 'w' && type != 'i'))
+		//l=len-check
+		if (ret<1 || (type != 'w' && type != 'i' && type != 'l'))
 			continue;
 
 		strncat(str1, ",", sizeof(str1));
@@ -6230,6 +6252,8 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 				entry->pid=pid;
 				entry->chid=chid;
 				entry->ecmlen=ecmlen;
+				if (entry->type == 'l')
+					cfg.global_whitelist_use_l = 1;
 
 				cs_debug_mask(D_TRACE, "whitelist: %c: %04X %06X %04X %04X %04X %04X",
 					entry->type, entry->caid, entry->provid, entry->srvid, entry->pid, entry->chid, entry->ecmlen);
@@ -6257,10 +6281,10 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 
 void global_whitelist_read() {
 
-	struct s_global_whitelist *entry, *old_list = global_whitelist;
+	struct s_global_whitelist *entry, *old_list = cfg.global_whitelist;
 
-	old_list = global_whitelist;
-	global_whitelist = global_whitelist_read_int();
+	old_list = cfg.global_whitelist;
+	cfg.global_whitelist = global_whitelist_read_int();
 
 	while (old_list) {
 		entry = old_list->next;

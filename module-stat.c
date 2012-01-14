@@ -500,7 +500,12 @@ void add_stat(struct s_reader *rdr, ECM_REQUEST *er, int32_t ecm_time, int32_t r
 				ecm_time = 100;
 			stat->time_avg += ecm_time;
 		}
-		stat->rc = rc;
+
+		if (stat->ecm_count > cfg.lb_min_ecmcount) //there were many founds? Do not close, give them another chance
+			stat->ecm_count = 0;
+		else
+			stat->rc = rc;
+
 		inc_fail(stat);
 		stat->last_received = ctime;
 		
@@ -930,7 +935,11 @@ int32_t get_best_reader(ECM_REQUEST *er)
 				continue;
 			}
 				
-			int32_t hassrvid = has_srvid(rdr->client, er) || has_ident(&rdr->ftab, er);
+			int32_t hassrvid;
+			if(cl)
+				hassrvid = has_srvid(cl, er) || has_ident(&rdr->ftab, er);
+			else
+				hassrvid = 0;
 			
 			if (stat->rc == E_FOUND && stat->ecm_count < cfg.lb_min_ecmcount) {
 				cs_debug_mask(D_TRACE, "loadbalancer: reader %s needs more statistics", rdr->label);

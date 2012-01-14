@@ -1,14 +1,14 @@
 10
 
 dir
-6208
+6236
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-01-07T18:31:47.418264Z
-6206
+2012-01-11T19:04:51.883721Z
+6229
 docman
 
 
@@ -146,10 +146,10 @@ file
 
 
 
-2011-12-30T04:37:51.752429Z
-d264caa14efad67a44fd38eaa5a7cce5
-2011-12-29T14:39:55.385941Z
-6173
+2012-01-12T08:14:36.959787Z
+82b8167ef41e34f60777fd4414313e60
+2012-01-11T19:04:51.883721Z
+6229
 docman
 
 
@@ -172,7 +172,7 @@ docman
 
 
 
-928
+1235
 
 oscam.user.txt
 file

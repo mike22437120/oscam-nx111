@@ -428,8 +428,16 @@ int32_t chk_ctab(uint16_t caid, CAIDTAB *ctab) {
 
 int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr) {
   //simple checks first:
-  if (!er || !rdr ||!rdr->client)
+  if (!er || !rdr)
     return(0);
+    
+   struct s_client *cl = rdr->client;
+   if (!cl)
+    return(0);
+  
+  // if physical reader a card needs to be inserted 
+  if ((!(rdr->typ & R_IS_NETWORK)) && (rdr->card_status != CARD_INSERTED)) 
+    return(0); 
 
   //Checking connected & group valid:
   struct s_client *cur_cl = er->client; //cur_client();
@@ -519,6 +527,11 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr) {
 
 int32_t emm_reader_match(struct s_reader *reader, uint16_t caid, uint32_t provid) {
 	int32_t i;
+	
+	// if physical reader a card needs to be inserted
+	if ((!(reader->typ & R_IS_NETWORK)) && (reader->card_status != CARD_INSERTED)) {
+		return(0);
+	}
 
 	if (reader->caid != caid || reader->audisabled) {
 		return 0;

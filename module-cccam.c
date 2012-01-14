@@ -257,7 +257,7 @@ void set_cmd0c_cryptkey(struct s_client *cl, uint8_t *key, uint8_t len) {
 }
 
 int32_t sid_eq(struct cc_srvid *srvid1, struct cc_srvid *srvid2) {
-	return (srvid1->sid == srvid2->sid && (srvid1->ecmlen == srvid2->ecmlen || !srvid1->ecmlen || !srvid2->ecmlen));
+	return (srvid1->sid == srvid2->sid && (srvid1->chid == srvid2->chid || !srvid1->chid || !srvid2->chid) && (srvid1->ecmlen == srvid2->ecmlen || !srvid1->ecmlen || !srvid2->ecmlen));
 }
 
 void remove_sid_block(struct cc_card *card, struct cc_srvid *srvid_blocked);
@@ -294,8 +294,8 @@ void add_sid_block(struct s_client *cl __attribute__((unused)), struct cc_card *
 	memcpy(srvid, srvid_blocked, sizeof(struct cc_srvid));
 	srvid->blocked_till = time(NULL)+BLOCKING_SECONDS;
 	ll_append(card->badsids, srvid);
-	cs_debug_mask(D_READER, "%s added sid block %04X(%d) for card %08x",
-			getprefix(), srvid_blocked->sid, srvid_blocked->ecmlen,
+	cs_debug_mask(D_READER, "%s added sid block %04X(CHID %04X, length %d) for card %08x",
+			getprefix(), srvid_blocked->sid, srvid_blocked->chid, srvid_blocked->ecmlen,
 			card->id);
 }
 
@@ -1070,9 +1070,10 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 
 	struct cc_srvid cur_srvid;
 	cur_srvid.sid = cur_er->srvid;
+	cur_srvid.chid = cur_er->chid;
 	cur_srvid.ecmlen = cur_er->l;
 
-	int32_t h = -1;
+	int32_t best_rating = MIN_RATING-1, rating;
 
 	LL_ITER it = ll_iter_create(cc->cards);
 	struct cc_card *card = NULL, *ncard, *xcard = NULL;
@@ -1091,12 +1092,13 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 			if (!(rdr->cc_want_emu) && (ncard->caid>>8==0x18) && (!xcard || ncard->hop < xcard->hop))
 				xcard = ncard; //remember card (D+ / 1810 fix) if request has no provider, but card has
 
+			rating = ncard->rating - ncard->hop * HOP_RATING;
+
 			if (!ll_count(ncard->providers)) { //card has no providers:
-				if (h < 0 || ncard->hop < h || (ncard->hop == h
-						&& cc_UA_valid(ncard->hexserial))) {
+				if (rating > best_rating) {
 					// ncard is closer
 					card = ncard;
-					h = ncard->hop; // ncard has been matched
+					best_rating = rating; // ncard has been matched
 				}
 
 			}
@@ -1105,11 +1107,10 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 				struct cc_provider *provider;
 				while ((provider = ll_iter_next(&it2))) {
 					if (!cur_er->prid || !provider->prov || provider->prov	== cur_er->prid) { // provid matches
-						if (h < 0 || ncard->hop < h || (ncard->hop == h
-								&& cc_UA_valid(ncard->hexserial))) {
+						if (rating  > best_rating) {
 							// ncard is closer
 							card = ncard;
-							h = ncard->hop; // ncard has been matched
+							best_rating = rating; // ncard has been matched
 						}
 					}
 				}
@@ -1264,6 +1265,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 
 		struct cc_srvid cur_srvid;
 		cur_srvid.sid = cur_er->srvid;
+		cur_srvid.chid = cur_er->chid;
 		cur_srvid.ecmlen = cur_er->l;
 
 		cs_readlock(&cc->cards_busy);
@@ -1775,6 +1777,7 @@ struct cc_card *read_card(uint8_t *buf, int32_t ext) {
 
             struct cc_srvid *srvid = cs_malloc(&srvid, sizeof(struct cc_srvid), QUITERROR);
             srvid->sid = sid;
+            srvid->chid = 0;
             srvid->ecmlen = 0;
             ll_append(card->goodsids, srvid);
             ptr+=2;
@@ -1786,6 +1789,7 @@ struct cc_card *read_card(uint8_t *buf, int32_t ext) {
 
             struct cc_srvid_block *srvid = cs_malloc(&srvid, sizeof(struct cc_srvid_block), QUITERROR);
             srvid->sid = sid;
+            srvid->chid = 0;
             srvid->ecmlen = 0;
             srvid->blocked_till = 0;
             ll_append(card->badsids, srvid);
@@ -2266,12 +2270,13 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 			uint16_t ecm_idx = eei->ecm_idx;
 			cc->recv_ecmtask = ecm_idx;
 			struct cc_card *card = eei->card;
-			struct cc_srvid srvid = eei->srvid;
-			free(eei);
+			struct cc_srvid srvid = eei->srvid;			
 
 			struct timeb tpe;
 			cs_ftime(&tpe);
 			int32_t cwlastresptime = 1000*(tpe.time-eei->tps.time)+tpe.millitm-eei->tps.millitm;
+			
+			free(eei);
 
 			if (card) {
 				if (buf[1] == MSG_CW_NOK1) //MSG_CW_NOK1: share no more available
@@ -2279,24 +2284,27 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 				else if (cc->cmd05NOK)
 				{
 					move_card_to_end(cl, card);
-					if (cwlastresptime < 5000 || card->tout_counter > 5)
+					if (cwlastresptime < 5000)
 						add_sid_block(cl, card, &srvid);
 					else
-						card->tout_counter++;
+						card->rating--;
 				}
 				else if (!is_good_sid(card, &srvid)) //MSG_CW_NOK2: can't decode
 				{
 					move_card_to_end(cl, card);
-					if (cwlastresptime < 5000 || card->tout_counter > 5)
+					if (cwlastresptime < 5000)
 						add_sid_block(cl, card, &srvid);
 					else
-						card->tout_counter++;
+						card->rating--;
 				}
 				else
 				{
 					move_card_to_end(cl, card);
 					remove_good_sid(card, &srvid);
 				}
+
+				if (card->rating < MIN_RATING)
+					card->rating = MIN_RATING;
 
 				if (cfg.cc_forward_origin_card && card->origin_reader == rdr) { 
 						//this card is from us but it can't decode this ecm
@@ -2377,7 +2385,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 									cs_debug_mask(D_TRACE, "%s forward card: share %d origin reader %s origin id %d", getprefix(), card->id, ordr->label, card->origin_id);
 									struct s_client *cl = ordr->client;
 									if (card->origin_id && cl && cl->cc) { //only if we have a origin from a cccam reader
-										struct cc_data *rcc = ordr->client->cc;
+										struct cc_data *rcc = cl->cc;
 										
 										if(rcc){
 											itr = ll_iter_create(rcc->cards);
@@ -2412,6 +2420,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 
 				struct cc_srvid srvid;
 				srvid.sid = er->srvid;
+				srvid.chid = er->chid;
 				srvid.ecmlen = er->l;
 				add_extended_ecm_idx(cl, cc->extended_mode ? cc->g_flag : 1,
 						er->idx, server_card, srvid, 1);
@@ -2472,8 +2481,16 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 						if (cwlastresptime > cfg.ftimeout && !cc->extended_mode) {
 							cs_debug_mask(D_READER, "%s card %04X is too slow, moving to the end...", getprefix(), card->id);
 							move_card_to_end(cl, card);
+							card->rating--;
+							if (card->rating < MIN_RATING)
+								card->rating = MIN_RATING;
 						}
-						
+						else
+						{
+							card->rating++;
+							if (card->rating > MAX_RATING)
+								card->rating = MAX_RATING;
+						}
 					}
 				} else {
 					cs_debug_mask(D_READER,
