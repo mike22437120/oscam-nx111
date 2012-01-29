@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 55
-/svn/oscam/!svn/ver/6169/trunk/Distribution/doc/example
+/svn/oscam/!svn/ver/6252/trunk/Distribution/doc/example
 END
 oscam.ird
 K 25
@@ -14,6 +14,12 @@ K 25
 svn:wc:ra_dav:version-url
 V 66
 /svn/oscam/!svn/ver/1884/trunk/Distribution/doc/example/oscam.user
+END
+oscam.cacheex
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/oscam/!svn/ver/6252/trunk/Distribution/doc/example/oscam.cacheex
 END
 oscam.ac
 K 25
@@ -73,7 +79,7 @@ oscam.whitelist
 K 25
 svn:wc:ra_dav:version-url
 V 71
-/svn/oscam/!svn/ver/6169/trunk/Distribution/doc/example/oscam.whitelist
+/svn/oscam/!svn/ver/6252/trunk/Distribution/doc/example/oscam.whitelist
 END
 oscam.cert
 K 25

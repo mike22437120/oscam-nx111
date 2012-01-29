@@ -38,6 +38,20 @@ value to delay cached requests, default:0
 
 <P>
 
+<B>max_cache_time</B> = <B>seconds</B>
+<DL COMPACT><DT><DD>
+maximum time CWs resist in cache after 1st client request, default:15
+</DL>
+
+<P>
+
+<B>max_cache_count</B> = <B>count</B>
+<DL COMPACT><DT><DD>
+maximum CWs in cache, default:1000
+</DL>
+
+<P>
+
 <B>logfile</B> = [<B>filename</B>][<B>;syslog</B>][<B>;stdout</B>]
 <DL COMPACT><DT><DD>
 logging targets, default: /var/log/oscam.log. You can define a maximum of one filename and 
@@ -99,6 +113,16 @@ usrfile logging mode:
 <P>
 <BR>&nbsp;&nbsp;0&nbsp;=&nbsp;only&nbsp;client&nbsp;logon/logoff&nbsp;will&nbsp;be&nbsp;logged&nbsp;in&nbsp;usrfile&nbsp;(default)
 <BR>&nbsp;&nbsp;1&nbsp;=&nbsp;each&nbsp;zapping&nbsp;of&nbsp;a&nbsp;client&nbsp;will&nbsp;be&nbsp;logged&nbsp;in&nbsp;usrfile
+</DL>
+
+<P>
+
+<B>enableled</B> = <B>0</B>|<B>1</B>|<B>2</B>
+<DL COMPACT><DT><DD>
+<P>
+<BR>&nbsp;<B>0</B>&nbsp;=&nbsp;LED&nbsp;support&nbsp;disabled&nbsp;(default)
+<BR>&nbsp;<B>1</B>&nbsp;=&nbsp;LED&nbsp;support&nbsp;enabled&nbsp;for&nbsp;routers
+<BR>&nbsp;<B>2</B>&nbsp;=&nbsp;LED&nbsp;support&nbsp;enabled&nbsp;for&nbsp;Qbox&nbsp;HD
 </DL>
 
 <P>
@@ -230,7 +254,7 @@ maximum log file size, 0 = unlimited, default:10
 
 <B>waitforcards_extra_delay</B> = <B>delay</B> 
 <DL COMPACT><DT><DD>
-additional delay in milli seconds after waiting for local SCs on startup before opening network ports, default:500
+additional delay in milli-seconds after waiting for local SCs on startup before opening network ports, default:500
 </DL>
 
 <P>
@@ -274,7 +298,7 @@ per user in <B>oscam.user</B>, default:0
 
 <B>cacheexwaittime</B> = <B>delay</B>
 <DL COMPACT><DT><DD>
-maximum wait time for a cache exchange entry in milli seconds, default:50
+maximum wait time for a cache exchange entry in milli-seconds, default:50
 </DL>
 
 <P>
@@ -371,7 +395,7 @@ time between retrying failed load balanced readers/CAIDs/providers/services, def
 
 <P>
 
-<B>lb_retrylimit</B> = <B>milli seconds</B>
+<B>lb_retrylimit</B> = <B>milli-seconds</B>
 <DL COMPACT><DT><DD>
 retry next load balanced reader only if response time is higher then lb_retrylimit, default:800
 </DL>
@@ -437,9 +461,9 @@ set automatic Betacrypt tunneling time factor prefering Betacrypt over Nagravisi
 
 <P>
 
-<B>cacheexwaittime</B> = <B>milliseconds</B>
+<B>cacheexwaittime</B> = <B>milli-seconds</B>
 <DL COMPACT><DT><DD>
-cache waiting time in milliseconds for cache exchange, default:50
+cache waiting time in milli-seconds for cache exchange, default:50
 </DL>
 
 <P>
@@ -626,6 +650,15 @@ set right language for wiki entry point, default:en
 
 <A NAME="lbAH">&nbsp;</A>
 <H3>The [lcd] section</H3>
+
+
+<P>
+
+<B>enablelcd</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+1 =enable LCD output, default:0
+<P>
+</DL>
 
 <B>lcd_outputpath</B> = <B>path</B>
 <DL COMPACT><DT><DD>
@@ -906,7 +939,7 @@ TCP/IP ports for CCcam clients, 0 = disabled, default:0
 
 <B>version</B> = <B>&lt;main version&gt;.&lt;version&gt;.&lt;sub version&gt;</B>
 <DL COMPACT><DT><DD>
-define CCcam version, <I>minimum CCcam version 2.0.11</I>, default:none
+define CCcam version, <I>minimum CCcam version 2.0.11</I>, used with original CCcam only, default:none
 <P>
 <BR>&nbsp;example:&nbsp;version&nbsp;=&nbsp;1.2.34
 </DL>
@@ -1103,7 +1136,7 @@ CAID request mode:
 
 <P>
 
-<B>boxtype</B> = <B>dbox2</B>|<B>dreambox</B>|<B>dm7000</B>|<B>duckbox</B>|<B>ufs910</B>|<B>ipbox</B>|<B>ipbox-pmt</B>|<B>qboxhd</B>|<B>coolstream</B>|<B>neumo</B>
+<B>boxtype</B> = <B>dbox2</B>|<B>dreambox</B>|<B>dm7000</B>|<B>duckbox</B>|<B>ufs910</B>|<B>ipbox</B>|<B>ipbox-pmt</B>|<B>qboxhd</B>|<B>coolstream</B>|<B>neumo</B>|<B>pc</B>
 <DL COMPACT><DT><DD>
 set boxtype, auto detection of DVB API will be aspired, default:dreambox
 <P>
@@ -1112,6 +1145,8 @@ verified on HD models only
 <P>
 ipbox-pmt can be used on any DGS based images (with or without camd.socket support), 
 verified on HD models only
+<P>
+pc is for generic pc support (currently supported on VDR with vdr-plugin-dvbapi)
 </DL>
 
 <A NAME="lbAT">&nbsp;</A>
@@ -1349,7 +1384,7 @@ CAID&amp;ident/provider/length:checksum
 <A NAME="lbAZ">&nbsp;</A>
 <H2>SEE ALSO</H2>
 
-<B><A HREF="/cgi-bin/man/man2html?1+list_smargo">list_smargo</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?1+oscam">oscam</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ac">oscam.ac</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cert">oscam.cert</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.dvbapi">oscam.dvbapi</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.guess">oscam.guess</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ird">oscam.ird</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.provid">oscam.provid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.server">oscam.server</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.services">oscam.services</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid">oscam.srvid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.tiers">oscam.tiers</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.user">oscam.user</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.whitelist">oscam.whitelist</A></B>(5)
+<B><A HREF="/cgi-bin/man/man2html?1+list_smargo">list_smargo</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?1+oscam">oscam</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ac">oscam.ac</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cacheex">oscam.cacheex</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cert">oscam.cert</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.dvbapi">oscam.dvbapi</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.guess">oscam.guess</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ird">oscam.ird</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.provid">oscam.provid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.server">oscam.server</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.services">oscam.services</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid">oscam.srvid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.tiers">oscam.tiers</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.user">oscam.user</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.whitelist">oscam.whitelist</A></B>(5)
 <P>
 
 <HR>

@@ -181,7 +181,6 @@
 #define CS_DELAY          0
 #define CS_ECM_RINGBUFFER_MAX 20 // max size for ECM last responsetimes ringbuffer
 
-#define CS_CACHE_TIMEOUT  120
 #ifndef PTHREAD_STACK_MIN
 #define PTHREAD_STACK_MIN 64000
 #endif
@@ -276,7 +275,8 @@
 #define BOXTYPE_QBOXHD	8
 #define BOXTYPE_COOLSTREAM	9
 #define BOXTYPE_NEUMO	10
-#define BOXTYPES		10
+#define BOXTYPE_PC		11
+#define BOXTYPES		11
 extern const char *boxdesc[];
 #endif
 
@@ -363,9 +363,18 @@ extern char *RDR_CD_TXT[];
 #define DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA 50
 #define DEFAULT_CACHEEX_WAIT_TIME 50
 
+#define DEFAULT_MAX_CACHE_TIME 15
+#define DEFAULT_MAX_CACHE_COUNT 1000
+
 enum {E1_GLOBAL=0, E1_USER, E1_READER, E1_SERVER, E1_LSERVER};
+
+//LB blocking events:
 enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_OFFLINE, 
-      E2_SID, E2_CCCAM_NOCARD, E2_CCCAM_NOK1, E2_CCCAM_NOK2, E2_CCCAM_LOOP, E2_WRONG_CHKSUM};
+      E2_SID, E2_CCCAM_NOCARD, 
+      //From here only LB nonblocking events:
+      E2_CCCAM_NOK1, E2_CCCAM_NOK2, E2_CCCAM_LOOP, E2_WRONG_CHKSUM, E2_RATELIMIT};
+
+#define LB_NONBLOCK_E2_FIRST E2_CCCAM_NOK1
 
 #define CTA_RES_LEN 512
 
@@ -1015,6 +1024,7 @@ struct ecmrl {
 
 struct s_reader  									//contains device info, reader info and card info
 {
+	uint8_t		changes_since_shareupdate;
 	int32_t			resetcycle;						// ECM until reset
 	int32_t			resetcounter;					// actual count
 	int8_t			restart_for_resetcycle;				// restart for resetcycle
@@ -1034,6 +1044,10 @@ struct s_reader  									//contains device info, reader info and card info
 	int8_t			cacheex;
 #endif
 	int32_t			typ;
+#ifdef COOL
+	int32_t			cool_timeout_init; // read/transmit timeout while init for coolstream internal reader
+	int32_t			cool_timeout_after_init; // read/transmit timeout after init for coolstream internal reader
+#endif
 	char			label[64];
 #ifdef WEBIF
 	char			*description;
@@ -1355,6 +1369,32 @@ struct s_global_whitelist
 	struct s_global_whitelist *next;
 } GLOBAL_WHITELIST;
 
+#ifdef CS_CACHEEX
+struct s_cacheex_matcher
+{
+	uint32_t line; //linenr of oscam.cacheex file, starting with 1
+	char type; // m
+	uint16_t caid;
+	uint32_t provid;
+	uint16_t srvid;
+	uint16_t chid;
+	uint16_t pid;
+	uint16_t ecmlen;
+
+	uint16_t to_caid;
+	uint32_t to_provid;
+	uint16_t to_srvid;
+	uint16_t to_chid;
+	uint16_t to_pid;
+	uint16_t to_ecmlen;
+
+	int32_t valid_from;
+	int32_t valid_to;
+
+	struct s_cacheex_matcher *next;
+} CACHEEX_MATCHER;
+#endif
+
 struct s_config
 {
 	int32_t			nice;
@@ -1522,8 +1562,11 @@ struct s_config
 	struct		s_cpmap *cpmap;
 #endif
 
-#ifdef QBOXHD_LED
-    int8_t disableqboxhdled; 						// disable qboxhd led , default = 0
+#if defined(QBOXHD_LED) || defined(CS_LED) 
+	int8_t enableled; 						// 0=disabled led, 1=enable led for routers, 2=enable qboxhd led
+#endif
+#ifdef LCDSUPPORT
+	int8_t enablelcd;
 #endif
 
 #ifdef LCDSUPPORT
@@ -1542,6 +1585,9 @@ struct s_config
 	in_addr_t	pand_srvip;
 #endif
 
+	uint32_t	max_cache_time;  //seconds
+	uint32_t	max_cache_count; //count ecms
+	
 #ifdef CS_CACHEEX
 	in_addr_t	csp_srvip;
 	int32_t		csp_port;
@@ -1549,6 +1595,8 @@ struct s_config
 
 	uint32_t	cacheex_wait_time; 		//cache wait time in ms
 	uint8_t		cacheex_enable_stats;	//enable stats
+	
+	struct s_cacheex_matcher *cacheex_matcher;
 #endif
 
 	//Global whitelist:
@@ -1618,9 +1666,11 @@ typedef struct {
  *      global variables
  * =========================== */
 extern char cs_tmpdir[200];
+extern uint32_t cfg_sidtab_generation;
 extern uint8_t cs_http_use_utf8;
 extern pthread_key_t getclient;
 extern struct s_client *first_client;
+extern uint32_t ecmcwcache_size;
 extern struct s_reader *first_active_reader;		//points to list of _active_ readers (enable = 1, deleted = 0)
 extern LLIST *configured_readers;
 extern int32_t cs_dblevel;

@@ -38,6 +38,7 @@ static const char *cs_provid="oscam.provid";
 #ifdef IRDETO_GUESSING
 static const char *cs_ird="oscam.ird";
 #endif
+uint32_t cfg_sidtab_generation = 1;
 
 typedef enum cs_proto_type
 {
@@ -426,9 +427,9 @@ void chk_t_global(const char *token, char *value)
 {
 	char *saveptr1 = NULL;
 
-#ifdef QBOXHD_LED
-	if (!strcmp(token, "disableqboxhdled")) {
-		cfg.disableqboxhdled = strToIntVal(value, 0);
+#if defined(QBOXHD_LED) || defined(CS_LED)
+	if (!strcmp(token, "enableled")) {
+		cfg.enableled = strToIntVal(value, 0);
 		return;
 	}
 #endif
@@ -769,6 +770,15 @@ void chk_t_global(const char *token, char *value)
 	}
 #endif
 
+	if (!strcmp(token, "max_cache_time")) {
+		cfg.max_cache_time = strToIntVal(value, 0);
+		return;
+	}
+	
+	if (!strcmp(token, "max_cache_count")) {
+		cfg.max_cache_count = strToIntVal(value, 0);
+		return;
+	}
 
 	if (token[0] != '#')
 		fprintf(stderr, "Warning: keyword '%s' in global section not recognized\n", token);
@@ -1466,6 +1476,10 @@ void chk_t_dvbapi(char *token, char *value)
 #ifdef LCDSUPPORT
 void chk_t_lcd(char *token, char *value)
 {
+	if (!strcmp(token, "enablelcd")) {
+		cfg.enablelcd = strToIntVal(value, 0);
+		return;
+	}
 
 	if (!strcmp(token, "lcd_outputpath")) {
 		NULLFREE(cfg.lcd_output_path);
@@ -1663,9 +1677,6 @@ int32_t init_config()
 	cfg.reader_restart_seconds = 5;
 	cfg.waitforcards = 1;
 	cfg.waitforcards_extra_delay = 500;
-#ifdef QBOXHD_LED
-    cfg.disableqboxhdled = 1;
-#endif
 
 #ifdef WEBIF
 	cs_strncpy(cfg.http_user, "", sizeof(cfg.http_user));
@@ -1717,6 +1728,9 @@ int32_t init_config()
 	cfg.lcd_write_intervall = 10;
 #endif
 
+	cfg.max_cache_time = DEFAULT_MAX_CACHE_TIME;
+	cfg.max_cache_count = DEFAULT_MAX_CACHE_COUNT;
+	 
 	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_conf);
 	if (!(fp = fopen(token, "r"))) {
 		fprintf(stderr, "Cannot open config file '%s' (errno=%d %s)\n", token, errno, strerror(errno));
@@ -2133,10 +2147,6 @@ int32_t write_config()
 		fprintf_conf(f, "cwlogdir", "%s\n", cfg.cwlogdir?cfg.cwlogdir:"");
 	if (cfg.emmlogdir != NULL || cfg.http_full_cfg)
 		fprintf_conf(f, "emmlogdir", "%s\n", cfg.emmlogdir?cfg.emmlogdir:"");
-#ifdef QBOXHD_LED
-	if (cfg.disableqboxhdled || cfg.http_full_cfg)
-		fprintf_conf(f, "disableqboxhdled", "%d\n", cfg.disableqboxhdled);
-#endif
 	if (cfg.disablelog || cfg.http_full_cfg)
 		fprintf_conf(f, "disablelog", "%d\n", cfg.disablelog);
 	if ((cfg.usrfile && cfg.disableuserfile == 0) || cfg.http_full_cfg)
@@ -2192,6 +2202,10 @@ int32_t write_config()
 		fprintf_conf(f, "cacheexwaittime", "%d\n", cfg.cacheex_wait_time);
 	if (cfg.cacheex_enable_stats != 0 || cfg.http_full_cfg)
 		fprintf_conf(f, "cacheexenablestats", "%d\n", cfg.cacheex_enable_stats);
+#endif
+#if defined(QBOXHD_LED) || defined(CS_LED) 
+	if (cfg.enableled || cfg.http_full_cfg)
+		fprintf_conf(f, "enableled", "%d\n", cfg.enableled);
 #endif
 
 #ifdef WITH_LB
@@ -2250,6 +2264,11 @@ int32_t write_config()
 		fprintf_conf(f, "double_check", "%d\n", cfg.double_check);
 #endif
 
+	if (cfg.max_cache_time != DEFAULT_MAX_CACHE_TIME || cfg.http_full_cfg)
+		fprintf_conf(f, "max_cache_time", "%d\n", cfg.max_cache_time);
+	if (cfg.max_cache_count != DEFAULT_MAX_CACHE_COUNT || cfg.http_full_cfg)
+		fprintf_conf(f, "max_cache_count", "%d\n", cfg.max_cache_count);
+		
 	fputc((int)'\n', f);
 
 	/*monitor settings*/
@@ -2544,6 +2563,8 @@ int32_t write_config()
 
 #ifdef LCDSUPPORT
 	fprintf(f,"[lcd]\n");
+	if (cfg.enablelcd || cfg.http_full_cfg)
+		fprintf_conf(f, "enablelcd", "%d\n", cfg.enablelcd);
 	if(cfg.lcd_output_path != NULL) {
 		if(strlen(cfg.lcd_output_path) > 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "lcd_outputpath", "%s\n", cfg.lcd_output_path);
@@ -2819,7 +2840,7 @@ int32_t write_server()
 				fprintf_conf(f, "services", "%s\n", value);
 			free_mk_t(value);
 
-			if ((rdr->tcp_ito || cfg.http_full_cfg) && !isphysical)
+			if ((rdr->tcp_ito != 30 || cfg.http_full_cfg) && !isphysical)
 				fprintf_conf(f, "inactivitytimeout", "%d\n", rdr->tcp_ito);
 
 			if ((rdr->resetcycle != 0 || cfg.http_full_cfg) && isphysical)
@@ -3481,6 +3502,7 @@ void init_free_sidtab() {
 				ptr = nxt;
 		}
 		cfg.sidtab = NULL;
+		++cfg_sidtab_generation;
 }
 
 int32_t init_sidtab() {
@@ -3544,6 +3566,7 @@ int32_t init_sidtab() {
 #ifdef DEBUG_SIDTAB
 	show_sidtab(cfg.sidtab);
 #endif
+	++cfg_sidtab_generation;
 	cs_log("services reloaded: %d services freed, %d services loaded, rejected %d", nro, nr, nrr);
 	return(0);
 }
@@ -4094,9 +4117,11 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 		if(strlen(value) == 0) {
 			rdr->sidtabok = 0;
 			rdr->sidtabno = 0;
+			rdr->changes_since_shareupdate = 1;
 			return;
 		} else {
 			chk_services(value, &rdr->sidtabok, &rdr->sidtabno);
+			rdr->changes_since_shareupdate = 1;
 			return;
 		}
 	}
@@ -4161,9 +4186,11 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 	if (!strcmp(token, "caid")) {
 		if(strlen(value) == 0) {
 			clear_caidtab(&rdr->ctab);
+			rdr->changes_since_shareupdate = 1;
 			return;
 		} else {
 			chk_caidtab(value, &rdr->ctab);
+			rdr->changes_since_shareupdate = 1;
 			return;
 		}
 	}
@@ -4473,13 +4500,24 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 		rdr->typ = R_MOUSE;
 		return;
 	}
-
+#ifdef COOL
+	if (!strcmp(token, "cool_timeout_init")) {
+		rdr->cool_timeout_init  = strToIntVal(value, 0);
+		return;
+	}
+	if (!strcmp(token, "cool_timeout_after_init")) {
+		rdr->cool_timeout_after_init  = strToIntVal(value, 0);
+		return;
+	}
+#endif
 	if (!strcmp(token, "ident")) {
 		if(strlen(value) == 0) {
 			clear_ftab(&rdr->ftab);
+			rdr->changes_since_shareupdate = 1;
 			return;
 		} else {
 			chk_ftab(value, &rdr->ftab,"reader",rdr->label,"provid");
+			rdr->changes_since_shareupdate = 1;
 			return;
 		}
 	}
@@ -4491,6 +4529,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 
 	if (!strcmp(token, "chid")) {
 		chk_ftab(value, &rdr->fchid,"reader",rdr->label,"chid");
+		rdr->changes_since_shareupdate = 1;
 		return;
 	}
 
@@ -5784,7 +5823,7 @@ int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line)
 
 static struct s_global_whitelist *global_whitelist_read_int() {
 	FILE *fp;
-	char token[128], str1[128];
+	char token[1024], str1[1024];
 	char type;
 	int32_t i, ret, count=0;
 	struct s_global_whitelist *new_whitelist = NULL, *entry, *last=NULL;
@@ -5805,7 +5844,7 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 		line++;
 		if (strlen(token) <= 1) continue;
 		if (token[0]=='#' || token[0]=='/') continue;
-		if (strlen(token)>100) continue;
+		if (strlen(token)>1024) continue;
 
 		for (i=0;i<(int)strlen(token);i++) {
 			if ((token[i]==':' || token[i]==' ') && token[i+1]==':') {
@@ -5822,7 +5861,7 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 		uint32_t caid=0, provid=0, srvid=0, pid=0, chid=0, ecmlen=0;
 		memset(str1, 0, sizeof(str1));
 
-		ret = sscanf(token, "%c:%4x:%6x:%4x:%4x:%4x:%128s", &type, &caid, &provid, &srvid, &pid, &chid, str1);
+		ret = sscanf(token, "%c:%4x:%6x:%4x:%4x:%4x:%1024s", &type, &caid, &provid, &srvid, &pid, &chid, str1);
 
 		type = tolower(type);
 
@@ -5855,7 +5894,7 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 				if (entry->type == 'l')
 					cfg.global_whitelist_use_l = 1;
 
-				cs_debug_mask(D_TRACE, "whitelist: %c: %04X %06X %04X %04X %04X %04X",
+				cs_debug_mask(D_TRACE, "whitelist: %c: %04X:%06X:%04X:%04X:%04X:%02X",
 					entry->type, entry->caid, entry->provid, entry->srvid, entry->pid, entry->chid, entry->ecmlen);
 
 				if (!new_whitelist) {
@@ -5892,3 +5931,151 @@ void global_whitelist_read() {
 		old_list = entry;
 	}
 }
+
+#ifdef CS_CACHEEX
+
+struct s_cacheex_matcher *is_cacheex_matcher_matching(ECM_REQUEST *from_er, ECM_REQUEST *to_er)
+{
+	struct s_cacheex_matcher *entry = cfg.cacheex_matcher;
+	int v_ok = (from_er && to_er)?2:1;
+	while (entry) {
+		int8_t ok = 0;
+		if (from_er
+				&& (!entry->caid || entry->caid == from_er->caid)
+				&& (!entry->provid || entry->provid == from_er->prid)
+				&& (!entry->srvid || entry->srvid == from_er->srvid)
+				&& (!entry->chid || entry->chid == from_er->chid)
+				&& (!entry->pid || entry->pid == from_er->pid)
+				&& (!entry->ecmlen || entry->ecmlen == from_er->l))
+			ok++;
+
+		if (to_er
+				&& (!entry->to_caid || entry->to_caid == to_er->caid)
+				&& (!entry->to_provid || entry->to_provid == to_er->prid)
+				&& (!entry->to_srvid || entry->to_srvid == to_er->srvid)
+				&& (!entry->to_chid || entry->to_chid == to_er->chid)
+				&& (!entry->to_pid || entry->to_pid == to_er->pid)
+				&& (!entry->to_ecmlen || entry->to_ecmlen == to_er->l))
+			ok++;
+
+		if (ok == v_ok) {
+			if (!from_er || !to_er || from_er->srvid == to_er->srvid)
+				return entry;
+		}
+		entry = entry->next;
+	}
+	return NULL;
+}
+
+//Format:
+//caid:prov:srvid:pid:chid:ecmlen=caid:prov:srvid:pid:chid:ecmlen[,validfrom,validto]
+//validfrom: default=-2000
+//validto: default=4000
+//valid time if found in cache
+static struct s_cacheex_matcher *cacheex_matcher_read_int() {
+	FILE *fp;
+	char token[1024];
+	char type;
+	int32_t i, ret, count=0;
+	struct s_cacheex_matcher *new_cacheex_matcher = NULL, *entry, *last=NULL;
+	uint32_t line = 0;
+
+	const char *cs_cacheex_matcher="oscam.cacheex";
+
+	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_cacheex_matcher);
+	fp=fopen(token, "r");
+
+	if (!fp) {
+		cs_log("can't open cacheex-matcher file %s", token);
+		return NULL;
+	}
+
+	while (fgets(token, sizeof(token), fp)) {
+		line++;
+		if (strlen(token) <= 1) continue;
+		if (token[0]=='#' || token[0]=='/') continue;
+		if (strlen(token)>100) continue;
+
+		for (i=0;i<(int)strlen(token);i++) {
+			if ((token[i]==':' || token[i]==' ') && token[i+1]==':') {
+				memmove(token+i+2, token+i+1, strlen(token)-i+1);
+				token[i+1]='0';
+			}
+			if (token[i]=='#' || token[i]=='/') {
+				token[i]='\0';
+				break;
+			}
+		}
+
+		type = 'm';
+		uint32_t caid=0, provid=0, srvid=0, pid=0, chid=0, ecmlen=0;
+		uint32_t to_caid=0, to_provid=0, to_srvid=0, to_pid=0, to_chid=0, to_ecmlen=0;
+		int32_t valid_from=-2000, valid_to=4000;
+
+		ret = sscanf(token, "%c:%4x:%6x:%4x:%4x:%4x:%4X=%4x:%6x:%4x:%4x:%4x:%4X,%d,%d",
+				&type,
+				&caid, &provid, &srvid, &pid, &chid, &ecmlen,
+				&to_caid, &to_provid, &to_srvid, &to_pid, &to_chid, &to_ecmlen,
+				&valid_from, &valid_to);
+
+		type = tolower(type);
+
+		if (ret<7 || type != 'm')
+			continue;
+
+		if(!cs_malloc(&entry,sizeof(struct s_cacheex_matcher), -1))
+			return new_cacheex_matcher;
+
+		count++;
+		entry->line=line;
+		entry->type=type;
+		entry->caid=caid;
+		entry->provid=provid;
+		entry->srvid=srvid;
+		entry->pid=pid;
+		entry->chid=chid;
+		entry->ecmlen=ecmlen;
+		entry->to_caid=to_caid;
+		entry->to_provid=to_provid;
+		entry->to_srvid=to_srvid;
+		entry->to_pid=to_pid;
+		entry->to_chid=to_chid;
+		entry->to_ecmlen=to_ecmlen;
+		entry->valid_from=valid_from;
+		entry->valid_to=valid_to;
+
+		cs_debug_mask(D_TRACE, "cacheex-matcher: %c: %04X:%06X:%04X:%04X:%04X:%02X = %04X:%06X:%04X:%04X:%04X:%02X valid %d/%d",
+				entry->type, entry->caid, entry->provid, entry->srvid, entry->pid, entry->chid, entry->ecmlen,
+				entry->to_caid, entry->to_provid, entry->to_srvid, entry->to_pid, entry->to_chid, entry->to_ecmlen,
+				entry->valid_from, entry->valid_to);
+
+		if (!new_cacheex_matcher) {
+			new_cacheex_matcher=entry;
+			last = new_cacheex_matcher;
+		} else {
+			last->next = entry;
+			last = entry;
+		}
+	}
+
+	cs_log("%d entries read from %s", count, cs_cacheex_matcher);
+
+	fclose(fp);
+
+	return new_cacheex_matcher;
+}
+
+void cacheex_matcher_read() {
+
+	struct s_cacheex_matcher *entry, *old_list = cfg.cacheex_matcher;
+
+	old_list = cfg.cacheex_matcher;
+	cfg.cacheex_matcher = cacheex_matcher_read_int();
+
+	while (old_list) {
+		entry = old_list->next;
+		free(old_list);
+		old_list = entry;
+	}
+}
+#endif
