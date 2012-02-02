@@ -3390,7 +3390,8 @@ static void check_status(struct s_client *cl) {
 			//check for card inserted or card removed on pysical reader
 			if (!rdr || !rdr->enable)
 				break;
-			add_job(cl, ACTION_READER_CHECK_HEALTH, NULL, 0);
+			reader_checkhealth(rdr);
+//			add_job(cl, ACTION_READER_CHECK_HEALTH, NULL, 0);
 			break;
 #endif
 		case 'p':
@@ -4307,9 +4308,9 @@ int32_t main (int32_t argc, char *argv[])
 #ifdef WITH_CARDREADER 
 	cardreader_mouse,
 	cardreader_smargo,
-#endif
 #ifdef WITH_STAPI
 	cardreader_stapi,
+#endif
 #endif
 	0
   };
