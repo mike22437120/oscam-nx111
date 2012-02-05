@@ -34,8 +34,8 @@
 
 #define QUITERROR 1
 
-#define MIN_RATING -25
-#define MAX_RATING 25
+#define MIN_RATING -50
+#define MAX_RATING 50
 
 #define HOP_RATING 5
 

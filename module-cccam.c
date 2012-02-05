@@ -1091,6 +1091,10 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 				xcard = ncard; //remember card (D+ / 1810 fix) if request has no provider, but card has
 
 			rating = ncard->rating - ncard->hop * HOP_RATING;
+			if (rating < MIN_RATING)
+				rating = MIN_RATING;
+			else if (rating > MAX_RATING)
+				rating = MAX_RATING;
 
 			if (!ll_count(ncard->providers)) { //card has no providers:
 				if (rating > best_rating) {
