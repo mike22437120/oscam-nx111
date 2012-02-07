@@ -13,3 +13,4 @@ Distribution/oscam-*
 
 # build directories
 /build*/
+*.tmp

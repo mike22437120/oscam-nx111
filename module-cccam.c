@@ -1086,15 +1086,13 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 			struct cc_srvid *blocked_sid = is_sid_blocked(ncard, &cur_srvid);
 			if (blocked_sid && (!chk_only || blocked_sid->ecmlen == 0))
 				continue;
-			
+
 			if (!(rdr->cc_want_emu) && (ncard->caid>>8==0x18) && (!xcard || ncard->hop < xcard->hop))
 				xcard = ncard; //remember card (D+ / 1810 fix) if request has no provider, but card has
 
 			rating = ncard->rating - ncard->hop * HOP_RATING;
 			if (rating < MIN_RATING)
 				rating = MIN_RATING;
-			else if (rating > MAX_RATING)
-				rating = MAX_RATING;
 
 			if (!ll_count(ncard->providers)) { //card has no providers:
 				if (rating > best_rating) {
@@ -1987,18 +1985,18 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 		data = cc->receive_buffer;
 
 		if (l == 0x48) { //72 bytes: normal server data
-			//cs_writelock(&cc->cards_busy);
-			//cc_free_cardlist(cc->cards, FALSE);
+			cs_writelock(&cc->cards_busy);
+			cc_free_cardlist(cc->cards, FALSE);
 			free_extended_ecm_idx(cc); 
 			cc->last_emm_card = NULL;
-			//cc->num_hop1 = 0;
-			//cc->num_hop2 = 0;
-			//cc->num_hopx = 0;
-			//cc->num_reshare0 = 0;
-			//cc->num_reshare1 = 0;
-			//cc->num_reshare2 = 0;
-			//cc->num_resharex = 0;
-            //cs_writeunlock(&cc->cards_busy);
+			cc->num_hop1 = 0;
+			cc->num_hop2 = 0;
+			cc->num_hopx = 0;
+			cc->num_reshare0 = 0;
+			cc->num_reshare1 = 0;
+			cc->num_reshare2 = 0;
+			cc->num_resharex = 0;
+            cs_writeunlock(&cc->cards_busy);
                 			
 			memcpy(cc->peer_node_id, data, 8);
 			memcpy(cc->peer_version, data + 8, 8);
@@ -3183,7 +3181,7 @@ int32_t cc_cli_connect(struct s_client *cl) {
 		cc->extended_ecm_idx = ll_create("extended_ecm_idx");
 	} else {
 		cc_init_locks(cc);
-		//cc_free_cardlist(cc->cards, FALSE);
+		cc_free_cardlist(cc->cards, FALSE);
 		free_extended_ecm_idx(cc);
 	}
 	if (!cc->prefix)

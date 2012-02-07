@@ -1502,6 +1502,11 @@ void chk_t_dvbapi(char *token, char *value)
 		dvbapi_chk_caidtab(value, 'd');
 		return;
 	}
+	
+	if (!strcmp(token, "reopenonzap")) {
+		cfg.dvbapi_reopenonzap = strToIntVal(value, 0);
+		return;
+	}
 
 	if (token[0] != '#')
 		fprintf(stderr, "Warning: keyword '%s' in dvbapi section not recognized\n",token);
@@ -2529,6 +2534,8 @@ int32_t write_config()
 			fprintf_conf(f, "request_mode", "%d\n", cfg.dvbapi_requestmode);
 		if(cfg.dvbapi_ecm_infomode)
 			fprintf_conf(f, "ecm_infomode", "%d\n", cfg.dvbapi_ecm_infomode);
+		if(cfg.dvbapi_reopenonzap != 0 || cfg.http_full_cfg)
+			fprintf_conf(f, "reopenonzap", "%d\n", cfg.dvbapi_reopenonzap);
 
 		fputc((int)'\n', f);
 	}

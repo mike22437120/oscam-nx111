@@ -1548,6 +1548,7 @@ struct s_config
 	int32_t		dvbapi_ecm_infomode;//ecm.info  format:0 oscam 1 cccam 2 
 	SIDTABBITS	dvbapi_sidtabok;					// positiv services
 	SIDTABBITS	dvbapi_sidtabno;					// negative services
+	int8_t dvbapi_reopenonzap;
 #endif
 
 #ifdef CS_ANTICASC
