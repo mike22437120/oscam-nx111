@@ -3,15 +3,23 @@
 plat=mipsel
 plat_dir=build_mipsel
 
-rm -f oscam oscam-nx111  oscam-$plat-svn*.tar.gz oscam-$plat-svn*.ipk
-export OLDPATH=$PATH
-if ! echo $PATH | grep mipsel-unknown-linux-gnu >/dev/null; then 
-	export PATH=../../toolchains/mipsel-unknown-linux-gnu/bin:$PATH     # 指定编译源码时要用的mipsel环境下的GCC和C++编译器路径
+if [ `dirname $0` != "." ]; then 
+	echo "Must run it in current dir!" 
+	exit -1
 fi
+
+rm -f oscam oscam-nx111  oscam-$plat-svn*.tar.gz oscam-$plat-svn*.ipk
+
+TOOLCHAIN_ROOT=`pwd`/../../toolchains
+
 make clean
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-mips-tuxbox.cmake ..    #用cmake命令对源码进行交叉编译
+PATH=../../toolchains/mipsel-unknown-linux-gnu/bin:$PATH \
+
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-mips-tuxbox.cmake \
+      -DLIBUSBDIR=$TOOLCHAIN_ROOT/mipsel-unknown-linux-gnu/mipsel-unknown-linux-gnu/sys-root/usr \
+      -DLIBRTDIR=$TOOLCHAIN_ROOT/mipsel-unknown-linux-gnu/mipsel-unknown-linux-gnu/sys-root/usr \
+      .. 
 make
-export PATH=$OLDPATH
 cp oscam oscam-release
 
 [ -d image/usr/bin ] || mkdir -p image/usr/bin
@@ -29,5 +37,5 @@ sed -i "s/Version:.*/Version: ${csver}-svn${svnver}/" DEBIAN/control
 tar czf ../oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz usr etc var
 cd ../ 
 dpkg -b image oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.ipk
-rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/usr/bin/oscam
+rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/usr/bin/oscam utils
 cd $curdir

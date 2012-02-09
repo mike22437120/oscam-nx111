@@ -2,15 +2,23 @@
 
 plat=powerpc
 plat_dir=build_powerpc
-rm -f oscam oscam-nx111  oscam-$plat-svn*.tar.gz oscam-$plat-svn*.ipk
-export OLDPATH=$PATH
-if ! echo $PATH | grep powerpc-tuxbox-linux-gnu >/dev/null; then 
-	export PATH=../../toolchains/powerpc-tuxbox-linux-gnu/bin:$OLDPATH     # 指定编译源码时要用的PowerPC环境下的GCC和C++编译器路径
+
+if [ `dirname $0` != "." ]; then 
+	echo "Must run it in current dir!" 
+	exit -1
 fi
+
+TOOLCHAIN_ROOT=`pwd`/../../toolchains
+
+rm -f oscam oscam-nx111  oscam-$plat-svn*.tar.gz oscam-$plat-svn*.ipk
+
 make clean
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-powerpc-tuxbox.cmake ..    #用cmake命令对源码进行交叉编译
+PATH=../../toolchains/powerpc-tuxbox-linux-gnu/bin:$PATH \
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-powerpc-tuxbox.cmake \
+      -DLIBUSBDIR=$TOOLCHAIN_ROOT/powerpc-tuxbox-linux-gnu/powerpc-tuxbox-linux-gnu \
+      -DLIBRTDIR=$TOOLCHAIN_ROOT/powerpc-tuxbox-linux-gnu/powerpc-tuxbox-linux-gnu \
+      ..    
 make
-export PATH=$OLDPATH
 
 [ -d image/var/bin ] || mkdir -p image/var/bin
 cp oscam image/var/bin/
@@ -26,5 +34,5 @@ sed -i "s/Version:.*/Version: ${csver}-svn${svnver}/" DEBIAN/control
 tar czf ../oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz var
 cd ../ 
 dpkg -b image oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.ipk
-rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/var/bin/oscam
+rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/var/bin/oscam utils
 cd $curdir

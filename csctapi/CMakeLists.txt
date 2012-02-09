@@ -11,7 +11,7 @@ endif (HAVE_PTHREAD)
 
 if (NOT OSCamOperatingSystem MATCHES "Mac OS X")
    if (LIBRTDIR)
-        check_include_file ("${LIBRTDIR}/include/time.h" HAVE_LIBRT_STATIC)
+        check_include_file ("${LIBRTDIR}/include/sys/time.h" HAVE_LIBRT_STATIC)
         if (HAVE_LIBRT_STATIC)
             if (EXISTS ${LIBRTDIR}/lib/librt.a)
 		message(STATUS "  static librt found : ${LIBRT_STATIC_LIBRARIES} (needed by libusb).")

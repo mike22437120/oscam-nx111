@@ -3,20 +3,25 @@
 plat=i686-pc-cygwin
 plat_dir=build_cygwin
 
-rm -rf oscam  CMake* *.a Makefile cscrypt csctapi algo a.exe CopyOfCMakeCache.txt oscam-${plat}-*.tar.gz *.cmake
-export OLDPATH=$PATH
-if ! echo $PATH | grep  i686-pc-cygwin >/dev/null; then 
-	export PATH=../../toolchains/i686-pc-cygwin/bin:$PATH     # 指定编译源码时要用的环境下的GCC和C++编译器路径
+if [ `dirname $0` != "." ]; then 
+	echo "Must run it in current dir!" 
+	exit -1
 fi
+TOOLCHAIN_ROOT=`pwd`/../../toolchains
+
+rm -rf oscam  CMake* *.a Makefile cscrypt csctapi algo a.exe CopyOfCMakeCache.txt oscam-${plat}-*.tar.gz *.cmake
 make clean
 export CMAKE_LEGACY_CYGWIN_WIN32=0
 sed  "s:.*(CMAKE_RC_COMPILER.*::g" ../toolchains/toolchain-i386-cygwin.cmake > toolchain-i386-cygwin.cmake
-windres=`which i686-pc-cygwin-windres`
+PATH=../../toolchains/i686-pc-cygwin/bin:$PATH windres=`which i686-pc-cygwin-windres`
 echo "SET (CMAKE_RC_COMPILER `pwd`/$windres)" >>toolchain-i386-cygwin.cmake
-cmake -DCMAKE_TOOLCHAIN_FILE=toolchain-i386-cygwin.cmake  ..    #用cmake命令对源码进行交叉编译
+PATH=../../toolchains/i686-pc-cygwin/bin:$PATH \
+cmake -DCMAKE_TOOLCHAIN_FILE=toolchain-i386-cygwin.cmake \
+      -DLIBUSBDIR=$TOOLCHAIN_ROOT/i686-pc-cygwin/i686-pc-cygwin \
+      -DLIBRTDIR=$TOOLCHAIN_ROOT/i686-pc-cygwin/i686-pc-cygwin \
+      ..
 make
 export CMAKE_LEGACY_CYGWIN_WIN32=
-export PATH=$OLDPATH
 cp oscam.exe image/oscam.exe
 
 curdir=`pwd`
@@ -29,4 +34,4 @@ cd  ${svnroot}/${plat_dir}/image
 tar czf ${curdir}/oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz cygwin1.dll oscam.exe oscam.conf oscam.server.default
 cd $curdir
 
-rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo a.exe
+rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo a.exe utils

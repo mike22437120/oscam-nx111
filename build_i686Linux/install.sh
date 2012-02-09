@@ -1,10 +1,16 @@
 #!/bin/sh
 plat=i686-pc-linux
 plat_dir=build_i686Linux
+if [ `dirname $0` != "." ]; then 
+	echo "Must run it in current dir!" 
+	exit -1
+fi
+
 rm -f oscam oscam-$plat-svn*.tar.gz oscam-$plat-svn*.deb
 
+TOOLCHAIN_ROOT=`pwd`/../../toolchains
 make clean
-cmake  -DCS_CONFDIR=/var/etc ..    #用cmake命令对源码进行交叉编译
+cmake  -DCS_CONFDIR=/var/etc -DLIBUSBDIR=$TOOLCHAIN_ROOT/i686-pc-linux ..   
 make
 
 [ -d image/usr/bin ] || mkdir -p image/usr/bin
