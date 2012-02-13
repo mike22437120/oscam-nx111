@@ -277,6 +277,7 @@ elseif (HAVE_PTHREAD)
 endif (HAVE_PTHREAD)
 
 if  (${CS_OSTYPE} MATCHES "powerpc-tuxbox")
+elseif (${CS_OSTYPE} MATCHES "i686-pc-linux")
 else (${CS_OSTYPE} MATCHES "powerpc-tuxbox")
 check_include_file ("openssl/aes.h" HAVE_LIBCRYPTO)
 endif  (${CS_OSTYPE} MATCHES "powerpc-tuxbox")
