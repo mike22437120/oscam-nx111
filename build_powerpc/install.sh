@@ -8,12 +8,12 @@ if [ `dirname $0` != "." ]; then
 	exit -1
 fi
 
-TOOLCHAIN_ROOT=`pwd`/../../toolchains
+${TOOLCHAIN_ROOT:=`pwd`/../../toolchains}
 
 rm -f oscam oscam-nx111  oscam-$plat-svn*.tar.gz oscam-$plat-svn*.ipk
 
 make clean
-PATH=../../toolchains/powerpc-tuxbox-linux-gnu/bin:$PATH \
+PATH=$TOOLCHAIN_ROOT/powerpc-tuxbox-linux-gnu/bin:$PATH \
 cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-powerpc-tuxbox.cmake \
       -DLIBUSBDIR=$TOOLCHAIN_ROOT/powerpc-tuxbox-linux-gnu/powerpc-tuxbox-linux-gnu \
       -DLIBRTDIR=$TOOLCHAIN_ROOT/powerpc-tuxbox-linux-gnu/powerpc-tuxbox-linux-gnu \

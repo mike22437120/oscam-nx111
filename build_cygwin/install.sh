@@ -7,15 +7,16 @@ if [ `dirname $0` != "." ]; then
 	echo "Must run it in current dir!" 
 	exit -1
 fi
-TOOLCHAIN_ROOT=`pwd`/../../toolchains
+
+${TOOLCHAIN_ROOT:=`pwd`/../../toolchains}
 
 rm -rf oscam  CMake* *.a Makefile cscrypt csctapi algo a.exe CopyOfCMakeCache.txt oscam-${plat}-*.tar.gz *.cmake
 make clean
 export CMAKE_LEGACY_CYGWIN_WIN32=0
 sed  "s:.*(CMAKE_RC_COMPILER.*::g" ../toolchains/toolchain-i386-cygwin.cmake > toolchain-i386-cygwin.cmake
-PATH=../../toolchains/i686-pc-cygwin/bin:$PATH windres=`which i686-pc-cygwin-windres`
-echo "SET (CMAKE_RC_COMPILER `pwd`/$windres)" >>toolchain-i386-cygwin.cmake
-PATH=../../toolchains/i686-pc-cygwin/bin:$PATH \
+PATH=$TOOLCHAIN_ROOT/i686-pc-cygwin/bin:$PATH windres=`which i686-pc-cygwin-windres`
+echo "SET (CMAKE_RC_COMPILER $windres)" >>toolchain-i386-cygwin.cmake
+PATH=$TOOLCHAIN_ROOT/i686-pc-cygwin/bin:$PATH \
 cmake -DCMAKE_TOOLCHAIN_FILE=toolchain-i386-cygwin.cmake \
       -DLIBUSBDIR=$TOOLCHAIN_ROOT/i686-pc-cygwin/i686-pc-cygwin \
       -DLIBRTDIR=$TOOLCHAIN_ROOT/i686-pc-cygwin/i686-pc-cygwin \

@@ -1818,6 +1818,9 @@ int32_t init_config()
 		cfg.ctimeout = cfg.srtimeout + 100;
 		cs_log("WARNING: clienttimeout adjusted to %u ms (must be greater than serialreadertimeout (%u ms))", cfg.ctimeout, cfg.srtimeout);
 	}
+	if (cfg.max_cache_time < (cfg.ctimeout/1000+1))
+		cfg.max_cache_time = cfg.ctimeout/1000+2;
+
 #ifdef CS_ANTICASC
 	if( cfg.ac_denysamples+1 > cfg.ac_samples ) {
 		cfg.ac_denysamples = cfg.ac_samples - 1;
@@ -2857,8 +2860,6 @@ int32_t write_server()
 				fprintf(f, ",%d", rdr->r_port);
 			if ((rdr->l_port || cfg.http_full_cfg) && !isphysical && strncmp(ctyp, "cccam", 5))
 				fprintf(f, ",%d", rdr->l_port);
-			if ((rdr->slot || cfg.http_full_cfg) && !strncmp(ctyp, "sc8in1", 6))
-				fprintf(f, ":%d", rdr->slot);
 			fprintf(f, "\n");
 
 #ifdef LIBUSB
@@ -2911,6 +2912,9 @@ int32_t write_server()
 
 			if ((rdr->smargopatch || cfg.http_full_cfg) && isphysical)
 				fprintf_conf(f, "smargopatch", "%d\n", rdr->smargopatch);
+
+			if ((rdr->sc8in1_dtrrts_patch || cfg.http_full_cfg) && isphysical)
+				fprintf_conf(f, "sc8in1_dtrrts_patch", "%d\n", rdr->sc8in1_dtrrts_patch);
 
 			if ((rdr->show_cls != 10 || cfg.http_full_cfg) && isphysical)
 				fprintf_conf(f, "showcls", "%d\n", rdr->show_cls);
@@ -3666,6 +3670,7 @@ int32_t init_provid() {
 
 		if (!cs_malloc(&ptr, sizeof(struct s_provid), -1)) {
 			free(token);
+			fclose(fp);
 			return(1);
 		}
 		if (provid)
@@ -3745,6 +3750,7 @@ int32_t init_srvid()
 
 		if (!cs_malloc(&srvid, sizeof(struct s_srvid), -1)){
 			free(token);
+			fclose(fp);
 			return(1);
 		}
 
@@ -3899,6 +3905,7 @@ int32_t init_tierid()
 
 		if (!cs_malloc(&ptr,sizeof(struct s_tierid), -1)){
 			free(token);
+			fclose(fp);
 			return(1);
 		}
 		if (tierid)
@@ -4218,6 +4225,11 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 	//FIXME workaround for Smargo until native mode works
 	if (!strcmp(token, "smargopatch")) {
 		rdr->smargopatch  = strToIntVal(value, 0);
+		return;
+	}
+
+	if (!strcmp(token, "sc8in1_dtrrts_patch")) {
+		rdr->sc8in1_dtrrts_patch  = strToIntVal(value, 0);
 		return;
 	}
 
@@ -6285,8 +6297,10 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 				ecmlen = 0;
 				sscanf(p2, "%4x", &ecmlen);
 
-				if(!cs_malloc(&entry,sizeof(struct s_global_whitelist), -1))
+				if(!cs_malloc(&entry,sizeof(struct s_global_whitelist), -1)){
+					fclose(fp);
 					return new_whitelist;
+				}
 
 				count++;
 				entry->line=line;
@@ -6429,9 +6443,10 @@ static struct s_cacheex_matcher *cacheex_matcher_read_int() {
 		if (ret<7 || type != 'm')
 			continue;
 
-		if(!cs_malloc(&entry,sizeof(struct s_cacheex_matcher), -1))
+		if(!cs_malloc(&entry,sizeof(struct s_cacheex_matcher), -1)){
+			fclose(fp);
 			return new_cacheex_matcher;
-
+		}
 		count++;
 		entry->line=line;
 		entry->type=type;

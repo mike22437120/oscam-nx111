@@ -8,9 +8,21 @@ fi
 
 rm -f oscam oscam-$plat-svn*.tar.gz oscam-$plat-svn*.deb
 
-TOOLCHAIN_ROOT=`pwd`/../../toolchains
+${TOOLCHAIN_ROOT:=`pwd`/../../toolchains}
+
 make clean
-cmake  -DCS_CONFDIR=/var/etc -DLIBUSBDIR=$TOOLCHAIN_ROOT/i686-pc-linux ..   
+
+if [ -d $TOOLCHAIN_ROOT/i686-pc-linux-gnu/bin ]; then
+	PATH=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/bin:$PATH \
+	cmake	-DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-i686-pc-linux.cmake \
+		-DCS_CONFDIR=/var/etc \
+		-DLIBUSBDIR=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/i686-pc-linux-gnu/sysroot/usr \
+		-DLIBRTDIR=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/i686-pc-linux-gnu/sysroot/usr \
+		..   
+else
+	cmake	-DCS_CONFDIR=/var/etc ..
+fi
+
 make
 
 [ -d image/usr/bin ] || mkdir -p image/usr/bin
@@ -27,5 +39,5 @@ sed -i "s/Version:.*/Version: ${csver}-svn${svnver}/" DEBIAN/control
 tar czf ../oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz var usr
 cd ../ 
 dpkg -b image oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.deb
-rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/usr/bin/oscam
+rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/usr/bin/oscam utilus
 cd $curdir

@@ -1,15 +1,15 @@
 10
 
 dir
-6381
+6400
 http://streamboard.gmc.to/svn/oscam/trunk
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-02-12T20:47:54.866427Z
-6380
-corsair
+2012-02-15T21:00:18.642568Z
+6400
+oopepe
 has-props
 
 
@@ -35,8 +35,17 @@ has-props
 
 ((conflict datastruct-llist.c file update deleted edited (version http://streamboard.gmc.to/svn/oscam 4 3599 trunk/datastruct-llist.c file) (version http://streamboard.gmc.to/svn/oscam 4 3640 trunk/datastruct-llist.c none)))
 
-Distribution
-dir
+Maketype
+file
+
+
+
+
+
+68d0f7d3df2419d6c19ec516810959e6
+2011-12-23T01:09:58.448498Z
+6122
+corsair
 
 module-cccam.h
 file
@@ -72,22 +81,7 @@ corsair
 
 6070
 
-Maketype
-file
-
-
-
-
-
-68d0f7d3df2419d6c19ec516810959e6
-2011-12-23T01:09:58.448498Z
-6122
-corsair
-
-cmake
-dir
-
-openxcas
+Distribution
 dir
 
 module-camd35.c
@@ -96,10 +90,10 @@ file
 
 
 
-2012-02-13T13:33:13.364467Z
-9e4f5fc9bf913479f2e188665d91e860
-2012-02-12T20:47:54.866427Z
-6380
+2012-02-14T01:19:45.792669Z
+2cfab1f85d567207d1b590ead4fa142d
+2012-02-13T21:48:43.901933Z
+6382
 corsair
 
 
@@ -122,7 +116,13 @@ corsair
 
 
 
-20994
+21024
+
+openxcas
+dir
+
+cmake
+dir
 
 reader-viaccess.c
 file
@@ -334,10 +334,10 @@ file
 
 
 
-2012-02-09T03:44:43.696996Z
-ccbeef696cc81c2ad1c5325d77f6e745
-2012-02-08T18:47:04.668982Z
-6359
+2012-02-15T06:17:12.822291Z
+d3ea7d3947f6b87407b2320816f400f1
+2012-02-14T21:10:39.338162Z
+6391
 Admin
 
 
@@ -360,10 +360,7 @@ Admin
 
 
 
-14663
-
-toolchains
-dir
+14865
 
 module-gbox.c
 file
@@ -371,10 +368,10 @@ file
 
 
 
-2012-01-30T02:17:53.442337Z
-d8620fb9b4dec7ffff6d58922f73a88e
-2012-01-29T04:57:42.922307Z
-6309
+2012-02-15T06:17:12.822291Z
+2330bab9be89c216d1033630b6a9dcf6
+2012-02-14T19:23:23.690539Z
+6390
 Admin
 has-props
 
@@ -397,7 +394,10 @@ has-props
 
 
 
-30043
+30445
+
+toolchains
+dir
 
 reader-videoguard-common.h
 file
@@ -440,9 +440,9 @@ file
 
 
 
-980edce01672cd0d1738b66dd0089f43
-2012-02-08T18:47:04.668982Z
-6359
+3422b23b715e7d20f11b4de640b79725
+2012-02-14T19:23:23.690539Z
+6390
 Admin
 
 Makefile
@@ -475,10 +475,10 @@ file
 
 
 
-2012-02-02T14:10:14.326400Z
-f3d81a57e8b71da44b135e153a6301c0
-2012-01-31T23:08:22.529061Z
-6330
+2012-02-15T06:17:12.822291Z
+47f0b9457bd69aa1998a42eb68406c33
+2012-02-14T19:23:23.690539Z
+6390
 Admin
 
 
@@ -501,7 +501,7 @@ Admin
 
 
 
-35638
+36138
 
 oscam.c
 file
@@ -510,10 +510,10 @@ file
 
 
 
-63f3cc1858dbe32dd078f21f83997301
-2012-02-12T20:47:54.866427Z
-6380
-corsair
+55fb9aa84238ea2fa48394ffe74ab4a6
+2012-02-15T20:45:24.725653Z
+6399
+oopepe
 
 reader-tongfang.c
 file
@@ -556,10 +556,10 @@ file
 
 
 
-4d956e30bb7d7ae62c137aadbed075c4
-2012-02-10T10:08:45.465016Z
-6369
-corsair
+e6f6b16a58f47f2805f707df3199c03e
+2012-02-15T20:45:24.725653Z
+6399
+oopepe
 
 cscrypt
 dir
@@ -663,10 +663,10 @@ file
 
 
 
-548518f189b387aacb021cf0c4bfc782
-2011-12-07T12:27:23.691394Z
-6069
-corsair
+48fcd45ccb36818f177a47f114f63c37
+2012-02-15T20:45:24.725653Z
+6399
+oopepe
 
 module-radegast.c
 file
@@ -709,10 +709,10 @@ file
 
 
 
-3caa6c8594a33ce8766c836fc358e62a
-2012-02-10T11:42:42.992451Z
-6371
-lareq78
+a95cb114e923eb8e81f542a904f56c62
+2012-02-15T20:45:24.725653Z
+6399
+oopepe
 
 oscam-http.h
 file
@@ -721,10 +721,10 @@ file
 
 
 
-f866f9a0a064dfbcbefe6cc89bc0a1eb
-2012-02-10T10:08:45.465016Z
-6369
-corsair
+49bd325333b920b2f7f53ad7700daff7
+2012-02-15T20:45:24.725653Z
+6399
+oopepe
 
 reader-irdeto.c
 file
@@ -760,16 +760,16 @@ Admin
 
 31134
 
-reader-common.c
+oscam-garbage.c
 file
 
 
 
 
-2012-01-30T02:17:53.454337Z
-586f0380380888bd33321e8f89c1c6b9
-2012-01-29T04:57:42.922307Z
-6309
+2012-02-15T06:17:12.826291Z
+336c1b484ed96580c60f1119120bdf64
+2012-02-14T19:23:23.690539Z
+6390
 Admin
 
 
@@ -792,7 +792,7 @@ Admin
 
 
 
-11875
+3999
 
 reader-nagra.c
 file
@@ -828,17 +828,17 @@ Admin
 
 38248
 
-oscam-garbage.c
+reader-common.c
 file
 
 
 
 
-2012-01-29T04:10:24.528821Z
-6e58ed30d9a30e11d325de0c17370851
-2012-01-23T00:27:15.490685Z
-6280
-Admin
+2012-02-16T06:25:32.607153Z
+1b6ff4291802fa9bed60dbfc88e9894a
+2012-02-15T20:45:24.725653Z
+6399
+oopepe
 
 
 
@@ -860,7 +860,7 @@ Admin
 
 
 
-3830
+12338
 
 reader-videoguard12.c
 file
@@ -1181,28 +1181,16 @@ file
 lareq78
 has-props
 
-module-cccshare.c
-file
-
-
-
-
-
-1036efd544e7e8c486a16e1ea5ebd388
-2012-02-08T18:47:04.668982Z
-6359
-Admin
-
 module-stat.c
 file
 
 
 
 
-2012-02-13T13:33:13.368467Z
-d8574185c59105cfa12b179bbc52de2e
-2012-02-12T20:47:54.866427Z
-6380
+2012-02-14T01:19:45.792669Z
+f050748c934dfe1f1333d32dc355aeb7
+2012-02-13T23:07:06.674639Z
+6385
 corsair
 
 
@@ -1225,7 +1213,19 @@ corsair
 
 
 
-36627
+36718
+
+module-cccshare.c
+file
+
+
+
+
+
+75ff58ef75f1e5dbfab1255c9bc52a7b
+2012-02-14T19:23:23.690539Z
+6390
+Admin
 
 algo
 dir
@@ -1237,44 +1237,10 @@ file
 
 
 
-7b98a559ffa48cc02bf5770aeb8d4ec6
-2012-02-12T20:47:54.866427Z
-6380
-corsair
-
-module-cccshare.h
-file
-
-
-
-
-2012-01-31T13:49:34.604292Z
-2153212b1e0433ade8bc4a2b1d726540
-2012-01-30T08:22:08.552538Z
-6323
-corsair
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1307
+f23bb4d49c3ec359477f47850683702e
+2012-02-15T20:45:24.725653Z
+6399
+oopepe
 
 module-constcw.c
 file
@@ -1309,6 +1275,40 @@ Admin
 
 
 4265
+
+module-cccshare.h
+file
+
+
+
+
+2012-01-31T13:49:34.604292Z
+2153212b1e0433ade8bc4a2b1d726540
+2012-01-30T08:22:08.552538Z
+6323
+corsair
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1307
 
 oscam-chk.c
 file
@@ -1446,40 +1446,6 @@ Admin
 
 22026
 
-reader-seca.c
-file
-
-
-
-
-2012-01-30T02:17:53.462337Z
-cc8528d5b806257ed32ba09a3b917221
-2012-01-29T04:57:42.922307Z
-6309
-Admin
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-14415
-
 reader-videoguard2.c
 file
 
@@ -1513,6 +1479,40 @@ Admin
 
 
 27325
+
+reader-seca.c
+file
+
+
+
+
+2012-01-30T02:17:53.462337Z
+cc8528d5b806257ed32ba09a3b917221
+2012-01-29T04:57:42.922307Z
+6309
+Admin
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+14415
 
 README
 file
@@ -1597,10 +1597,10 @@ file
 
 
 
-2012-02-09T03:44:43.700996Z
-5ce39ec058fe2fadb6faf68777f41754
-2012-02-08T12:20:06.930852Z
-6357
+2012-02-15T06:17:12.826291Z
+fb83dc7ec517d11204b1db2fb61b14e2
+2012-02-14T09:11:06.776209Z
+6387
 corsair
 
 
@@ -1623,7 +1623,7 @@ corsair
 
 
 
-10137
+10189
 
 globals.h
 file
@@ -1632,10 +1632,10 @@ file
 
 
 
-832faf7664fc1d513aec50562f9be6a0
-2012-02-10T10:08:45.465016Z
-6369
-corsair
+d2abe94d348171b8b6412878e58a5e4b
+2012-02-15T20:45:24.725653Z
+6399
+oopepe
 
 module-cccam.c
 file
@@ -1644,10 +1644,10 @@ file
 
 
 
-c09620c7f3dc8e3c4faf9e44af87ba0b
-2012-02-12T20:47:54.866427Z
-6380
-corsair
+d18f3f60ffd9a52a1370f67ee8378dc8
+2012-02-15T21:00:18.642568Z
+6400
+oopepe
 has-props
 
 module-datastruct-llist.h
