@@ -8,7 +8,7 @@ fi
 
 rm -f oscam oscam-$plat-svn*.tar.gz oscam-$plat-svn*.deb
 
-${TOOLCHAIN_ROOT:=`pwd`/../../toolchains}
+${TOOLCHAIN_ROOT:=`pwd`/../../toolchains} 2>/dev/null
 
 make clean
 
@@ -18,6 +18,7 @@ if [ -d $TOOLCHAIN_ROOT/i686-pc-linux-gnu/bin ]; then
 		-DCS_CONFDIR=/var/etc \
 		-DLIBUSBDIR=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/i686-pc-linux-gnu/sysroot/usr \
 		-DLIBRTDIR=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/i686-pc-linux-gnu/sysroot/usr \
+		-DOPTIONAL_INCLUDE_DIR=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/i686-pc-linux-gnu/sysroot/usr/include \
 		..   
 else
 	cmake	-DCS_CONFDIR=/var/etc ..

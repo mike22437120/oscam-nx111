@@ -130,6 +130,7 @@ include_directories (
     ${CMAKE_CURRENT_SOURCE_DIR}/cygwin
     /usr/include/w32api
     ${OPTIONAL_INCLUDE_DIR}
+    ${OPTIONAL_INCLUDE_DIR}/w32api
     )
 else (OSCamOperatingSystem MATCHES "Windows/Cygwin")
 include_directories (
@@ -384,6 +385,9 @@ if( HAVE_LIBRT OR HAVE_LIBRT_STATIC)
 endif( HAVE_LIBRT OR HAVE_LIBRT_STATIC)
 
 check_include_file ("PCSC/wintypes.h" HAVE_PCSC)
+if ((NOT HAVE_PCSC) AND OPTIONAL_INCLUDE_DIR)
+	check_include_file("${OPTIONAL_INCLUDE_DIR}/PCSC/wintypes.h" HAVE_PCSC)
+endif((NOT HAVE_PCSC) AND OPTIONAL_INCLUDE_DIR)
 if (HAVE_PCSC)
 		if(OPTIONAL_INCLUDE_DIR AND EXISTS ${OPTIONAL_INCLUDE_DIR}/PCSC/wintypes.h)
 	    message(STATUS "  PCSC headers found (${OPTIONAL_INCLUDE_DIR}/PCSC). Adding PCSC support ")

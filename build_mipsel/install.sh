@@ -10,14 +10,15 @@ fi
 
 rm -f oscam oscam-nx111  oscam-$plat-svn*.tar.gz oscam-$plat-svn*.ipk
 
-${TOOLCHAIN_ROOT:=`pwd`/../../toolchains}
+${TOOLCHAIN_ROOT:=`pwd`/../../toolchains} 2>/dev/null
 
 make clean
 PATH=$TOOLCHAIN_ROOT/mipsel-unknown-linux-gnu/bin:$PATH \
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-mips-tuxbox.cmake \
-      -DLIBUSBDIR=$TOOLCHAIN_ROOT/mipsel-unknown-linux-gnu/mipsel-unknown-linux-gnu/sys-root/usr \
-      -DLIBRTDIR=$TOOLCHAIN_ROOT/mipsel-unknown-linux-gnu/mipsel-unknown-linux-gnu/sys-root/usr \
-      .. 
+cmake 	-DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-mips-tuxbox.cmake \
+      	-DLIBUSBDIR=$TOOLCHAIN_ROOT/mipsel-unknown-linux-gnu/mipsel-unknown-linux-gnu/sys-root/usr \
+      	-DLIBRTDIR=$TOOLCHAIN_ROOT/mipsel-unknown-linux-gnu/mipsel-unknown-linux-gnu/sys-root/usr \
+	-DOPTIONAL_INCLUDE_DIR=$TOOLCHAIN_ROOT/mipsel-unknown-linux-gnu/mipsel-unknown-linux-gnu/sys-root/usr/include \
+      	.. 
 make
 cp oscam oscam-release
 

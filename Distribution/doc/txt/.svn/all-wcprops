@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 51
-/svn/oscam/!svn/ver/6399/trunk/Distribution/doc/txt
+/svn/oscam/!svn/ver/6402/trunk/Distribution/doc/txt
 END
 oscam.cacheex.txt
 K 25
@@ -31,7 +31,7 @@ oscam.server.txt
 K 25
 svn:wc:ra_dav:version-url
 V 68
-/svn/oscam/!svn/ver/6399/trunk/Distribution/doc/txt/oscam.server.txt
+/svn/oscam/!svn/ver/6402/trunk/Distribution/doc/txt/oscam.server.txt
 END
 oscam.whitelist.txt
 K 25

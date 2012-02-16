@@ -1,14 +1,14 @@
 10
 
 dir
-6400
+6403
 http://streamboard.gmc.to/svn/oscam/trunk
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-02-15T21:00:18.642568Z
-6400
+2012-02-16T14:09:05.779902Z
+6403
 oopepe
 has-props
 
@@ -510,9 +510,9 @@ file
 
 
 
-55fb9aa84238ea2fa48394ffe74ab4a6
-2012-02-15T20:45:24.725653Z
-6399
+6d1eba8b86663bdd201c3d725d43040b
+2012-02-16T14:09:05.779902Z
+6403
 oopepe
 
 reader-tongfang.c
@@ -651,10 +651,10 @@ file
 
 
 
-8d6da583a5712acf85aa641331242a28
-2012-02-12T20:47:54.866427Z
-6380
-corsair
+9bcb902bfd45b41aec485c76655ba307
+2012-02-16T14:09:05.779902Z
+6403
+oopepe
 
 oscam-simples.c
 file
@@ -1632,9 +1632,9 @@ file
 
 
 
-d2abe94d348171b8b6412878e58a5e4b
-2012-02-15T20:45:24.725653Z
-6399
+db5d105d24d3b57100409c5c546d5494
+2012-02-16T14:09:05.779902Z
+6403
 oopepe
 
 module-cccam.c
