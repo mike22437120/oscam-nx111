@@ -463,7 +463,7 @@ static struct s_client * idx_from_ip(in_addr_t ip, in_port_t port)
 {
   struct s_client *cl;
   for (cl=first_client; cl ; cl=cl->next)
-    if ((cl->ip==ip) && (cl->port==port) && ((cl->typ=='c') || (cl->typ=='m')))
+    if (!cl->kill && (cl->ip==ip) && (cl->port==port) && ((cl->typ=='c') || (cl->typ=='m')))
       return cl;
   return NULL;
 }
@@ -596,7 +596,7 @@ static void cleanup_ecmtasks(struct s_client *cl)
 	}
 	
 	if (cl->cascadeusers) {
-		ll_clear_data(cl->cascadeusers);
+		ll_destroy_data(cl->cascadeusers);
 		cl->cascadeusers = NULL;
 	}
 	
@@ -668,7 +668,7 @@ void cleanup_thread(void *var)
 			ICC_Async_Close(rdr);
 #endif
 		if (cl->typ == 'p')
-			network_tcp_connection_close(rdr, "close");
+			network_tcp_connection_close(rdr, "cleanup");
 		cl->reader = NULL;
 	}
 
@@ -2178,6 +2178,9 @@ void send_reader_stat(struct s_reader *rdr, ECM_REQUEST *er, int32_t rc)
 	if (!rdr || rc>=E_99 || !rdr->client)
 		return;
 #endif
+	if (er->ecmcacheptr) //ignore cache answer
+		return;
+
 	struct timeb tpe;
 	cs_ftime(&tpe);
 	int32_t time = 1000*(tpe.time-er->tps.time)+tpe.millitm-er->tps.millitm;
@@ -2451,30 +2454,40 @@ static void request_cw(ECM_REQUEST *er)
 
 		for(ea = er->matching_rdr; ea; ea = ea->next) {
 
+			switch(er->stage) {
 #ifdef CS_CACHEEX
-			if (er->stage == 1) {
+			case 1:
 				// Cache-Echange
 				if ((ea->status & REQUEST_SENT) ||
 						(ea->status & (READER_CACHEEX|READER_ACTIVE)) != (READER_CACHEEX|READER_ACTIVE))
 					continue;
-			} else
+				break;
 #endif
-			if (er->stage == 2) {
+			case 2:
 				// only local reader
 				if ((ea->status & REQUEST_SENT) ||
 						(ea->status & (READER_ACTIVE|READER_FALLBACK|READER_LOCAL)) != (READER_ACTIVE|READER_LOCAL))
 					continue;
-			} else if (er->stage == 3) {
+				break;
+
+			case 3:
 				// any non fallback reader not asked yet
 				if ((ea->status & REQUEST_SENT) ||
 						(ea->status & (READER_ACTIVE|READER_FALLBACK)) != READER_ACTIVE)
 					continue;
-			} else {
+				break;
+
+			default:
 				// only fallbacks
-				// always send requests, regardless if asked
-				if ((ea->status & READER_ACTIVE) != READER_ACTIVE)
-					continue;
+				if ((ea->status & REQUEST_SENT) ||
+						(ea->status & READER_ACTIVE) != READER_ACTIVE)
+				{
+					if (er->reader_avail > 1) //do not resend to the same reader(s) if we have more than one reader
+						continue;
+				}
+				break;
 			}
+
 			struct s_reader *rdr = ea->reader;
 			cs_debug_mask(D_TRACE, "request_cw stage=%d to reader %s ecm=%04X", er->stage, rdr?rdr->label:"", htons(er->checksum));
 			write_ecm_request(ea->reader, er);
@@ -2588,31 +2601,33 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 			ert->rcEx=ea->rcEx;
 			cs_strncpy(ert->msglog, ea->msglog, sizeof(ert->msglog));
 			ert->selected_reader = eardr;
+			if (!ert->ecmcacheptr) {
 #ifdef CS_CACHEEX
-			uchar has_cacheex = 0;
+				uchar has_cacheex = 0;
 #endif
-			for(ea_list = ert->matching_rdr; ea_list; ea_list = ea_list->next) {
+				for(ea_list = ert->matching_rdr; ea_list; ea_list = ea_list->next) {
 #ifdef CS_CACHEEX
-				if (((ea_list->status & READER_CACHEEX)) == READER_CACHEEX)
-					has_cacheex = 1;
-				if (((ea_list->status & (REQUEST_SENT|REQUEST_ANSWERED|READER_CACHEEX|READER_ACTIVE)) == (REQUEST_SENT|READER_CACHEEX|READER_ACTIVE)))
-					cacheex_left++;
+					if (((ea_list->status & READER_CACHEEX)) == READER_CACHEEX)
+						has_cacheex = 1;
+					if (((ea_list->status & (REQUEST_SENT|REQUEST_ANSWERED|READER_CACHEEX|READER_ACTIVE)) == (REQUEST_SENT|READER_CACHEEX|READER_ACTIVE)))
+						cacheex_left++;
 #endif
-				if (((ea_list->status & (REQUEST_SENT|REQUEST_ANSWERED|READER_LOCAL|READER_ACTIVE)) == (REQUEST_SENT|READER_LOCAL|READER_ACTIVE)))
-					local_left++;
-				if (((ea_list->status & (REQUEST_ANSWERED|READER_ACTIVE)) == (READER_ACTIVE)))
-					reader_left++;
-			}
+					if (((ea_list->status & (REQUEST_SENT|REQUEST_ANSWERED|READER_LOCAL|READER_ACTIVE)) == (REQUEST_SENT|READER_LOCAL|READER_ACTIVE)))
+						local_left++;
+					if (((ea_list->status & (REQUEST_ANSWERED|READER_ACTIVE)) == (READER_ACTIVE)))
+						reader_left++;
+				}
 
 #ifdef CS_CACHEEX
-			if (has_cacheex && !cacheex_left && !ert->cacheex_done) {
-				ert->cacheex_done = 1;
-				request_cw(ert);
-			} else
+				if (has_cacheex && !cacheex_left && !ert->cacheex_done) {
+					ert->cacheex_done = 1;
+					request_cw(ert);
+				} else
 #endif
-			if (cfg.preferlocalcards && !local_left && !ert->locals_done) {
-				ert->locals_done = 1;
-				request_cw(ert);
+				if (cfg.preferlocalcards && !local_left && !ert->locals_done) {
+					ert->locals_done = 1;
+					request_cw(ert);
+				}
 			}
 
 			break;
@@ -2632,13 +2647,14 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 #endif
 
 #ifdef CS_CACHEEX
-	if (ea->rc < E_NOTFOUND)
+	if (ea->rc < E_NOTFOUND && !ert->ecmcacheptr)
 		cs_cache_push(ert);
 #endif
 
 	if (ert->rc < E_99) {
 		if (cl) send_dcw(cl, ert);
-		distribute_ecm(ert, (ert->rc == E_FOUND)?E_CACHE2:ert->rc);
+		if (!ert->ecmcacheptr)
+			distribute_ecm(ert, (ert->rc == E_FOUND)?E_CACHE2:ert->rc);
 	}
 
 	return;
@@ -2890,11 +2906,8 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 	else
 	{
 		if (prid && prid != er->prid) {
-			cs_debug_mask(D_TRACE, "wrong provider found: %04X:%06X to %04X:%06X",er->caid, er->prid, er->caid, prid);
-			//er->prid = prid;
-			er->rc = E_INVALID;
-			er->rcEx = E2_IDENT;
-			snprintf( er->msglog, MSGLOGSIZE, "Wrong provider found in ECM" );
+			cs_debug_mask(D_TRACE, "provider fixed: %04X:%06X to %04X:%06X",er->caid, er->prid, er->caid, prid);
+			er->prid = prid;
 		}
 	}
 
@@ -3560,15 +3573,18 @@ void * work_thread(void *ptr) {
 	uchar *mbuf = cs_malloc(&mbuf, bufsize, 0);
 	int32_t n=0, rc=0, i, idx, s;
 	uchar dcw[16];
+	time_t now;
+	int8_t restart_reader=0;
 
 	while (1) {
-		if (!cl || !is_valid_client(cl)) {
-			if (data && data!=&tmp_data)
-				free(data);
-			data = NULL;
-			free(mbuf);
-			return NULL;
-		}
+//		if (!cl || !is_valid_client(cl)) { // corsair: I think this is not necessary anymore and causes memleaks
+//			if (data && data!=&tmp_data)
+//				free(data);
+//			data = NULL;
+//			free(mbuf);
+//			pthread_exit(NULL);
+//			return NULL;
+//		}
 		
 		if (cl->kill && ll_count(cl->joblist) == 0) { //we need to process joblist to free data->ptr
 			cs_debug_mask(D_TRACE, "ending thread");
@@ -3577,6 +3593,8 @@ void * work_thread(void *ptr) {
 
 			data = NULL;
 			cleanup_thread(cl);
+			if (restart_reader)
+				restart_cardreader(reader, 0);
 			free(mbuf);
 			pthread_exit(NULL);
 			return NULL;
@@ -3621,8 +3639,11 @@ void * work_thread(void *ptr) {
 				if (reader)
 					data->action = ACTION_READER_REMOTE;
 				else {
-					if (cl->is_udp)
+					if (cl->is_udp) {
 						data->action = ACTION_CLIENT_UDP;
+						data->ptr = mbuf;
+						data->len = bufsize;
+					}
 					else
 						data->action = ACTION_CLIENT_TCP;
 					if (pfd[0].revents & (POLLHUP | POLLNVAL))
@@ -3644,6 +3665,14 @@ void * work_thread(void *ptr) {
 		if (!data->action)
 			break;
 	
+		now = time(NULL);
+		if (data != &tmp_data && data->time < now-(time_t)(cfg.ctimeout/1000)) {
+			cs_log("dropping client data for %s time %ds", username(cl), (int32_t)(now-data->time));
+			free(data);
+			data = NULL;
+			continue;
+		}
+
 		switch(data->action) {
 			case ACTION_READER_IDLE:
 				reader_do_idle(reader);
@@ -3667,13 +3696,13 @@ void * work_thread(void *ptr) {
 					break;
 				}
 
-				cl->last=time((time_t*)0);
+				cl->last=now;
 				idx=reader->ph.c_recv_chk(cl, dcw, &rc, mbuf, rc);
 
 				if (idx<0) break;  // no dcw received
 				if (!idx) idx=cl->last_idx;
 
-				reader->last_g=time((time_t*)0); // for reconnect timeout
+				reader->last_g=now; // for reconnect timeout
 
 				for (i=0, n=0; i<CS_MAXPENDING && n == 0; i++) {
 					if (cl->ecmtask[i].idx==idx) {
@@ -3706,17 +3735,8 @@ void * work_thread(void *ptr) {
 					reader_init(reader);
 				break;
 			case ACTION_READER_RESTART:
-				cleanup_thread(cl); //should close connections
-				restart_cardreader(reader, 0);
-				//original cl struct was destroyed by restart reader, so we exit here
-				//init is done by a new thread
-
-				if (data!=&tmp_data)
-					free(data);
-				data = NULL;
-				free(mbuf);
-				pthread_exit(NULL);
-				return NULL;
+				cl->kill = 1;
+				restart_reader = 1;
 				break;
 #ifdef WITH_CARDREADER
 			case ACTION_READER_RESET_FAST:
@@ -3732,11 +3752,13 @@ void * work_thread(void *ptr) {
 			case ACTION_CLIENT_UDP:
 				n = ph[cl->ctyp].recv(cl, data->ptr, data->len);
 				if (n<0) {
-					free(data->ptr);
+					if (data->ptr != mbuf)
+						free(data->ptr);
 					break;
 				}
 				ph[cl->ctyp].s_handler(cl, data->ptr, n);
-				free(data->ptr); // allocated in accept_connection()
+				if (data->ptr != mbuf)
+					free(data->ptr); // allocated in accept_connection()
 				break;
 			case ACTION_CLIENT_TCP:
 				s = check_fd_for_data(cl->pfd);
@@ -3835,6 +3857,7 @@ void add_job(struct s_client *cl, int8_t action, void *ptr, int32_t len) {
 	data->ptr = ptr;
 	data->cl = cl;
 	data->len = len;
+	data->time = time(NULL);
 
 	pthread_mutex_lock(&cl->thread_lock);
 	if (cl->thread_active) {
@@ -3864,6 +3887,9 @@ void add_job(struct s_client *cl, int8_t action, void *ptr, int32_t len) {
 	int32_t ret = pthread_create(&cl->thread, &attr, work_thread, (void *)data);
 	if (ret) {
 		cs_log("ERROR: can't create thread for %s (errno=%d %s)", action > ACTION_CLIENT_FIRST ? "client" : "reader", ret, strerror(ret));
+		if (data->ptr && len>0)
+			free(data->ptr);
+		free(data);
 	} else
 		pthread_detach(cl->thread);
 
@@ -3947,13 +3973,14 @@ static void * check_thread(void) {
 						write_ecm_answer(NULL, er, E_TIMEOUT, 0, NULL, NULL);
 					}
 #ifdef WITH_LB		
-						
-					//because of lb, send E_TIMEOUT for all readers:
-					struct s_ecm_answer *ea_list;
+					if (!er->ecmcacheptr) { //do not add stat for cache entries:
+						//because of lb, send E_TIMEOUT for all readers:
+						struct s_ecm_answer *ea_list;
 
-					for(ea_list = er->matching_rdr; ea_list; ea_list = ea_list->next) {
-						if ((ea_list->status & (REQUEST_SENT|REQUEST_ANSWERED)) == REQUEST_SENT) //Request send, but no answer!
-							send_reader_stat(ea_list->reader, er, E_TIMEOUT);
+						for(ea_list = er->matching_rdr; ea_list; ea_list = ea_list->next) {
+							if ((ea_list->status & (REQUEST_SENT|REQUEST_ANSWERED)) == REQUEST_SENT) //Request send, but no answer!
+								send_reader_stat(ea_list->reader, er, E_TIMEOUT);
+						}
 					}
 #endif
 
@@ -4248,8 +4275,10 @@ int32_t accept_connection(int32_t i, int32_t j) {
 			buf[0]='U';
 			memcpy(buf+1, &rl, 2);
 
-			if (cs_check_violation((uint32_t)cad.sin_addr.s_addr, ph[i].ptab->ports[j].s_port))
+			if (cs_check_violation((uint32_t)cad.sin_addr.s_addr, ph[i].ptab->ports[j].s_port)) {
+				free(buf);
 				return 0;
+			}
 
 			cs_debug_mask(D_TRACE, "got %d bytes from ip %s:%d", n, cs_inet_ntoa(cad.sin_addr.s_addr), cad.sin_port);
 
@@ -4468,11 +4497,12 @@ int32_t main (int32_t argc, char *argv[])
 		  case 'd':
 			  cs_dblevel=atoi(optarg);
 			  break;
-#ifdef WEBIF
 		  case 'r':
+		  
+#ifdef WEBIF		  
 			  cs_restart_mode=atoi(optarg);
-			  break;
-#endif
+#endif			
+			break;
 		  case 't':
 			  mkdir(optarg, S_IRWXU);
 			  j = open(optarg, O_RDONLY);

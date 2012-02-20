@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 38
-/svn/oscam/!svn/ver/6399/trunk/csctapi
+/svn/oscam/!svn/ver/6427/trunk/csctapi
 END
 ifd_smartreader.h
 K 25
@@ -49,7 +49,7 @@ ifd_pcsc.c
 K 25
 svn:wc:ra_dav:version-url
 V 49
-/svn/oscam/!svn/ver/6313/trunk/csctapi/ifd_pcsc.c
+/svn/oscam/!svn/ver/6427/trunk/csctapi/ifd_pcsc.c
 END
 ifd_mp35.h
 K 25
@@ -91,7 +91,7 @@ icc_async.c
 K 25
 svn:wc:ra_dav:version-url
 V 50
-/svn/oscam/!svn/ver/6399/trunk/csctapi/icc_async.c
+/svn/oscam/!svn/ver/6427/trunk/csctapi/icc_async.c
 END
 CMakeLists.txt
 K 25
@@ -151,7 +151,7 @@ io_serial.c
 K 25
 svn:wc:ra_dav:version-url
 V 50
-/svn/oscam/!svn/ver/6399/trunk/csctapi/io_serial.c
+/svn/oscam/!svn/ver/6426/trunk/csctapi/io_serial.c
 END
 protocol_t0.h
 K 25

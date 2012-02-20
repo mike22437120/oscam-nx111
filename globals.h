@@ -1667,6 +1667,7 @@ struct s_data {
 	struct s_reader *rdr;
 	struct s_client *cl;
 	void *ptr;
+	time_t time;
 	uint16_t len;
 };
 

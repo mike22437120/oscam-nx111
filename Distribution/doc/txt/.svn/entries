@@ -1,15 +1,15 @@
 10
 
 dir
-6403
+6428
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-02-16T08:38:48.792977Z
-6402
-docman
+2012-02-18T09:16:33.600189Z
+6418
+marley
 
 
 
@@ -66,10 +66,10 @@ file
 
 
 
-2012-02-15T06:17:12.174287Z
-cdbeeb82c641dafd1a06ecc7b64b096d
-2012-02-15T04:32:52.234787Z
-6393
+2012-02-19T04:12:12.366871Z
+6c37807c13ae68f8d8341f6004b53406
+2012-02-17T19:54:18.667413Z
+6412
 docman
 
 
@@ -169,10 +169,10 @@ file
 
 
 
-4d09993f75d5f1ac857337809d2843e0
-2012-02-16T08:38:48.792977Z
-6402
-docman
+9a17e051d2b2abff3c9193fc09c0d460
+2012-02-18T09:16:33.600189Z
+6418
+marley
 
 oscam.whitelist.txt
 file
@@ -208,6 +208,40 @@ docman
 
 1331
 
+oscam.user.txt
+file
+
+
+
+
+2012-02-19T04:12:12.366871Z
+02db53b30b98314763dbba0cf81af1ad
+2012-02-18T09:16:33.600189Z
+6418
+marley
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6138
+
 oscam.ird.txt
 file
 
@@ -241,40 +275,6 @@ docman
 
 
 574
-
-oscam.user.txt
-file
-
-
-
-
-2012-02-15T06:17:12.174287Z
-755c81898ee319fcb547dace0a5dd0a8
-2012-02-15T04:32:52.234787Z
-6393
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-6134
 
 list_smargo.txt
 file
@@ -310,40 +310,6 @@ docman
 
 646
 
-oscam.ac.txt
-file
-
-
-
-
-2012-01-29T04:06:30.939663Z
-5bea6e7e9c62fe00956f9cc2ca389de0
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-678
-
 oscam.services.txt
 file
 
@@ -378,26 +344,14 @@ docman
 
 919
 
-oscam.conf.txt
+oscam.ac.txt
 file
 
 
 
 
-
-9c5e52dc33c33890dfd631a0fc1eb825
-2012-02-05T21:26:55.980204Z
-6348
-docman
-
-oscam.guess.txt
-file
-
-
-
-
-2012-01-29T04:06:30.943663Z
-7da33fae382850e5e7e0268484bee763
+2012-01-29T04:06:30.939663Z
+5bea6e7e9c62fe00956f9cc2ca389de0
 2012-01-17T09:10:43.842642Z
 6252
 docman
@@ -422,7 +376,19 @@ docman
 
 
 
-671
+678
+
+oscam.conf.txt
+file
+
+
+
+
+
+5bcf229c81be6a932a724c0212389003
+2012-02-18T09:16:33.600189Z
+6418
+marley
 
 oscam.tiers.txt
 file
@@ -457,6 +423,40 @@ docman
 
 
 702
+
+oscam.guess.txt
+file
+
+
+
+
+2012-01-29T04:06:30.943663Z
+7da33fae382850e5e7e0268484bee763
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+671
 
 oscam.srvid.txt
 file

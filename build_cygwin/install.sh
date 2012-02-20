@@ -36,4 +36,4 @@ cd  ${svnroot}/${plat_dir}/image
 tar czf ${curdir}/oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz cygwin1.dll oscam.exe oscam.conf oscam.server.default
 cd $curdir
 
-#rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo a.exe utils
+rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo a.exe utils
