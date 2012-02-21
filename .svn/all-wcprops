@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 30
-/svn/oscam/!svn/ver/6427/trunk
+/svn/oscam/!svn/ver/6434/trunk
 END
 module-cccam.h
 K 25
@@ -151,7 +151,7 @@ module-cccshare.c
 K 25
 svn:wc:ra_dav:version-url
 V 48
-/svn/oscam/!svn/ver/6390/trunk/module-cccshare.c
+/svn/oscam/!svn/ver/6429/trunk/module-cccshare.c
 END
 module-stat.c
 K 25
@@ -175,7 +175,7 @@ oscam.c
 K 25
 svn:wc:ra_dav:version-url
 V 38
-/svn/oscam/!svn/ver/6423/trunk/oscam.c
+/svn/oscam/!svn/ver/6431/trunk/oscam.c
 END
 datastruct-llist.c
 K 25
@@ -259,7 +259,7 @@ reader-videoguard2.c
 K 25
 svn:wc:ra_dav:version-url
 V 51
-/svn/oscam/!svn/ver/6425/trunk/reader-videoguard2.c
+/svn/oscam/!svn/ver/6431/trunk/reader-videoguard2.c
 END
 global-functions.h
 K 25
@@ -337,19 +337,19 @@ oscam-garbage.c
 K 25
 svn:wc:ra_dav:version-url
 V 46
-/svn/oscam/!svn/ver/6390/trunk/oscam-garbage.c
+/svn/oscam/!svn/ver/6429/trunk/oscam-garbage.c
 END
 module-cccam.c
 K 25
 svn:wc:ra_dav:version-url
 V 45
-/svn/oscam/!svn/ver/6419/trunk/module-cccam.c
+/svn/oscam/!svn/ver/6434/trunk/module-cccam.c
 END
 module-datastruct-llist.h
 K 25
 svn:wc:ra_dav:version-url
 V 56
-/svn/oscam/!svn/ver/6357/trunk/module-datastruct-llist.h
+/svn/oscam/!svn/ver/6429/trunk/module-datastruct-llist.h
 END
 reader-videoguard12.c
 K 25
