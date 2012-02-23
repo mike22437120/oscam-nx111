@@ -376,7 +376,7 @@ force restart reader after seconds,default 0 disabled.
 .PP
 \fBdropbadcws\fP = \fB0\fP|\fB1\fP
 .RS 3n
-1 = reject bad CWs, send "not found" instead of bad CWs, default:0
+1 = reject bad CWs, send "not found" instead of bad CWs, default:1
 .RE
 .PP
 \fBdisablecrccws\fP = \fB0\fP|\fB1\fP
@@ -434,11 +434,6 @@ set reader's CCcam reshare hop, default:0
 \fBccckeepalive\fP = \fB0\fP|\fB1\fP
 .RS 3n
 1 = send keepalive messages to keep connection to remote CCCam server up, default:0
-.RE
-.PP
-\fBcccreconnect\fP = \fBtimeout\fP
-.RS 3n
-reconnect again after ECM request timeout in milli-seconds, default:4000
 .RE
 .PP
 \fBcccmindown\fP = \fBnumber\fP
