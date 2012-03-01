@@ -331,7 +331,7 @@ void add_good_sid(struct s_client *cl __attribute__((unused)), struct cc_card *c
  * reader
  * clears and frees values for reinit
  */
-void cc_cli_close(struct s_client *cl, int32_t UNUSED(call_conclose)) {
+void cc_cli_close(struct s_client *cl, int32_t call_conclose) {
 	struct s_reader *rdr = cl->reader;
 	struct cc_data *cc = cl->cc;
 	if (!rdr || !cc)
@@ -339,10 +339,18 @@ void cc_cli_close(struct s_client *cl, int32_t UNUSED(call_conclose)) {
 		
 	rdr->tcp_connected = 0;
 	rdr->card_status = NO_CARD;
-	rdr->available = 0;
 	rdr->last_s = rdr->last_g = 0;
 	
-	network_tcp_connection_close(rdr, "close"); 
+	if (call_conclose) //clears also pending ecms!
+		network_tcp_connection_close(rdr, "close");
+	else
+	{
+		if (cl->udp_fd) {
+			close(cl->udp_fd);
+			cl->udp_fd = 0;
+			cl->pfd = 0;
+		}
+	}
 	
 	cc->ecm_busy = 0;
 	cc->just_logged_in = 0;
@@ -465,10 +473,20 @@ int32_t cc_recv_to(struct s_client *cl, uint8_t *buf, int32_t len) {
  * reader
  * closes the connection and reopens it.
  */
-//static void cc_cycle_connection() {
-//	cc_cli_close();
-//	cc_cli_init();
-//}
+static int8_t cc_cycle_connection(struct s_client *cl)
+{
+	if (!cl || cl->kill)
+		return 0;
+
+	cs_debug_mask(D_TRACE, "%s unlocked-cycleconnection! timeout %dms",
+				getprefix(), cl->reader->cc_reconnect);
+
+	cc_cli_close(cl, FALSE);
+	cs_sleepms(50);
+	cc_cli_connect(cl);
+
+	return cl->reader->tcp_connected;
+}
 
 /**
  * reader+server:
@@ -736,14 +754,15 @@ int32_t cc_get_nxt_ecm(struct s_client *cl) {
 	struct cc_data *cc = cl->cc;	
 	ECM_REQUEST *er, *ern = NULL;
 	int32_t n, i, pending=0;
-	time_t t;
+	struct timeb t;
 
-	t = time(NULL);
+	cs_ftime(&t);
+	int32_t diff = (int32_t)cfg.ctimeout+500;
+
 	n = -1;
 	for (i = 0; i < CS_MAXPENDING; i++) {
 		er = &cl->ecmtask[i];	
-		if ((t - (uint32_t) er->tps.time > ((cfg.ctimeout + 500)
-				/ 1000) + 1) && (er->rc >= 10)) // drop timeouts
+		if ((comp_timeb(&t, &er->tps) >= diff) && (er->rc >= 10)) // drop timeouts
 		{
 			er->rc = E_TIMEOUT;
 			write_ecm_answer(cl->reader, er, E_TIMEOUT, 0, NULL, NULL);
@@ -795,9 +814,8 @@ int32_t cc_get_nxt_ecm(struct s_client *cl) {
  * sends the secret cmd05 answer to the server 
  */
 int32_t send_cmd05_answer(struct s_client *cl) {
-	struct s_reader *rdr = cl->reader;
 	struct cc_data *cc = cl->cc;
-	if (!cc->cmd05_active || !rdr->available) //exit if not in cmd05 or waiting for ECM answer
+	if (!cc->cmd05_active || cc->ecm_busy) //exit if not in cmd05 or waiting for ECM answer
 		return 0;
 
 	cc->cmd05_active--;
@@ -1145,6 +1163,33 @@ static void reopen_sids(struct cc_data *cc, int8_t ignore_time, ECM_REQUEST *cur
 
 }
 
+static int8_t cc_request_timeout(struct s_client *cl)
+{
+	struct s_reader *rdr = cl->reader;
+	struct cc_data *cc = cl->cc;
+	struct timeb timeout;
+	struct timeb cur_time;
+
+	if (!cc || !cc->ecm_busy)
+		return 0;
+
+	cs_ftime(&cur_time);
+
+	timeout = cc->ecm_time;
+	int32_t tt = rdr->cc_reconnect;
+	if (tt<=0)
+		tt = DEFAULT_CC_RECONNECT;
+
+	timeout.time += tt / 1000;
+	timeout.millitm += tt % 1000;
+	if (timeout.millitm >= 1000) {
+		timeout.time++;
+		timeout.millitm -= 1000;
+	}
+
+	return (comp_timeb(&cur_time, &timeout) >= 0);
+}
+
 /**
  * reader
  * sends a ecm request to the connected CCCam Server
@@ -1198,26 +1243,10 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 				"%s ecm trylock: ecm busy, retrying later after msg-receive",
 				getprefix());
 
-			struct timeb timeout;
-			timeout = cc->ecm_time;
-			uint32_t tt = 3*cfg.ctimeout;
-			timeout.time += tt / 1000;
-			timeout.millitm += tt % 1000;
-            if (timeout.millitm >= 1000) {
-            	timeout.time++;
-            	timeout.millitm -= 1000;
-			}
-			
-			if (comp_timeb(&cur_time, &timeout) < 0) { //TODO: Configuration?
+			if (!cc_request_timeout(cl))
 				return 0; //pending send...
-			} else {
-				cs_debug_mask(D_READER,
-						"%s unlocked-cycleconnection! timeout %dms",
-						getprefix(), tt);
-				//cc_cycle_connection();
-				cc_cli_close(cl, TRUE);
+			if (!cc_cycle_connection(cl))
 				return 0;
-			}
 		}
 		cc->ecm_busy = 1;
 		cs_debug_mask(D_READER, "cccam: ecm trylock: got lock");
@@ -1225,12 +1254,10 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 	int32_t processed_ecms = 0;
 	do {
 		cc->ecm_time = cur_time;
-		rdr->available = cc->extended_mode;
 
 		//Search next ECM to send:
 		if ((n = cc_get_nxt_ecm(cl)) < 0) {
 			if (!cc->extended_mode) {
-				rdr->available = 1;
 				cc->ecm_busy = 0;
 			}cs_debug_mask(D_READER, "%s no ecm pending!", getprefix());
 			if (!cc_send_pending_emms(cl))
@@ -1250,7 +1277,6 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 				cs_log(
 						"%s is stopped - requested by server (%s)", cl->reader->label, typtext[cl->stopped]);
 				if (!cc->extended_mode) {
-					rdr->available = 1;
 					cc->ecm_busy = 0;
 				}
 				cur_er->rc = E_STOPPED;
@@ -1392,7 +1418,6 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 	}
 
 	if (!cc->extended_mode) {
-		rdr->available = 1;
 		cc->ecm_busy = 0;
 	}
 
@@ -1427,7 +1452,6 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
  */
 
 int32_t cc_send_pending_emms(struct s_client *cl) {
-	struct s_reader *rdr = cl->reader;
 	struct cc_data *cc = cl->cc;
 
 	LL_ITER it = ll_iter_create(cc->pending_emms);
@@ -1439,7 +1463,6 @@ int32_t cc_send_pending_emms(struct s_client *cl) {
 				return 0; //send later with cc_send_ecm
 			}
 			cc->ecm_busy = 1;
-			rdr->available = 0;
 		}
 		//Support for emmsize>256 bytes:
 		size = (emmbuf[11] | (emmbuf[2]<<8)) + 12;
@@ -1689,10 +1712,10 @@ int32_t check_extended_mode(struct s_client *cl, char *msg) {
 
 void cc_idle() {
 	struct s_client *cl = cur_client();
-	struct s_reader *rdr = cl->reader;
-	struct cc_data *cc = cl->cc;
+	   struct s_reader *rdr = cl->reader;
+       struct cc_data *cc = cl->cc;
 	
-	if (cl && !cl->udp_fd)
+	if (!cl->udp_fd)
 		cc_cli_close(cl, FALSE);
 
 	if (rdr && rdr->cc_keepalive && !rdr->tcp_connected) {
@@ -2064,8 +2087,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 			//
 		} else if (l == 0x23) {
 			cc->cmd05_mode = MODE_UNKNOWN;
-			//cycle_connection(); //Absolute unknown handling!
-			cc_cli_close(cl, TRUE);
+			cc_cycle_connection(cl);
 			//
 			//44 bytes: set aes128 key, Key=16 bytes [Offset=len(password)]
 			//
@@ -2365,7 +2387,6 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 		cs_readunlock(&cc->cards_busy);
 
 		if (!cc->extended_mode) {
-			rdr->available = 1;
 			cc->ecm_busy = 0;
 		}
 
@@ -2538,7 +2559,6 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 			cs_readunlock(&cc->cards_busy);
 
 			if (!cc->extended_mode) {
-				rdr->available = 1;
 				cc->ecm_busy = 0;
 			}
 
@@ -2576,7 +2596,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 			cc->cmd05_active = 1;
 			cc->cmd05_data_len = l;
 			memcpy(&cc->cmd05_data, buf + 4, l);
-			if (rdr->available && ll_has_elements(cc->cards))
+			if (!cc->ecm_busy && ll_has_elements(cc->cards))
 				send_cmd05_answer(cl);
 		}
 		break;
@@ -2706,7 +2726,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 		{
 			cs_strncpy(cl->reader->cc_version, version[0], sizeof(cl->reader->cc_version));
 			cs_strncpy(cl->reader->cc_build, build[0], sizeof(cl->reader->cc_build));
-			cc_cli_close(cl, TRUE);
+			cc_cycle_connection(cl);
 		}
 		break;
 	}
@@ -2751,7 +2771,6 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 		} else { //Our EMM Request Ack!
 			cs_debug_mask(D_EMM, "%s EMM ACK!", getprefix());
 			if (!cc->extended_mode) {
-				rdr->available = 1;
 				cc->ecm_busy = 0;
 			}
 			cc_send_ecm(cl, NULL, NULL);
@@ -2766,9 +2785,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 	if (cc->max_ecms && (cc->ecm_counter > cc->max_ecms)) {
 		cs_debug_mask(D_READER, "%s max ecms (%d) reached, cycle connection!", getprefix(),
 				cc->max_ecms);
-		//cc_cycle_connection();
-		cc_cli_close(cl, TRUE);
-		//cc_send_ecm(NULL, NULL);
+		cc_cycle_connection(cl);
 	}
 	return ret;
 }
@@ -2880,7 +2897,7 @@ int32_t cc_recv(struct s_client *cl, uchar *buf, int32_t l) {
 	n = cc_msg_recv(cl, buf, l); // recv and decrypt msg
 
 	//cs_ddump_mask(D_CLIENT, buf, n, "cccam: received %d bytes from %s", n, remote_txt());
-	cl->last = time((time_t *) 0);
+
 
 	if (n <= 0) {
 		struct cc_data *cc = cl->cc;
@@ -2895,6 +2912,7 @@ int32_t cc_recv(struct s_client *cl, uchar *buf, int32_t l) {
 	} else {
 		// parse it and write it back, if we have received something of value
 		n = cc_parse_msg(cl, buf, n);
+    cl->last = time((time_t *) 0);
 	}
 
 	if (n == -1) {
@@ -3194,7 +3212,6 @@ int32_t cc_cli_connect(struct s_client *cl) {
 		cc->pending_emms = ll_create("pending_emms");
 		cc->extended_ecm_idx = ll_create("extended_ecm_idx");
 	} else {
-		cc_init_locks(cc);
 		cc_free_cardlist(cc->cards, FALSE);
 		free_extended_ecm_idx(cc);
 	}
@@ -3345,7 +3362,6 @@ int32_t cc_cli_connect(struct s_client *cl) {
 	rdr->card_status = CARD_NEED_INIT;
 	rdr->last_g = rdr->last_s = time((time_t *) 0);
 	rdr->tcp_connected = 1;
-	rdr->available = 1;
 
 	cc->just_logged_in = 1;
 	cl->crypted = 1;
@@ -3413,13 +3429,15 @@ int32_t cc_available(struct s_reader *rdr, int32_t checktype, ECM_REQUEST *er) {
 	
 	struct s_client *cl = rdr->client;
 	if(!cl) return 0;
-	if (er && cl->cc && rdr->tcp_connected) {
+	struct cc_data *cc = cl->cc;
+
+	if (er && cc && rdr->tcp_connected) {
 		struct cc_card *card  = get_matching_card(cl, er, 1);
 		if (!card)
 			return 0;
 	}
 	//cs_debug_mask(D_TRACE, "checking reader %s availibility", rdr->label);
-	if (!cl->cc || rdr->tcp_connected != 2) {
+	if (!cc || rdr->tcp_connected != 2) {
 		//Two cases: 
 		// 1. Keepalive ON but not connected: Do NOT send requests, 
 		//     because we can't connect - problem of full running pipes
@@ -3430,10 +3448,14 @@ int32_t cc_available(struct s_reader *rdr, int32_t checktype, ECM_REQUEST *er) {
 			return 0;
 	}
 
-	if (checktype == AVAIL_CHECK_LOADBALANCE && !rdr->available) {
-		cs_debug_mask(D_TRACE, "checking reader %s availibility=0 (unavail)",
+	if (checktype == AVAIL_CHECK_LOADBALANCE && cc->ecm_busy) {
+		if (cc_request_timeout(cl))
+			cc_cycle_connection(cl);
+		if (!rdr->tcp_connected || cc->ecm_busy) {
+			cs_debug_mask(D_TRACE, "checking reader %s availibility=0 (unavail)",
 				rdr->label);
-		return 0; //We are processing EMMs/ECMs
+			return 0; //We are processing EMMs/ECMs
+		}
 	}
 
 	return 1;
@@ -3453,7 +3475,7 @@ void cc_card_info() {
 
 void cc_cleanup(struct s_client *cl) {
 	if (cl->typ != 'c') {
-		cc_cli_close(cl, FALSE); // we need to close open fd's 
+		cc_cli_close(cl, TRUE); // we need to close open fd's
 	}
 	cc_free(cl);
 }

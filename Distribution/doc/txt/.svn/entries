@@ -1,15 +1,15 @@
 10
 
 dir
-6441
+6465
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-02-23T01:37:32.020178Z
-6441
-cyriles
+2012-02-24T13:40:14.226725Z
+6450
+docman
 
 
 
@@ -66,10 +66,10 @@ file
 
 
 
-2012-02-19T04:12:12.366871Z
-6c37807c13ae68f8d8341f6004b53406
-2012-02-17T19:54:18.667413Z
-6412
+2012-02-29T07:37:47.719082Z
+8d5508006eb9bb4f932baa81c3f30797
+2012-02-24T07:47:07.192642Z
+6447
 docman
 
 
@@ -92,7 +92,7 @@ docman
 
 
 
-3127
+3111
 
 oscam.provid.txt
 file
@@ -134,10 +134,10 @@ file
 
 
 
-2012-01-29T04:06:30.935663Z
-31af460a7311aad13b76655ced46d12f
-2012-01-17T12:27:39.487954Z
-6253
+2012-02-29T07:37:47.719082Z
+699c1068e056ee74c5fc9af7c19bc67c
+2012-02-24T13:40:14.226725Z
+6450
 docman
 
 
@@ -160,7 +160,7 @@ docman
 
 
 
-1988
+2029
 
 oscam.server.txt
 file
@@ -169,10 +169,10 @@ file
 
 
 
-d9d4e3607855743951d7672f79aebffe
-2012-02-23T01:37:32.020178Z
-6441
-cyriles
+7e0c7ea35ce9159d59eb6025cdc6ba91
+2012-02-24T07:47:07.192642Z
+6447
+docman
 
 oscam.whitelist.txt
 file
@@ -248,11 +248,11 @@ file
 
 
 
-2012-02-19T04:12:12.366871Z
-02db53b30b98314763dbba0cf81af1ad
-2012-02-18T09:16:33.600189Z
-6418
-marley
+2012-02-29T07:37:47.735083Z
+34a86dad7cf86d832498409f7a525b05
+2012-02-24T07:47:07.192642Z
+6447
+docman
 
 
 
@@ -274,7 +274,7 @@ marley
 
 
 
-6138
+6143
 
 list_smargo.txt
 file
@@ -385,10 +385,10 @@ file
 
 
 
-5bcf229c81be6a932a724c0212389003
-2012-02-18T09:16:33.600189Z
-6418
-marley
+7b9dcaac8e08469824f8efae0ba3f79f
+2012-02-24T07:47:07.192642Z
+6447
+docman
 
 oscam.guess.txt
 file

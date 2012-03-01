@@ -492,6 +492,7 @@ struct s_arm_led {
 #define DEFAULT_CC_IGNRSHR  -1 // Use global cfg
 #define DEFAULT_CC_STEALTH  -1 // Use global cfg
 #define DEFAULT_CC_KEEPALIVE 1
+#define DEFAULT_CC_RECONNECT 12000
 #endif
 
 #ifdef CS_ANTICASC
@@ -798,7 +799,6 @@ struct s_ecm_answer {
 #ifdef WITH_LB
 	int32_t		value;
 	int32_t		time;
-	int8_t			timeout_service;
 #endif
 	struct s_ecm_answer	*next;
 };
@@ -1077,7 +1077,6 @@ struct s_reader  									//contains device info, reader info and card info
 	struct s_client *client;						// pointer to 'r'client this reader is running in
 	LLIST			*ll_entitlements;				// entitlements
 	int8_t			enable;
-	int8_t			available;						// Schlocke: New flag for loadbalancing. Only reader if reader supports ph.c_available function
 	int8_t			dropbadcws;						// Schlocke: 1=drops cw if checksum is wrong. 0=fix checksum (default)
     int8_t          disablecrccws;                  // 1=disable cw checksum test. 0=enable checksum check
     int8_t			fd_error;
@@ -1165,6 +1164,7 @@ struct s_reader  									//contains device info, reader info and card info
 	int8_t			cc_keepalive;
 	int8_t			cc_hop;							// For non-cccam reader: hop for virtual cards
 	int8_t			cc_reshare;
+	int32_t			cc_reconnect;					//reconnect on ecm-request timeout
 #endif
 	int8_t			tcp_connected;
 	int32_t			tcp_ito;						// inactivity timeout
