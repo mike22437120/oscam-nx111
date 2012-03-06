@@ -767,6 +767,7 @@ typedef struct ecm_request_t {
 
 #if defined MODULE_CCCAM
 	void			*origin_card; 		// CCcam preferred card!
+	uint32_t		cccam_id;           // CCcam card id
 #endif
 
 #if defined MODULE_GBOX
