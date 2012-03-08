@@ -670,6 +670,7 @@ struct s_module {
 	void 			(*c_card_info)(void);	// Schlocke: request card infos
 #ifdef CS_CACHEEX
 	int32_t			(*c_cache_push)(struct s_client*, struct ecm_request_t *); //Cache push
+	int32_t			(*c_cache_push_chk)(struct s_client*, struct ecm_request_t *); //Cache push Node Check, 0=no push
 #endif
 	int32_t  		c_port;
 	PTAB 			*ptab;
@@ -781,6 +782,7 @@ typedef struct ecm_request_t {
 	struct s_client *cacheex_src;               // cacheex origin
 	int8_t          cacheex_pushed;             // to avoid duplicate pushs
 	int32_t			csp_hash; 					// csp has its own hash
+	LLIST			*csp_lastnodes;				// last 10 cacheex nodes atm cc-proto-only
 #endif
 	char			msglog[MSGLOGSIZE];
 	uint16_t		checksum;
@@ -907,7 +909,7 @@ struct s_client {
 	AES_KEY			aeskey_decrypt;		// decryption key needed by monitor and used by camd33, camd35
     uint16_t        ncd_msgid;
 	char			ncd_client_id[5];
-	uchar			ncd_skey[16];
+	uchar			ncd_skey[16];       //Also used for camd35 cacheex to store remote node id
 
 #ifdef MODULE_CCCAM
 	void			*cc;
