@@ -188,6 +188,39 @@ static uint32_t get_prid(uint16_t caid, uint32_t prid)
 }
 
 /**
+ * returns the fastest statistics. Usefull to check if we have decoded it in the past
+ * 
+ * returns NULL if no reader stat is found.
+ * could also return a stat with rc=4 or rc=5 if no best found stat is available
+ *
+ * But: This function does not check user groups or reader configuration!
+ **/
+
+ READER_STAT *get_fastest_stat(uint16_t caid, uint32_t prid, uint16_t srvid, uint16_t chid, int16_t ecmlen)
+{
+        READER_STAT *stat, *result = NULL, *result2 = NULL;
+        int32_t result_time = 0;
+        struct s_reader *rdr = first_active_reader;
+        while (rdr) {
+                stat = get_stat(rdr, caid, prid, srvid, chid, ecmlen);
+                if (stat && stat->rc == E_FOUND) {//only return "founds"
+                        int32_t weight = rdr->lb_weight <= 0?100:rdr->lb_weight;
+                        int32_t time = stat->time_avg*100/weight;
+                        if (!result || time < result_time) {
+                                result = stat;
+                                result_time = time;
+                        }
+                }       
+                if (stat && (!result2 || stat->rc < result2->rc))
+                        result2 = stat;                 
+                rdr=rdr->next;
+        }
+        if (!result)
+                result = result2; //return not found/timeout stats if we found no 
+        return result;
+}
+
+/**
  * get statistic values for reader ridx and caid/prid/srvid/ecmlen
  **/
 READER_STAT *get_stat_lock(struct s_reader *rdr, uint16_t caid, uint32_t prid, uint16_t srvid, uint16_t chid, int16_t ecmlen, int8_t lock)
@@ -413,7 +446,7 @@ void add_stat(struct s_reader *rdr, ECM_REQUEST *er, int32_t ecm_time, int32_t r
 	// 0 = found       +
 	// 1 = cache1      #
 	// 2 = cache2      #
-	// 3 = emu         +
+	// 3 = cacheex     #
 	// 4 = not found   -
 	// 5 = timeout     -2
 	// 6 = sleeping    #
@@ -450,7 +483,7 @@ void add_stat(struct s_reader *rdr, ECM_REQUEST *er, int32_t ecm_time, int32_t r
 			struct s_ecm_answer *ea;
 			for(ea = er->matching_rdr; ea; ea = ea->next) {
 				if (ea->reader == rdr) {
-					if ((ea->status & 0x4) && (uint32_t)ecm_time >= cfg.ftimeout)
+					if ((ea->status & READER_FALLBACK) && (uint32_t)ecm_time >= cfg.ftimeout)
 						ecm_time -= cfg.ftimeout;
 					break;
 				}
@@ -479,7 +512,7 @@ void add_stat(struct s_reader *rdr, ECM_REQUEST *er, int32_t ecm_time, int32_t r
 			rdr->lb_usagelevel_time = ctime;
 		rdr->lb_usagelevel_ecmcount = ule+1;
 	}
-	else if (rc == E_CACHE1 || rc == E_CACHE2) { //cache
+	else if (rc < E_FOUND ) { //cache1+2+3
 		//no increase of statistics here, cachetime is not real time
 		stat = get_stat(rdr, er->caid, prid, er->srvid, er->chid, er->l);
 		if (stat != NULL)
@@ -759,7 +792,7 @@ int32_t get_best_reader(ECM_REQUEST *er)
 			struct cc_card *card = er->origin_card;
 			struct s_ecm_answer *eab = NULL;
 			for(ea = er->matching_rdr; ea; ea = ea->next) {
-				ea->status &= 0xFC;
+				ea->status &= !(READER_ACTIVE|READER_FALLBACK);
 				if (card->origin_reader == ea->reader)
 					eab = ea;		
 			}
@@ -777,7 +810,7 @@ int32_t get_best_reader(ECM_REQUEST *er)
 	if (cfg.lb_auto_betatunnel && er->caid >> 8 == 0x18) { //nagra 
 		uint16_t caid_to = get_betatunnel_caid_to(er->caid);
 		if (caid_to) {
-			int8_t needs_stats_nagra = 0, needs_stats_beta = 0;
+			int8_t needs_stats_nagra = 1, needs_stats_beta = 1;
 			
 			int32_t time_nagra = 0;
 			int32_t time_beta = 0;
@@ -788,7 +821,7 @@ int32_t get_best_reader(ECM_REQUEST *er)
 			READER_STAT *stat_beta;
 			
 			//What is faster? nagra or beta?
-			for(ea = er->matching_rdr; ea && !needs_stats_nagra && !needs_stats_beta; ea = ea->next) {
+			for(ea = er->matching_rdr; ea; ea = ea->next) {
 				rdr = ea->reader;
 				weight = rdr->lb_weight;
 				if (weight <= 0) weight = 1;
@@ -821,10 +854,10 @@ int32_t get_best_reader(ECM_REQUEST *er)
 				}
 				
 				//Uncomplete reader evaluation, we need more stats!
-				if (!stat_nagra)
-					needs_stats_nagra = 1;
-				if (valid && !stat_beta)
-					needs_stats_beta = 1;
+				if (stat_nagra)
+					needs_stats_nagra = 0;
+				if (stat_beta)
+					needs_stats_beta = 0;
 			}
 			
 			if (cfg.lb_auto_betatunnel_prefer_beta)
@@ -969,7 +1002,7 @@ int32_t get_best_reader(ECM_REQUEST *er)
 
 			//Reader can decode this service (rc==0) and has lb_min_ecmcount ecms:
 			if (stat->rc == E_FOUND || hassrvid) {
-				if (cfg.preferlocalcards && (ea->status & 0x4))
+				if (cfg.preferlocalcards && (ea->status & READER_LOCAL))
 					nlocal_readers++; //Prefer local readers!
 
 				switch (cfg.lb_mode) {
@@ -977,7 +1010,9 @@ int32_t get_best_reader(ECM_REQUEST *er)
 					case LB_NONE:
 					case LB_LOG_ONLY:
 						//cs_debug_mask(D_LB, "loadbalance disabled");
-						ea->status = 1;
+						ea->status = READER_ACTIVE;
+						if (rdr->fallback)
+							ea->status |= READER_FALLBACK;
 						continue;
 						
 					case LB_FASTEST_READER_FIRST:
