@@ -338,7 +338,7 @@ DESCRIPTIONS
           force restart reader after seconds,default 0 disabled.
 
        dropbadcws = 0|1
-	  1 = reject bad CWs, send "not found" instead of bad CWs, default:1
+	  1 = reject bad CWs, send "not found" instead of bad CWs, default:0
 
        disablecrccws = 0|1
 	  1 = disable CRC for CW, default: 0
