@@ -738,7 +738,12 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	tpl_addVar(vars, TPLADD, "HTTPALLOW", value);
 	free_mk_t(value);
 
-	tpl_addVar(vars, TPLADD, "HTTPDYNDNS", (char*)cfg.http_dyndns);
+	for(i = 0; i < MAX_HTTP_DYNDNS; i++){
+		if(cfg.http_dyndns[i][0]){
+			tpl_addVar(vars, TPLAPPEND, "HTTPDYNDNS", i>0 ? "," : "");
+			tpl_addVar(vars, TPLAPPEND, "HTTPDYNDNS", (char*)cfg.http_dyndns[i]);
+		}
+	}
 
 	//Monlevel selector
 	tpl_printf(vars, TPLADD, "TMP", "MONSELECTED%d", cfg.mon_level);
@@ -1662,9 +1667,9 @@ static char *send_oscam_reader_stats(struct templatevars *vars, struct uriparams
 		char *record = getParam(params, "record");
 		if(strlen(record) > 0) {
 			int32_t retval = 0;
-			uint32_t caid, provid, ecmpid, sid, cid, len;
-			sscanf(record, "%x:%x:%x:%x:%x:%x", &caid, &provid, &ecmpid, &sid, &cid, &len);
-			retval = clean_stat_by_id(rdr, caid, provid, ecmpid, sid, cid, len);
+			uint32_t caid, provid, sid, cid, len;
+			sscanf(record, "%x:%x:%x:%x:%x", &caid, &provid, &sid, &cid, &len);
+			retval = clean_stat_by_id(rdr, caid, provid, sid, cid, len);
 			cs_log("Reader %s stats %d entr%s deleted by WebIF from %s",
 					rdr->label, retval,
 					retval == 1 ? "y":"ies",
@@ -2891,6 +2896,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 		tpl_addVar(vars, TPLADD, "CLIENTDESCRIPTION", "");
 		tpl_addVar(vars, TPLADD, "CLIENTLASTRESPONSETIME", "");
 		tpl_addVar(vars, TPLADD, "CLIENTLASTRESPONSETIMEHIST", "");
+		tpl_addVar(vars, TPLADD, "JSONARRAYDELIMITER", cl->next ? "," : "");
 
 		if (cl->typ=='c')
 			user_count_all++;
@@ -2970,14 +2976,18 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 				tpl_printf(vars, TPLADD, "HIDEIDX", "%p", cl);
 
-				if(cl->typ == 'c' && !cfg.http_readonly) {
-					tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=kill&threadid=%p\" TITLE=\"Kill this client\"><IMG HEIGHT=\"16\" WIDTH=\"16\" SRC=\"image?i=ICKIL\" ALT=\"Kill\"></A>", cl);
-				}
-				else if((cl->typ == 'p') && !cfg.http_readonly) {
-					tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this reader/ proxy\"><IMG HEIGHT=\"16\" WIDTH=\"16\" SRC=\"image?i=ICKIL\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
-				}
-				else {
-					tpl_printf(vars, TPLADD, "CSIDX", "%p&nbsp;", cl);
+				if(!apicall) {
+					if(cl->typ == 'c' && !cfg.http_readonly) {
+						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=kill&threadid=%p\" TITLE=\"Kill this client\"><IMG HEIGHT=\"16\" WIDTH=\"16\" SRC=\"image?i=ICKIL\" ALT=\"Kill\"></A>", cl);
+					}
+					else if((cl->typ == 'p') && !cfg.http_readonly) {
+						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this reader/ proxy\"><IMG HEIGHT=\"16\" WIDTH=\"16\" SRC=\"image?i=ICKIL\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
+					}
+					else {
+						tpl_printf(vars, TPLADD, "CSIDX", "%p&nbsp;", cl);
+					}
+				} else {
+					tpl_printf(vars, TPLADD, "CSIDX", "%p", cl);
 				}
 
 				tpl_printf(vars, TPLADD, "CLIENTTYPE", "%c", cl->typ);
@@ -3236,7 +3246,12 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 				if (shown) tpl_addVar(vars, TPLAPPEND, "SERVERSTATUS", tpl_getTpl(vars, "CLIENTSTATUSBIT"));
 
 		} else {
-			if (shown) tpl_addVar(vars, TPLAPPEND, "APISTATUSBITS", tpl_getTpl(vars, "APISTATUSBIT"));
+			if (shown){
+				if(apicall == 1)
+					tpl_addVar(vars, TPLAPPEND, "APISTATUSBITS", tpl_getTpl(vars, "APISTATUSBIT"));
+				if(apicall == 2)
+					tpl_addVar(vars, TPLAPPEND, "JSONSTATUSBITS", tpl_getTpl(vars, "JSONSTATUSBIT"));
+			}
 		}
 
 #ifdef CS_CACHEEX
@@ -3272,8 +3287,9 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 			if (!apicall) {
 				if (p_txt[0]) tpl_printf(vars, TPLAPPEND, "LOGHISTORY", "\t\t<span class=\"%s\">%s\t\t</span><br>\n", p_usr, p_txt);
 			} else {
-				if (strcmp(getParam(params, "appendlog"), "1") == 0)
-					tpl_addVar(vars, TPLAPPEND, "LOGHISTORY", p_txt);
+				if (apicall == 1)
+					if (strcmp(getParam(params, "appendlog"), "1") == 0)
+						tpl_addVar(vars, TPLAPPEND, "LOGHISTORY", p_txt);
 			}
 		}
 	} else {
@@ -3307,11 +3323,13 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	tpl_addVar(vars, TPLADD, "SDEBUG", tpl_getTpl(vars, "DEBUGSELECT"));
 #endif
 
-	if(!apicall)
-		return tpl_getTpl(vars, "STATUS");
-	else
-		return tpl_getTpl(vars, "APISTATUS");
-
+	if(apicall) {
+		if(apicall == 1)
+			return tpl_getTpl(vars, "APISTATUS");
+		if(apicall == 2)
+			return tpl_getTpl(vars, "JSONSTATUS");
+	}
+	return tpl_getTpl(vars, "STATUS");
 }
 
 static char *send_oscam_services_edit(struct templatevars *vars, struct uriparams *params) {
@@ -3628,7 +3646,7 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 
 	char *stoplog = getParam(params, "stoplog");
 	if(strlen(stoplog) > 0)
-		cfg.disablelog = atoi(stoplog);
+		cs_disable_log(atoi(stoplog));
 
 	char *stopusrlog = getParam(params, "stopusrlog");
 	if(strlen(stopusrlog) > 0)
@@ -3948,21 +3966,21 @@ static char *send_oscam_failban(struct templatevars *vars, struct uriparams *par
 		return tpl_getTpl(vars, "APIFAILBAN");
 }
 
-static char *send_oscam_api(struct templatevars *vars, FILE *f, struct uriparams *params, int8_t *keepalive) {
+static char *send_oscam_api(struct templatevars *vars, FILE *f, struct uriparams *params, int8_t *keepalive, int8_t apicall) {
 	if (strcmp(getParam(params, "part"), "status") == 0) {
-		return send_oscam_status(vars, params, 1);
+		return send_oscam_status(vars, params, apicall);
 	}
 	else if (strcmp(getParam(params, "part"), "userstats") == 0) {
-		return send_oscam_user_config(vars, params, 1);
+		return send_oscam_user_config(vars, params, apicall);
 	}
 	else if (strcmp(getParam(params, "part"), "failban") == 0) {
-		return send_oscam_failban(vars, params, 1);
+		return send_oscam_failban(vars, params, apicall);
 	}
 	else if (strcmp(getParam(params, "part"), "files") == 0) {
-		return send_oscam_files(vars, params, 1);
+		return send_oscam_files(vars, params, apicall);
 	}
 	else if (strcmp(getParam(params, "part"), "readerlist") == 0) {
-		return send_oscam_reader(vars, params, 1);
+		return send_oscam_reader(vars, params, apicall);
 	}
 	else if (strcmp(getParam(params, "part"), "serverconfig") == 0) {
 		//Send Errormessage
@@ -3982,7 +4000,7 @@ static char *send_oscam_api(struct templatevars *vars, FILE *f, struct uriparams
 				tpl_addVar(vars, TPLADD, "APIERRORMESSAGE", "user not exist");
 				return tpl_getTpl(vars, "APIERROR");
 			} else {
-				return send_oscam_user_config_edit(vars, params, 1);
+				return send_oscam_user_config_edit(vars, params, apicall);
 			}
 		}
 	}
@@ -3992,7 +4010,7 @@ static char *send_oscam_api(struct templatevars *vars, FILE *f, struct uriparams
 			struct s_reader *rdr = get_reader_by_label(getParam(params, "label"));
 			if (rdr) {
 				if (rdr->typ == R_CCCAM && rdr->enable == 1) {
-					return send_oscam_entitlement(vars, params, 1);
+					return send_oscam_entitlement(vars, params, apicall);
 				} else {
 					//Send Errormessage
 					tpl_addVar(vars, TPLADD, "APIERRORMESSAGE", "no cccam reader or disabled");
@@ -4057,7 +4075,7 @@ static char *send_oscam_api(struct templatevars *vars, FILE *f, struct uriparams
 		if (strcmp(getParam(params, "label"),"")) {
 			struct s_reader *rdr = get_reader_by_label(getParam(params, "label"));
 			if (rdr) {
-				return send_oscam_reader_stats(vars, params, 1);
+				return send_oscam_reader_stats(vars, params, apicall);
 			} else {
 				//Send Errormessage
 				tpl_addVar(vars, TPLADD, "APIERRORMESSAGE", "reader not exist");
@@ -4072,7 +4090,7 @@ static char *send_oscam_api(struct templatevars *vars, FILE *f, struct uriparams
 		if ((strcmp(strtolower(getParam(params, "action")), "restart") == 0) ||
 				(strcmp(strtolower(getParam(params, "action")), "shutdown") == 0)){
 			if(!cfg.http_readonly) {
-				return send_oscam_shutdown(vars, f, params, 1, keepalive);
+				return send_oscam_shutdown(vars, f, params, apicall, keepalive);
 			} else {
 				tpl_addVar(vars, TPLADD, "APIERRORMESSAGE", "webif readonly mode");
 				return tpl_getTpl(vars, "APIERROR");
@@ -4248,6 +4266,106 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 }
 #endif
 
+#ifdef IPV6SUPPORT
+
+static int8_t check_httpip(struct in6_addr addr) {
+	int8_t i = 0;
+	// check all previously dyndns resolved addresses
+	for(i = 0; i < MAX_HTTP_DYNDNS; i++) {
+		if(cfg.http_dynip[i] && cfg.http_dynip[i] == addr.s6_addr32[3])
+			return 1;
+	}
+	return 0;
+}
+
+#else
+
+static int8_t check_httpip(in_addr_t addr) {
+	int8_t i = 0;
+	// check all previously dyndns resolved addresses
+	for(i = 0; i < MAX_HTTP_DYNDNS; i++) {
+		if(cfg.http_dynip[i] && cfg.http_dynip[i] == addr)
+			return 1;
+	}
+	return 0;
+}
+
+#endif
+
+#ifdef IPV6SUPPORT
+static int8_t check_httpdyndns(struct in6_addr addr) {
+#else
+static int8_t check_httpdyndns(in_addr_t addr) {
+#endif
+
+	// check all previously dyndns resolved addresses
+	if(check_httpip(addr))
+		return 1;
+
+	// we are not ok, so resolve all dyndns entries into IP's - maybe outdated IP's
+
+	if(cfg.http_dyndns[0][0]) {
+		int8_t i = 0;
+		for(i = 0; i < MAX_HTTP_DYNDNS; i++) {
+			if(cfg.http_dyndns[i][0]){
+				cfg.http_dynip[i] = cs_getIPfromHost((char*)cfg.http_dyndns[i]);
+				cs_debug_mask(D_TRACE, "WebIf: httpdyndns [%d] resolved %s to %s ", i, (char*)cfg.http_dyndns[i], cs_inet_ntoa(cfg.http_dynip[i]));
+			}
+		}
+	} else {
+		cs_debug_mask(D_TRACE, "WebIf: No dyndns addresses found");
+		return 0;
+	}
+
+	// again check all dyndns resolved addresses
+	if(check_httpip(addr))
+		return 1;
+
+	return 0;
+}
+
+#ifdef IPV6SUPPORT
+
+static int8_t check_valid_origin(struct in6_addr addr) {
+
+	if (IN6_IS_ADDR_V4MAPPED(&addr) || IN6_IS_ADDR_V4COMPAT(&addr)) {
+		// check for IPv4 as before
+		if(check_ip(cfg.http_allowed, *((in_addr_t *)&addr.s6_addr32[3])))
+			return 1;
+
+	} else {
+		// Allow all IPv6
+		// todo: check and filter
+		return 1;
+	}
+
+	// we havn't found the requesting IP in allowed range. So we check for allowed httpdyndns as last chance
+	if (cfg.http_dyndns[0][0]) {
+		int8_t ok;
+		ok = check_httpdyndns(addr);
+		return ok;
+	}
+	return 0;
+}
+
+#else
+
+static int8_t check_valid_origin(in_addr_t addr) {
+
+	// check whether requesting IP is in allowed IP ranges
+	if(check_ip(cfg.http_allowed, addr))
+		return 1;
+
+	// we havn't found the requesting IP in allowed range. So we check for allowed httpdyndns as last chance
+	if (cfg.http_dyndns[0][0]) {
+		int8_t ok;
+		ok = check_httpdyndns(addr);
+		return ok;
+	}
+	return 0;
+}
+#endif
+
 static int8_t check_request(char *result, int32_t read) {
 	if(read < 50) return 0;
 	result[read]='\0';
@@ -4376,52 +4494,12 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 #else
 		if (*keepalive) fflush(f);
 #endif
-#ifdef IPV6SUPPORT
-		if (IN6_IS_ADDR_V4MAPPED(&in) || IN6_IS_ADDR_V4COMPAT(&in))
-		{
-		    // check for IPv4 as before
-		    ok = check_ip(cfg.http_allowed, *((in_addr_t *)&addr.s6_addr32[3])) ? v : 0;
-		}
-		else
-		{
-		    // Allow all IPv6
-		    // todo: check and filter
-		    ok = v;
-		}
-#else
-		ok = check_ip(cfg.http_allowed, addr) ? v : 0;
-#endif
-		
-		if (!ok && cfg.http_dyndns[0]) {
-			cs_debug_mask(D_TRACE, "WebIf: IP not found in allowed range - test dyndns");
-#ifdef IPV6SUPPORT
-			if(cfg.http_dynip && cfg.http_dynip == addr.s6_addr32[3]) {
-#else
-			if(cfg.http_dynip && cfg.http_dynip == addr) {
-#endif
-				ok = v;
-				cs_debug_mask(D_TRACE, "WebIf: dyndns address previously resolved and ok");	
-			} else {
-				cfg.http_dynip = cs_getIPfromHost((char*)cfg.http_dyndns);
-#ifdef IPV6SUPPORT
-				if(cfg.http_dynip && cfg.http_dynip == addr.s6_addr32[3]) {
-#else
-				if(cfg.http_dynip && cfg.http_dynip == addr) {
-#endif
-					ok = v;
-					cs_debug_mask(D_TRACE, "WebIf: dynip resolved %s access from %s => granted",
-						cs_inet_ntoa(cfg.http_dynip),
-						cs_inet6_ntoa(addr));	
-				} else {
-					cs_debug_mask(D_TRACE, "WebIf: dynip resolved %s access from %s => forbidden",
-						cs_inet_ntoa(cfg.http_dynip),
-						cs_inet6_ntoa(addr));
-				}
-			}
-		} else {
-			if (cfg.http_dyndns[0])
-				cs_debug_mask(D_TRACE, "WebIf: IP found in allowed range - bypass dyndns");
-		}
+
+		// at this point we do all checks related origin IP, ranges and dyndns stuff
+		ok = check_valid_origin(addr) ? v : 0;
+		cs_debug_mask(D_TRACE, "WebIf: Origin checked. Result: access from %s => %s", cs_inet6_ntoa(addr), (!ok)? "forbidden" : "allowed");
+
+		// based on the failed origin checks we send a 403 to calling browser
 		if (!ok) {
 			send_error(f, 403, "Forbidden", NULL, "Access denied.", 0);
 			cs_log("unauthorized access from %s flag %d", cs_inet6_ntoa(addr), v);
@@ -4458,7 +4536,8 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 			"/favicon.ico",
 			"/graph.svg",
 			"/oscamapi.xml",
-			"/cacheex.html"};
+			"/cacheex.html",
+			"/oscamapi.json"	};
 	
 		int32_t pagescnt = sizeof(pages)/sizeof(char *); // Calculate the amount of items in array
 		int32_t i, bufsize, len, pgidx = -1;
@@ -4592,12 +4671,16 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 	
 			time_t now = time((time_t*)0);
 			// XMLAPI
-			if (pgidx == 18) {
+			if (pgidx == 18 || pgidx == 22 || pgidx == 24) {
 				char tbuffer [30];
 				strftime(tbuffer, 30, "%Y-%m-%dT%H:%M:%S%z", &st);
 				tpl_addVar(vars, TPLADD, "APISTARTTIME", tbuffer);
 				tpl_printf(vars, TPLADD, "APIUPTIME", "%u", now - first_client->login);
 				tpl_printf(vars, TPLADD, "APIREADONLY", "%d", cfg.http_readonly);
+				if (strcmp(getParam(&params, "callback"),"")) {
+					tpl_addVar(vars, TPLADD, "CALLBACK", getParam(&params, "callback"));
+				}
+
 			}
 	
 			// language code in helplink
@@ -4637,14 +4720,15 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 				case 15: result = send_oscam_reader_stats(vars, &params, 0); break;
 				case 16: result = send_oscam_failban(vars, &params, 0); break;
 				//case  17: js file
-				case 18: result = send_oscam_api(vars, f, &params, keepalive); break; //oscamapi.html
+				case 18: result = send_oscam_api(vars, f, &params, keepalive, 1); break; //oscamapi.html
 				case 19: result = send_oscam_image(vars, f, &params, NULL, modifiedheader, etagheader); break;
 				case 20: result = send_oscam_image(vars, f, &params, "ICMAI", modifiedheader, etagheader); break;
 				case 21: result = send_oscam_graph(vars); break;
-				case 22: result = send_oscam_api(vars, f, &params, keepalive); break; //oscamapi.xml
+				case 22: result = send_oscam_api(vars, f, &params, keepalive, 1); break; //oscamapi.xml
 #ifdef CS_CACHEEX
 				case 23: result = send_oscam_cacheex(vars, &params, 0); break;
 #endif
+				case 24: result = send_oscam_api(vars, f, &params, keepalive, 2); break; //oscamapi.json
 				default: result = send_oscam_status(vars, &params, 0); break;
 			}
 			if(pgidx != 19 && pgidx != 20) cs_writeunlock(&http_lock);
@@ -4656,6 +4740,8 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 					send_headers(f, 200, "OK", NULL, "text/xml", 0, strlen(result), NULL, 0);
 				else if (pgidx == 21)
 					send_headers(f, 200, "OK", NULL, "image/svg+xml", 0, strlen(result), NULL, 0);
+				else if (pgidx == 24)
+					send_headers(f, 200, "OK", NULL, "text/javascript", 0, strlen(result), NULL, 0);
 				else
 					send_headers(f, 200, "OK", NULL, "text/html", 0, strlen(result), NULL, 0);
 				webif_write(result, f);

@@ -439,6 +439,8 @@ struct s_arm_led {
 #define BAN_SLEEPING	4			// failban mask for sleeping user
 #define BAN_DUPLICATE	8			// failban mask for duplicate user
 
+#define MAX_HTTP_DYNDNS 3			// maximum allowed dyndns addresses for webif access
+
 #define ACTION_READER_IDLE		1
 #define ACTION_READER_REMOTE	2
 #define ACTION_READER_REMOTELOG	3
@@ -954,6 +956,7 @@ struct s_client {
 	int8_t			rotate;
 
 	int8_t			ncd_proto;
+	uint8_t         ncd_header[12];
 
 	//camd35
 	uchar			upwd[64];
@@ -1502,8 +1505,8 @@ struct s_config
 	int8_t			http_hide_idle_clients;
 	struct s_ip 	*http_allowed;
 	int8_t			http_readonly;
-	in_addr_t		http_dynip;
-	uchar			http_dyndns[64];
+	in_addr_t		http_dynip[MAX_HTTP_DYNDNS];
+	uchar			http_dyndns[MAX_HTTP_DYNDNS][64];
 #ifdef WITH_SSL	
 	int8_t			http_use_ssl;
 	int8_t			http_force_sslv3;
@@ -1683,9 +1686,8 @@ typedef struct reader_stat_t
 	int32_t			rc;
 	uint16_t		caid;
 	uint32_t		prid;
-	uint16_t		ecmpid;
 	uint16_t		srvid;
-	uint16_t		chid;
+	uint32_t		chid;
 	int16_t			ecmlen;
 
 	time_t			last_received;
@@ -1697,6 +1699,15 @@ typedef struct reader_stat_t
 
 	int32_t			fail_factor;
 } READER_STAT;
+
+typedef struct cs_stat_query {
+	uint16_t		caid;
+	uint32_t		prid;
+	uint16_t		srvid;
+	uint32_t		chid;
+	int16_t			ecmlen;
+} STAT_QUERY;
+
 
 typedef struct emm_packet_t
 {

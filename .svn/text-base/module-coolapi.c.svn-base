@@ -105,7 +105,7 @@ static void dmx_callback(void * unk, dmx_t * dmx, int32_t type, void * data)
 	}
 }
 
-int32_t coolapi_set_filter (int32_t fd, int32_t num, int32_t pid, unsigned char * flt, unsigned char * mask, int32_t type)
+int32_t coolapi_set_filter (int32_t fd, int32_t num, int32_t pid, unsigned char * flt, unsigned char * mask)
 {
 	int32_t result;
 	filter_set_t filter;
@@ -155,15 +155,11 @@ int32_t coolapi_set_filter (int32_t fd, int32_t num, int32_t pid, unsigned char 
 	result = cnxt_dmx_channel_ctrl(dmx->channel, 2, 0);
 
 	/* FIXME 
-	 1) we need more than one filter for an EMM-PID, so we exclude the annoying CNXT_STATUS_DUPLICATE_PID (Code 99) which is probably(?) just a notification and not an error
-	 2) rezap needed if this happens with an ECM-PID
+	 we need more than one filter for an EMM-PID, so we exclude the annoying CNXT_STATUS_DUPLICATE_PID (Code 99) which is probably(?) just a notification and not an error
 	*/
 
-	if (result != 99) {
+	if (result != 99)
 		check_error ("cnxt_dmx_channel_ctrl", result);
-	} else if (type==TYPE_ECM) {
-		system("pzapit -rz");
-	}
 
 	dmx->pid = pid;
 	pthread_mutex_unlock(&dmx->mutex);
@@ -272,6 +268,7 @@ int32_t coolapi_close_device(int32_t fd)
 	}
   	cs_debug_mask(D_DVBAPI, "fd %08x channel %x pid %x", fd, (int) dmx->channel, dmx->pid);
 
+	pthread_mutex_lock(&dmx->mutex);
 	if(dmx->filter != NULL) {
 		result = cnxt_dmx_channel_detach_filter(dmx->channel, dmx->filter);
 		check_error ("cnxt_dmx_channel_detach_filter", result);
@@ -298,7 +295,7 @@ int32_t coolapi_close_device(int32_t fd)
 	check_error ("cnxt_cbuf_close", result);
 
 	dmx->opened = 0;
-
+	pthread_mutex_unlock(&dmx->mutex);
 	pthread_mutex_destroy(&dmx->mutex);
 
 	memset(dmx, 0, sizeof(dmx_t));
@@ -346,7 +343,7 @@ int32_t coolapi_read(int32_t fd, unsigned char * buffer, uint32_t len)
 		cs_debug_mask(D_DVBAPI, "dmx is NULL!");
 		return 0;
 	}
-	cs_debug_mask(D_DVBAPI, "dmx channel %x pid %x len %d",  (int) dmx->channel, dmx->pid, len);
+	//cs_debug_mask(D_DVBAPI, "dmx channel %x pid %x len %d",  (int) dmx->channel, dmx->pid, len);
 
 	result = cnxt_cbuf_get_used(dmx->buffer2, &bytes_used);
 	check_error ("cnxt_cbuf_get_used", result);
@@ -368,7 +365,7 @@ int32_t coolapi_read(int32_t fd, unsigned char * buffer, uint32_t len)
 		return 0;
 	done += 3;
 
-	cs_debug_mask(D_DVBAPI, "bytes read %d\n", done);
+	//cs_debug_mask(D_DVBAPI, "bytes read %d\n", done);
 	return done;
 }
 

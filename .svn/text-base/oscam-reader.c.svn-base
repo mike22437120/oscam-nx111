@@ -100,7 +100,7 @@ void casc_check_dcw(struct s_reader * reader, int32_t idx, int32_t rc, uchar *cw
 		if (ecm->rc>=10 && (t-(uint32_t)ecm->tps.time > ((cfg.ctimeout + 500) / 1000) + 1)) { // drop timeouts
 			ecm->rc=0;
 #ifdef WITH_LB
-			send_reader_stat(reader, ecm, E_TIMEOUT);
+			send_reader_stat(reader, ecm, NULL, E_TIMEOUT);
 #endif
 		}
 
@@ -361,7 +361,7 @@ int32_t casc_process_ecm(struct s_reader * reader, ECM_REQUEST *er)
 		if ((ecm->rc>=10) && (t-(uint32_t)ecm->tps.time > ((cfg.ctimeout + 500) / 1000) + 1)) { // drop timeouts
 			ecm->rc=0;
 #ifdef WITH_LB
-			send_reader_stat(reader, ecm, E_TIMEOUT);
+			send_reader_stat(reader, ecm, NULL, E_TIMEOUT);
 #endif
 		}
 	}
@@ -598,14 +598,14 @@ int32_t reader_do_emm(struct s_reader * reader, EMM_PACKET *ep)
 	MD5(ep->emm, ep->emm[2], md5tmp);
 
 	no=0;
-	for (i=ecs=0; (i<CS_EMMCACHESIZE) && (!ecs); i++) {
+	for (i=ecs=0; i<CS_EMMCACHESIZE; i++) {
        	if (!memcmp(cl->emmcache[i].emmd5, md5tmp, CS_EMMSTORESIZE)) {
 			if (reader->cachemm)
 				ecs=(reader->rewritemm > cl->emmcache[i].count) ? 1 : 2;
 			else
 				ecs=1;
 			no=++cl->emmcache[i].count;
-			i--;
+			break;
 		}
 	}
 

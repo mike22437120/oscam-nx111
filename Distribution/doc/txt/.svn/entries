@@ -1,15 +1,15 @@
 10
 
 dir
-6553
+6583
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-03-16T21:35:34.093790Z
-6531
-lareq78
+2012-03-21T12:53:29.875688Z
+6560
+docman
 
 
 
@@ -25,6 +25,40 @@ lareq78
 
 
 4b0bc96b-bc66-0410-9d44-ebda105a78c1
+
+oscam.cert.txt
+file
+
+
+
+
+2012-01-29T04:06:30.943663Z
+f8ba21051e5efbe28bd8a1d7c8224601
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+640
 
 oscam.cacheex.txt
 file
@@ -385,9 +419,9 @@ file
 
 
 
-3b5a71d55cc3e8f983db3e7e43635119
-2012-03-14T18:51:54.228689Z
-6520
+fa3c55a5d5796e6f7b839a70f96aa5f4
+2012-03-21T12:53:29.875688Z
+6560
 docman
 
 oscam.tiers.txt
@@ -491,38 +525,4 @@ docman
 
 
 1148
-
-oscam.cert.txt
-file
-
-
-
-
-2012-01-29T04:06:30.943663Z
-f8ba21051e5efbe28bd8a1d7c8224601
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-640
 

@@ -209,6 +209,9 @@ int32_t chk_sfilter(ECM_REQUEST *er, PTAB *ptab)
   prid = er->prid;
   pi = cur_cl->port_idx;
 
+  if (cfg.ncd_mgclient && ptab == &cfg.ncd_ptab)
+	  return 1;
+
   if (ptab->nports && ptab->ports[pi].ftab.nfilts)
   {
     for( rc=j=0; (!rc) && (j<ptab->ports[pi].ftab.nfilts); j++ )
@@ -456,12 +459,6 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr) {
   if (!(rdr->grp&cur_cl->grp))
     return(0);
 
-  //Schlocke reader-defined function, reader-self-check: 
-  if (rdr->ph.c_available && !rdr->ph.c_available(rdr, AVAIL_CHECK_CONNECTED, er)) {
-    cs_debug_mask(D_TRACE, "reader unavailable %s", rdr->label);
-    return 0;
-  }
-
   //Checking caids:
   if ((!er->ocaid || !chk_ctab(er->ocaid, &rdr->ctab)) && !chk_ctab(er->caid, &rdr->ctab)) {
     cs_debug_mask(D_TRACE, "caid %04X not found in caidlist reader %s", er->caid, rdr->label);
@@ -494,6 +491,12 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr) {
     cs_debug_mask(D_TRACE, "chid filter reader %s", rdr->label);    
     return(0);
   }
+
+  //Schlocke reader-defined function, reader-self-check
+  if (rdr->ph.c_available && !rdr->ph.c_available(rdr, AVAIL_CHECK_CONNECTED, er)) {
+    cs_debug_mask(D_TRACE, "reader unavailable %s", rdr->label);
+    return 0;
+  }
   
   // Checking ratelimit
   if ((!(rdr->typ & R_IS_NETWORK)) && ((rdr->ratelimitecm && !rdr->cooldown[0]) || rdr->cooldownstate == 1 )){
@@ -519,7 +522,7 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr) {
 		S_ENTITLEMENT *item;
 		int8_t found = 0;
 		while ((item=ll_iter_next(&itr))) {
-			if (item->caid == er->caid && (!er->prid || item->provid == er->prid)) {
+			if (item->caid == er->caid && (!er->prid || !item->provid || item->provid == er->prid)) {
 				found =1;
 				break;
 			}

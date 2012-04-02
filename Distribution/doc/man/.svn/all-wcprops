@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 51
-/svn/oscam/!svn/ver/6531/trunk/Distribution/doc/man
+/svn/oscam/!svn/ver/6560/trunk/Distribution/doc/man
 END
 oscam.whitelist.5
 K 25
@@ -43,7 +43,7 @@ oscam.conf.5
 K 25
 svn:wc:ra_dav:version-url
 V 64
-/svn/oscam/!svn/ver/6520/trunk/Distribution/doc/man/oscam.conf.5
+/svn/oscam/!svn/ver/6560/trunk/Distribution/doc/man/oscam.conf.5
 END
 oscam.tiers.5
 K 25
