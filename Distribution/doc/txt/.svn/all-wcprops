@@ -1,25 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 51
-/svn/oscam/!svn/ver/6560/trunk/Distribution/doc/txt
-END
-oscam.whitelist.txt
-K 25
-svn:wc:ra_dav:version-url
-V 71
-/svn/oscam/!svn/ver/6252/trunk/Distribution/doc/txt/oscam.whitelist.txt
-END
-oscam.ird.txt
-K 25
-svn:wc:ra_dav:version-url
-V 65
-/svn/oscam/!svn/ver/6252/trunk/Distribution/doc/txt/oscam.ird.txt
-END
-oscam.user.txt
-K 25
-svn:wc:ra_dav:version-url
-V 66
-/svn/oscam/!svn/ver/6447/trunk/Distribution/doc/txt/oscam.user.txt
+/svn/oscam/!svn/ver/6624/trunk/Distribution/doc/txt
 END
 list_smargo.txt
 K 25
@@ -43,7 +25,7 @@ oscam.conf.txt
 K 25
 svn:wc:ra_dav:version-url
 V 66
-/svn/oscam/!svn/ver/6560/trunk/Distribution/doc/txt/oscam.conf.txt
+/svn/oscam/!svn/ver/6596/trunk/Distribution/doc/txt/oscam.conf.txt
 END
 oscam.guess.txt
 K 25
@@ -79,7 +61,7 @@ oscam.txt
 K 25
 svn:wc:ra_dav:version-url
 V 61
-/svn/oscam/!svn/ver/6447/trunk/Distribution/doc/txt/oscam.txt
+/svn/oscam/!svn/ver/6586/trunk/Distribution/doc/txt/oscam.txt
 END
 oscam.provid.txt
 K 25
@@ -97,5 +79,23 @@ oscam.server.txt
 K 25
 svn:wc:ra_dav:version-url
 V 68
-/svn/oscam/!svn/ver/6531/trunk/Distribution/doc/txt/oscam.server.txt
+/svn/oscam/!svn/ver/6624/trunk/Distribution/doc/txt/oscam.server.txt
+END
+oscam.whitelist.txt
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/oscam/!svn/ver/6608/trunk/Distribution/doc/txt/oscam.whitelist.txt
+END
+oscam.ird.txt
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/oscam/!svn/ver/6252/trunk/Distribution/doc/txt/oscam.ird.txt
+END
+oscam.user.txt
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/oscam/!svn/ver/6596/trunk/Distribution/doc/txt/oscam.user.txt
 END

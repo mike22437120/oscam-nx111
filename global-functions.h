@@ -77,6 +77,9 @@ extern void reader_tongfang(struct s_cardsystem *);
 #ifdef READER_STREAMGUARD
 extern void reader_streamguard(struct s_cardsystem *);
 #endif
+#ifdef READER_BULCRYPT
+extern void reader_bulcrypt(struct s_cardsystem *);
+#endif
 
 /* ===========================
  *         cardreaders
@@ -380,6 +383,7 @@ extern void cs_clear_entitlement(struct s_reader *rdr);
 
 extern void reader_do_idle(struct s_reader * reader);
 extern int32_t reader_do_emm(struct s_reader * reader, EMM_PACKET *ep);
+extern void reader_log_emm(struct s_reader * reader, EMM_PACKET *ep, int32_t i, int32_t rc, struct timeb *tps);
 extern void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er);
 extern void casc_check_dcw(struct s_reader * reader, int32_t idx, int32_t rc, uchar *cw);
 extern void casc_do_sock_log(struct s_reader * reader);
@@ -415,7 +419,7 @@ extern char *cs_hexdump(int32_t, const uchar *, int32_t, char *target, int32_t l
 extern in_addr_t cs_inet_order(in_addr_t);
 extern char *cs_inet_ntoa(in_addr_t);
 extern in_addr_t cs_inet_addr(char *txt);
-extern uint32_t b2i(int32_t, uchar *);
+extern uint32_t b2i(int32_t, const uchar *);
 extern uint64_t b2ll(int32_t, uchar *);
 extern uchar *i2b_buf(int32_t n, uint32_t i, uchar *b);
 extern uint32_t a2i(char *, int32_t);
@@ -510,6 +514,7 @@ extern int32_t clean_stat_by_rc(struct s_reader *rdr, int8_t rc, int8_t inverse)
 extern int32_t clean_stat_by_id(struct s_reader *rdr, uint16_t caid, uint32_t prid, uint16_t srvid, uint16_t chid, uint16_t ecmlen);
 extern void update_ecmlen_from_stat(struct s_reader *rdr);
 extern int32_t clean_all_stats_by_rc(int8_t rc, int8_t inverse);
+extern int32_t lb_valid_btun(ECM_REQUEST *er, uint16_t caidto);
 #endif
 
 /* ===========================

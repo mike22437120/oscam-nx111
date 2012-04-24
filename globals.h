@@ -208,9 +208,10 @@
 #define D_DVBAPI    0x0080  // Debug DVBAPI
 #define D_LB        0x0100  // Debug Loadbalancer
 #define D_CACHEEX   0x0200  // Debug CACHEEX
+#define D_CLIENTECM 0x0400  // Debug Client ECMs
 #define D_ALL_DUMP  0xFFFF  // dumps all
 
-#define MAX_DEBUG_LEVELS 10
+#define MAX_DEBUG_LEVELS 11
 
 #define R_DB2COM1   0x1 // Reader Dbox2 @ com1
 #define R_DB2COM2   0x2 // Reader Dbox2 @ com1
@@ -489,6 +490,7 @@ struct s_arm_led {
 /* ===========================
  *      Default Values
  * =========================== */
+#define DEFAULT_INACTIVITYTIMEOUT 0
 #define DEFAULT_TCP_RECONNECT_TIMEOUT 30
 #define DEFAULT_NCD_KEEPALIVE 0
 
@@ -729,7 +731,7 @@ struct s_cardsystem {
 	void			(*post_process)();
 	int32_t		(*get_emm_type)();
 	void			(*get_emm_filter)();
-	uchar			caids[2];
+	uint16_t		caids[2];
 };
 
 #ifdef IRDETO_GUESSING
@@ -799,7 +801,7 @@ typedef struct ecm_request_t {
 
 
 struct s_ecm_answer {
-	int8_t			status;
+	uint8_t			status;
 	struct s_reader	*reader;
 	ECM_REQUEST		*er;
 	int8_t			rc;
@@ -1185,7 +1187,6 @@ struct s_reader  									//contains device info, reader info and card info
 	time_t			last_g;							// get (if last_s-last_g>tcp_rto - reconnect )
 	time_t			last_s;							// send
 	time_t			last_check;						// last checked
-	uint8_t			show_cls;						// number of classes subscription showed on kill -31
 	FTAB			fchid;
 	FTAB			ftab;
 	CLASSTAB		cltab;
@@ -1425,6 +1426,8 @@ struct s_global_whitelist
 	uint16_t chid;
 	uint16_t pid;
 	uint16_t ecmlen;
+	uint16_t mapcaid;
+	uint16_t mapprovid;
 	struct s_global_whitelist *next;
 } GLOBAL_WHITELIST;
 
@@ -1664,6 +1667,7 @@ struct s_config
 	//Global whitelist:
 	struct s_global_whitelist *global_whitelist;
 	int8_t global_whitelist_use_l;
+	int8_t global_whitelist_use_m;
 };
 
 struct s_clientinit

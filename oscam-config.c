@@ -2125,6 +2125,7 @@ int32_t write_services()
 		cs_log("Cannot open file \"%s\" (errno=%d %s)", tmpfile, errno, strerror(errno));
 		return(1);
 	}
+	setvbuf(f, NULL, _IOFBF, 16*1024);
 	fprintf(f,"# oscam.services generated automatically by Streamboard OSCAM %s build #%s\n", CS_VERSION, CS_SVN_VERSION);
 	fprintf(f,"# Read more: http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt/oscam.services.txt\n\n");
 
@@ -2152,7 +2153,7 @@ int32_t write_services()
 			if (i==0) fprintf(f,"%04X", sidtab->srvid[i]);
 			else fprintf(f,",%04X", sidtab->srvid[i]);
 		}
-		fprintf(f,"\n\n");
+		fprintf(f,"\n");
 		sidtab=sidtab->next;
 	}
 
@@ -2177,6 +2178,7 @@ int32_t write_config()
 		cs_log("Cannot open file \"%s\" (errno=%d %s)", tmpfile, errno, strerror(errno));
 		return(1);
 	}
+	setvbuf(f, NULL, _IOFBF, 16*1024);
 	fprintf(f,"# oscam.conf generated automatically by Streamboard OSCAM %s build #%s\n", CS_VERSION, CS_SVN_VERSION);
 	fprintf(f,"# Read more: http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt/oscam.conf.txt\n\n");
 
@@ -2668,6 +2670,7 @@ int32_t write_userdb()
     cs_log("Cannot open file \"%s\" (errno=%d %s)", tmpfile, errno, strerror(errno));
     return(1);
   }
+  setvbuf(f, NULL, _IOFBF, 16*1024);
   fprintf(f,"# oscam.user generated automatically by Streamboard OSCAM %s build #%s\n", CS_VERSION, CS_SVN_VERSION);
   fprintf(f,"# Read more: http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt/oscam.user.txt\n\n");
 
@@ -2845,6 +2848,7 @@ int32_t write_server()
 		cs_log("Cannot open file \"%s\" (errno=%d %s)", tmpfile, errno, strerror(errno));
 		return(1);
 	}
+	setvbuf(f, NULL, _IOFBF, 16*1024);
 	fprintf(f,"# oscam.server generated automatically by Streamboard OSCAM %s build #%s\n", CS_VERSION, CS_SVN_VERSION);
 	fprintf(f,"# Read more: http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt/oscam.server.txt\n\n");
 
@@ -2909,7 +2913,7 @@ int32_t write_server()
 				fprintf_conf(f, "services", "%s\n", value);
 			free_mk_t(value);
 
-			if ((rdr->tcp_ito != 30 || cfg.http_full_cfg) && !isphysical)
+			if ((rdr->tcp_ito != DEFAULT_INACTIVITYTIMEOUT || cfg.http_full_cfg) && !isphysical)
 				fprintf_conf(f, "inactivitytimeout", "%d\n", rdr->tcp_ito);
 
 			if ((rdr->resetcycle != 0 || cfg.http_full_cfg))
@@ -2930,9 +2934,6 @@ int32_t write_server()
 			if ((rdr->sc8in1_dtrrts_patch || cfg.http_full_cfg) && isphysical)
 				fprintf_conf(f, "sc8in1_dtrrts_patch", "%d\n", rdr->sc8in1_dtrrts_patch);
 
-			if ((rdr->show_cls != 10 || cfg.http_full_cfg) && isphysical)
-				fprintf_conf(f, "showcls", "%d\n", rdr->show_cls);
-
 			if (rdr->fallback || cfg.http_full_cfg)
 				fprintf_conf(f, "fallback", "%d\n", rdr->fallback);
 
@@ -2941,6 +2942,12 @@ int32_t write_server()
 				fprintf_conf(f, "cacheex", "%d\n", rdr->cacheex);
 #endif
 
+#ifdef COOL
+			if (rdr->cool_timeout_init || cfg.http_full_cfg)
+				fprintf_conf(f, "cool_timeout_init", "%d\n", rdr->cool_timeout_init);
+			if (rdr->cool_timeout_after_init || cfg.http_full_cfg)
+				fprintf_conf(f, "cool_timeout_after_init", "%d\n", rdr->cool_timeout_after_init);
+#endif
 			if (rdr->log_port || cfg.http_full_cfg)
 				fprintf_conf(f, "logport", "%d\n", rdr->log_port);
 
@@ -3046,9 +3053,6 @@ int32_t write_server()
 			if (strlen(value) > 0 || cfg.http_full_cfg)
 				fprintf_conf(f, "aeskeys", "%s\n", value);
 			free_mk_t(value);
-
-			if ((rdr->show_cls && !rdr->show_cls == 10) || cfg.http_full_cfg)
-				fprintf_conf(f, "showcls", "%d\n", rdr->show_cls);
 
 			value = mk_t_group(rdr->grp);
 			if (strlen(value) > 0 || cfg.http_full_cfg)
@@ -3171,7 +3175,7 @@ int32_t write_server()
 			if (rdr->autorestartseconds || cfg.http_full_cfg ){
 				fprintf_conf(f, "autorestartseconds", "%d\n", rdr->autorestartseconds);
 			}
-			fprintf(f, "\n\n");
+			fprintf(f, "\n");
 		}
 	}
 	fclose(f);
@@ -3364,6 +3368,12 @@ void write_versionfile() {
 	  fprintf(fp, "STREAMGUARD:                   yes\n");
 	#else
 	  fprintf(fp, "STREAMGUARD:                   no\n");
+	#endif
+
+	#ifdef READER_BULCRYPT
+	  fprintf(fp, "BULCRYPT:                   yes\n");
+	#else
+	  fprintf(fp, "BULCRYPT:                   no\n");
 	#endif
 #else
 	  fprintf(fp, "Cardreader:                 no\n");
@@ -4212,7 +4222,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 	}
 
 	if (!strcmp(token, "inactivitytimeout")) {
-		rdr->tcp_ito  = strToIntVal(value, 0);
+		rdr->tcp_ito  = strToIntVal(value, DEFAULT_INACTIVITYTIMEOUT);
 		return;
 	}
 
@@ -4625,11 +4635,6 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 	if (!strcmp(token, "chid")) {
 		chk_ftab(value, &rdr->fchid,"reader",rdr->label,"chid");
 		rdr->changes_since_shareupdate = 1;
-		return;
-	}
-
-	if (!strcmp(token, "showcls")) {
-		rdr->show_cls  = strToIntVal(value, 0);
 		return;
 	}
 
@@ -5255,7 +5260,6 @@ void * read_cccamcfg(int32_t mode)
 			memset(rdr->rom, 0, sizeof(rdr->rom));
 			rdr->enable = 1;
 			rdr->tcp_rto = DEFAULT_TCP_RECONNECT_TIMEOUT;
-			rdr->show_cls = 10;
 			rdr->nagra_read = 0;
 			rdr->mhz = 357;
 			rdr->cardmhz = 357;
@@ -5432,7 +5436,6 @@ int32_t init_readerdb()
 			memset(rdr->rom, 0, sizeof(rdr->rom));
 			rdr->enable = 1;
 			rdr->tcp_rto = DEFAULT_TCP_RECONNECT_TIMEOUT;
-			rdr->show_cls = 10;
 			rdr->nagra_read = 0;
 			rdr->mhz = 357;
 			rdr->cardmhz = 357;
@@ -6218,6 +6221,23 @@ int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line)
 		return 1;
 
 	struct s_global_whitelist *entry;
+
+	//check mapping:
+	if (cfg.global_whitelist_use_m) {
+		entry = cfg.global_whitelist;
+		while (entry) {
+			if (entry->type == 'm') {
+				if (match_whitelist(er, entry)) {
+					er->caid = entry->mapcaid;
+					er->prid = entry->mapprovid;
+					cs_debug_mask(D_TRACE, "whitelist: mapped %04X:%06X to %04X:%06X", er->caid, er->prid, entry->mapcaid, entry->mapprovid);
+					break;
+				}
+			}
+			entry = entry->next;
+		}
+	}
+
 	if (cfg.global_whitelist_use_l) { //Check caid/prov/srvid etc matching, except ecm-len:
 		entry = cfg.global_whitelist;
 		int8_t caidprov_matches = 0;
@@ -6262,6 +6282,9 @@ int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line)
 //ECM len check - Entry:
 //l:caid:prov:srvid:pid:chid:ecmlen
 
+//Mapping:
+//m:caid:prov:srvid:pid:chid:ecmlen caidto:provto
+
 static struct s_global_whitelist *global_whitelist_read_int() {
 	FILE *fp;
 	char token[1024], str1[1024];
@@ -6272,6 +6295,7 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 
 	const char *cs_whitelist="oscam.whitelist";
 	cfg.global_whitelist_use_l = 0;
+	cfg.global_whitelist_use_m = 0;
 
 	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_whitelist);
 	fp=fopen(token, "r");
@@ -6299,7 +6323,7 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 		}
 
 		type = 'w';
-		uint32_t caid=0, provid=0, srvid=0, pid=0, chid=0, ecmlen=0;
+		uint32_t caid=0, provid=0, srvid=0, pid=0, chid=0, ecmlen=0, mapcaid=0, mapprovid=0;
 		memset(str1, 0, sizeof(str1));
 
 		ret = sscanf(token, "%c:%4x:%6x:%4x:%4x:%4x:%1024s", &type, &caid, &provid, &srvid, &pid, &chid, str1);
@@ -6309,9 +6333,19 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 		//w=whitelist
 		//i=ignore
 		//l=len-check
-		if (ret<1 || (type != 'w' && type != 'i' && type != 'l'))
+		//m=map caid/prov
+		if (ret < 1 || (type != 'w' && type != 'i' && type != 'l' && type != 'm'))
 			continue;
 
+		if (type == 'm') {
+			char *p = strstr(token+4, " ");
+			if (!p || sscanf(p+1, "%4x:%6x", &mapcaid, &mapprovid) < 2) {
+				cs_debug_mask(D_TRACE, "whitelist: wrong mapping: %s", token);
+				continue;
+			}
+			str1[0]=0;
+			cfg.global_whitelist_use_m = 1;
+		}
 		strncat(str1, ",", sizeof(str1));
 		char *p = str1, *p2 = str1;
 		while (*p) {
@@ -6320,28 +6354,34 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 				ecmlen = 0;
 				sscanf(p2, "%4x", &ecmlen);
 
-				if(!cs_malloc(&entry,sizeof(struct s_global_whitelist), -1)){
+				if (!cs_malloc(&entry, sizeof(struct s_global_whitelist), -1)) {
 					fclose(fp);
 					return new_whitelist;
 				}
 
 				count++;
-				entry->line=line;
-				entry->type=type;
-				entry->caid=caid;
-				entry->provid=provid;
-				entry->srvid=srvid;
-				entry->pid=pid;
-				entry->chid=chid;
-				entry->ecmlen=ecmlen;
+				entry->line = line;
+				entry->type = type;
+				entry->caid = caid;
+				entry->provid = provid;
+				entry->srvid = srvid;
+				entry->pid = pid;
+				entry->chid = chid;
+				entry->ecmlen = ecmlen;
+				entry->mapcaid = mapcaid;
+				entry->mapprovid = mapprovid;
 				if (entry->type == 'l')
 					cfg.global_whitelist_use_l = 1;
 
-				cs_debug_mask(D_TRACE, "whitelist: %c: %04X:%06X:%04X:%04X:%04X:%02X",
-					entry->type, entry->caid, entry->provid, entry->srvid, entry->pid, entry->chid, entry->ecmlen);
+				if (type == 'm')
+					cs_debug_mask(D_TRACE,
+							"whitelist: %c: %04X:%06X:%04X:%04X:%04X:%02X map to %04X:%06X", entry->type, entry->caid, entry->provid, entry->srvid, entry->pid, entry->chid, entry->ecmlen, entry->mapcaid, entry->mapprovid);
+				else
+					cs_debug_mask(D_TRACE,
+						"whitelist: %c: %04X:%06X:%04X:%04X:%04X:%02X", entry->type, entry->caid, entry->provid, entry->srvid, entry->pid, entry->chid, entry->ecmlen);
 
 				if (!new_whitelist) {
-					new_whitelist=entry;
+					new_whitelist = entry;
 					last = new_whitelist;
 				} else {
 					last->next = entry;
@@ -6351,7 +6391,7 @@ static struct s_global_whitelist *global_whitelist_read_int() {
 				p2 = p + 1;
 			}
 			p++;
-		}
+			}
 	}
 
 	cs_log("%d entries read from %s", count, cs_whitelist);

@@ -329,6 +329,9 @@ static void usage()
 #ifdef READER_TONGFANG
   fprintf(stderr, "tongfang ");
 #endif
+#ifdef READER_BULCRYPT
+  fprintf(stderr, "bulcrypt ");
+#endif
   fprintf(stderr, "\n\n");
 #ifdef WEBIF
   fprintf(stderr, "oscam [-a] [-b] [-s] [-c <config dir>] [-t <tmp dir>] [-d <level>] [-r <level>] [-w <secs>] [-g <mode>] [-u] [-h]");
@@ -3360,6 +3363,10 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 
 	er->rcEx = 0;
 	request_cw(er);
+
+	cs_ddump_mask(D_CLIENTECM, er->ecm, er->l, "Client %s ECM dump %04X:%06X:%04X:%04X", username(client),
+			er->caid, er->prid, er->srvid, er->l);
+
 	if(timecheck_client){
 		pthread_mutex_lock(&timecheck_client->thread_lock);
 		if(timecheck_client->thread_active == 2)
@@ -3444,7 +3451,7 @@ void do_emm(struct s_client * client, EMM_PACKET *ep)
 		else
 			emmtype = 1 << (ep->type-1);
 		client->last=time((time_t*)0);
-		if ((1<<(ep->emm[0] % 0x80)) & aureader->s_nano || (aureader->saveemm & emmtype)) { //should this nano be saved?
+		if (((1<<(ep->emm[0] % 0x80)) & aureader->s_nano) || (aureader->saveemm & emmtype)) { //should this nano be saved?
 			char token[256];
 			char *tmp2;
 			FILE *fp;
@@ -3521,7 +3528,24 @@ void do_emm(struct s_client * client, EMM_PACKET *ep)
 			client->account->emmok++;
 		first_client->emmok++;
 
-		ep->client = cur_client();
+		//Check emmcache early:
+		int32_t i;
+		unsigned char md5tmp[CS_EMMSTORESIZE];
+		struct s_client *au_cl = aureader->client;
+
+		MD5(ep->emm, ep->emm[2], md5tmp);
+		ep->client = client;
+
+		for (i=0; i<CS_EMMCACHESIZE; i++) {
+	       	if (!memcmp(au_cl->emmcache[i].emmd5, md5tmp, CS_EMMSTORESIZE)) {
+	       		cs_debug_mask(D_EMM, "emm found in cache: reader %s count %d rewrite %d", aureader->label, au_cl->emmcache[i].count, aureader->rewritemm);
+				if (aureader->cachemm && (au_cl->emmcache[i].count > aureader->rewritemm)) {
+					reader_log_emm(aureader, ep, i, 2, NULL);
+					return;
+				}
+			}
+		}
+
 		cs_debug_mask(D_EMM, "emm is being sent to reader %s.", aureader->label);
 
 		EMM_PACKET *emm_pack = cs_malloc(&emm_pack, sizeof(EMM_PACKET), -1);
@@ -3532,7 +3556,7 @@ void do_emm(struct s_client * client, EMM_PACKET *ep)
 
 int32_t process_input(uchar *buf, int32_t l, int32_t timeout)
 {
-	int32_t rc, i, pfdcount;
+	int32_t rc, i, pfdcount, polltime;
 	struct pollfd pfd[2];
 	struct s_client *cl = cur_client();
 
@@ -3545,7 +3569,12 @@ int32_t process_input(uchar *buf, int32_t l, int32_t timeout)
 			pfd[pfdcount++].events = POLLIN | POLLPRI;
 		}
 
-		int32_t p_rc = poll(pfd, pfdcount, 0);
+		polltime  = timeout - (time(NULL) - starttime);
+		if (polltime < 0) {
+			polltime = 0;
+		}
+
+		int32_t p_rc = poll(pfd, pfdcount, polltime);
 
 		if (p_rc < 0) {
 			if (errno==EINTR) continue;
@@ -3703,7 +3732,9 @@ void * work_thread(void *ptr) {
 		}
 
 		if (!data) {
-			if (!cl->pfd)
+            /* for serial client cl->pfd is file descriptor for serial port not socket
+               for example: pfd=open("/dev/ttyUSB0"); */
+			if (!cl->pfd || ph[cl->ctyp].listenertype == LIS_SERIAL)
 				break;
 			pfd[0].fd = cl->pfd;
 			pfd[0].events = POLLIN | POLLPRI | POLLHUP;
@@ -4542,6 +4573,9 @@ int32_t main (int32_t argc, char *argv[])
 #endif
 #ifdef READER_TONGFANG
 	reader_tongfang,
+#endif
+#ifdef READER_BULCRYPT
+	reader_bulcrypt,
 #endif
 	0
   };

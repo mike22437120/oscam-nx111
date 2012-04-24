@@ -546,7 +546,7 @@ void dvbapi_parse_cat(int32_t demux_id, uchar *buf, int32_t len) {
 
 		if (demux[demux_id].EMMpidcount >= ECM_PIDS) break;
 
-		uint16_t caid=(((buf[i + 2] & 0x1F) << 8) | buf[i + 3]);
+		uint16_t caid=((buf[i + 2] << 8) | buf[i + 3]);
 		uint16_t emm_pid=(((buf[i + 4] & 0x1F) << 8) | buf[i + 5]);
 		uint32_t emm_provider = 0;
 
@@ -1114,24 +1114,31 @@ void dvbapi_adjust_prioritytab(int32_t demux_index){
 
 }
 
-//int32_t chk_valid_btun(uint16_t caid,uint16_t srvid)
-//{
-//	int32_t i;
-//	struct s_client *cl = cur_client();
-//	TUNTAB *ttab;
-//	ttab = &cl->ttab;
-//
-//	for (i = 0; i<ttab->n; i++) {
-//		if ((caid==ttab->bt_caidfrom[i]) && ((srvid==ttab->bt_srvid[i]) || (ttab->bt_srvid[i])==0xFFFF)) {
-//			return 1;
-//		}
-//	}
-//	return 0;
-//}
+int32_t chk_valid_btun(ECM_REQUEST *er, uint16_t caidto)
+{
+	int32_t i;
+	struct s_client *cl = cur_client();
+	TUNTAB *ttab;
+	ttab = &cl->ttab;
+
+	for (i = 0; i<ttab->n; i++) {
+		if ((er->caid==ttab->bt_caidfrom[i]) &&
+				((caidto==ttab->bt_caidto[i])) &&
+				((er->srvid==ttab->bt_srvid[i]) || (ttab->bt_srvid[i])==0xFFFF)) {
+			return 1;
+		}
+	}
+#ifdef WITH_LB
+	if (cfg.lb_auto_betatunnel && lb_valid_btun(er, caidto))
+		return 1;
+
+#endif
+	return 0;
+}
 
 void dvbapi_resort_ecmpids(int32_t demux_index) {
 	int32_t n,highest_prio=0,found=-1,matching=0;
-	//uint16_t btun_caid=0;
+	uint16_t btun_caid=0;
 
 	for (n=0; n<demux[demux_index].ECMpidcount; n++) {
 		demux[demux_index].ECMpids[n].status=0;
@@ -1175,31 +1182,31 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 				if (demux[demux_index].ECMpids[n].status != 0)
 					continue;
 
-				if (p->caid && p->caid != demux[demux_index].ECMpids[n].CAID)
+				er->caid = er->ocaid = demux[demux_index].ECMpids[n].CAID;
+				er->prid = demux[demux_index].ECMpids[n].PROVID;
+				er->pid = demux[demux_index].ECMpids[n].ECM_PID;
+				er->srvid = demux[demux_index].program_number;
+				er->client = cur_client();
+
+				btun_caid = get_betatunnel_caid_to(er->caid);
+				if (p->type == 'p' && btun_caid) {
+					if (chk_valid_btun(er, btun_caid))
+						er->caid = btun_caid;
+				}
+
+				if (p->caid && p->caid != er->caid)
 					continue;
-				if (p->provid != 0xFFFFFF && p->provid != demux[demux_index].ECMpids[n].PROVID)
+				if (p->provid != 0xFFFFFF && p->provid != er->prid)
 					continue;
-				if (p->ecmpid && p->ecmpid != demux[demux_index].ECMpids[n].ECM_PID)
+				if (p->ecmpid && p->ecmpid != er->pid)
 					continue;
-				if (p->srvid && p->srvid != demux[demux_index].program_number)
+				if (p->srvid && p->srvid != er->srvid)
 					continue;
 
 				if (p->type == 'p') {
 
 					if (demux[demux_index].ECMpids[n].status == -1) //ignore
 						continue;
-					
-					er->caid = er->ocaid = demux[demux_index].ECMpids[n].CAID;
-					er->prid = demux[demux_index].ECMpids[n].PROVID;
-					er->pid = demux[demux_index].ECMpids[n].ECM_PID;
-					er->srvid = demux[demux_index].program_number;
-					er->client = cur_client();
-					
-//					btun_caid = get_betatunnel_caid_to(demux[demux_index].ECMpids[n].CAID);
-//					if (btun_caid) {
-//						if (chk_valid_btun(er->caid,er->srvid))
-//							er->caid = btun_caid;
-//					}
 					
 					matching=0;
 					for (rdr=first_active_reader; rdr ; rdr=rdr->next) {
@@ -1254,11 +1261,11 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 			er->srvid = demux[demux_index].program_number;
 			er->client = cur_client();
 	
-//			btun_caid = get_betatunnel_caid_to(demux[demux_index].ECMpids[n].CAID);
-//			if (btun_caid) {
-//				if (chk_valid_btun(er->caid,er->srvid))
-//					er->caid = btun_caid;
-//			}
+			btun_caid = get_betatunnel_caid_to(er->caid);
+			if (btun_caid) {
+				if (chk_valid_btun(er, btun_caid))
+					er->caid = btun_caid;
+			}
 		
 			matching=0;
 			for (rdr=first_active_reader; rdr ; rdr=rdr->next) {
@@ -1362,6 +1369,22 @@ void dvbapi_parse_descriptor(int32_t demux_id, uint32_t info_length, unsigned ch
 				descriptor_ca_provider = buffer[j+6];
 
 			dvbapi_add_ecmpid(demux_id, descriptor_ca_system_id, descriptor_ca_pid, descriptor_ca_provider, streampid);
+		}
+	}
+
+	//Apply mapping:
+	if (dvbapi_priority) {
+		struct s_dvbapi_priority *mapentry;
+		for (j = 0; (int32_t)j < demux[demux_id].ECMpidcount; j++) {
+			mapentry = dvbapi_check_prio_match(demux_id, j, 'm');
+			if (mapentry) {
+				cs_debug_mask(D_DVBAPI,
+						"mapping ECM from %04X:%06X to %04X:%06X",
+						demux[demux_id].ECMpids[j].CAID, demux[demux_id].ECMpids[j].PROVID,
+						mapentry->mapcaid, mapentry->mapprovid);
+				demux[demux_id].ECMpids[j].CAID = mapentry->mapcaid;
+				demux[demux_id].ECMpids[j].PROVID = mapentry->mapprovid;
+			}
 		}
 	}
 }
@@ -1577,7 +1600,7 @@ int32_t dvbapi_parse_capmt(unsigned char *buffer, uint32_t length, int32_t connf
 
 	char channame[32];
 	get_servicename(dvbapi_client, demux[demux_id].program_number, demux[demux_id].ECMpidcount>0 ? demux[demux_id].ECMpids[0].CAID : 0, channame);
-	cs_log("new program number: %04X (%s)", program_number, channame);
+	cs_log("new program number: %04X (%s) [pmt_list_management %d]", program_number, channame, ca_pmt_list_management);
 
 #ifdef AZBOX
 	openxcas_sid = program_number;
@@ -2015,8 +2038,6 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 
 		curpid->table = buffer[0];
 
-		struct s_dvbapi_priority *mapentry = dvbapi_check_prio_match(demux_id, demux[demux_id].demux_fd[filter_num].pidindex, 'm');
-
 		if (!provid)
 			provid = chk_provid(buffer, caid);
 
@@ -2035,14 +2056,7 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 		er->pid   = curpid->ECM_PID;
 		er->prid  = provid;
 		er->chid  = chid;
-
-		if (mapentry) {
-			cs_debug_mask(D_DVBAPI, "mapping ECM from %04X:%06X to %04X:%06X", er->caid, er->prid, mapentry->mapcaid, mapentry->mapprovid);
-			er->caid = mapentry->mapcaid;
-			er->prid = mapentry->mapprovid;
-		}
-
-		er->l=len;
+		er->l     = len;
 		memcpy(er->ecm, buffer, er->l);
 
 		request_cw(dvbapi_client, er);
@@ -2301,10 +2315,6 @@ void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
 	return;
 #endif
 	int32_t i,j;
-	int offline=0;
-	
-	if(er->rc==E_TIMEOUT || er->rcEx==E2_GROUP || er->rcEx==E2_OFFLINE)
-		offline=1;
 
 	for (i=0;i<MAX_DEMUX;i++) {
 		if (demux[i].program_number==er->srvid) {
@@ -2363,6 +2373,12 @@ void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
 			}
 
 			if (er->rc >= E_NOTFOUND) {
+				 //maybe offline
+				if(er->rc == E_TIMEOUT || er->rcEx == E2_GROUP || er->rcEx == E2_OFFLINE 
+				   || !(demux[i].rdr->typ & R_IS_CASCADING) || demux[i].rdr->typ == R_CONSTCW )
+							demux[i].tries = -1;
+				else if(demux[i].tries<0)
+					demux[i].tries=0;
 				edit_channel_cache(i, j, 0);
 				if ((er->caid >> 8) == 0x06 && demux[i].ECMpids[j].irdeto_chids < (((0xFFFF<<(demux[i].ECMpids[j].irdeto_numchids)) ^ 0xFFFF) & 0xFFFF)) {
 					demux[i].ECMpids[j].irdeto_curchid++;
@@ -2387,17 +2403,14 @@ void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
 						else
 							dvbapi_try_next_caid(i);
 					} else {
-						if (offline)
-							demux[i].tries = -1;
 						dvbapi_try_next_caid(i);
 					}
 				} else {
-					demux[i].tries++;
+					if(demux[i].tries>=0)
+						demux[i].tries++;
 					struct s_dvbapi_priority *forceentry=dvbapi_check_prio_match(i, demux[i].curindex, 'p');
 					if (!forceentry && demux[i].tries>3) {
 						demux[i].tries = 0;
-						if (offline)
-							demux[i].tries = -1;
 						demux[i].curindex = 0;
 						demux[i].pidindex = -1;
 						dvbapi_try_next_caid(i);
@@ -2415,7 +2428,8 @@ void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
 								demux[i].ECMpids[t].checked = 0;
 								demux[i].ECMpids[t].status = 0;
 							}
-							demux[i].tries = 0;
+							if(demux[i].tries > 0)
+								demux[i].tries = 0;
 							demux[i].curindex = 0;
 							demux[i].pidindex = -1;
 

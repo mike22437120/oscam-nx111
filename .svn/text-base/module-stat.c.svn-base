@@ -124,6 +124,8 @@ void load_stat_from_file()
 		cs_log("loadbalancer: can't read from file %s", fname);
 		return;
 	}
+	setvbuf(file, NULL, _IOFBF, 128*1024);
+
 	cs_debug_mask(D_LB, "loadbalancer: load statistics from %s", fname);
 
 	struct timeb ts, te;
@@ -243,6 +245,8 @@ READER_STAT *get_stat_lock(struct s_reader *rdr, STAT_QUERY *q, int8_t lock)
 				stat->ecmlen = q->ecmlen;
 				break;
 			}
+			if (!q->ecmlen) //Query without ecmlen from dvbapi
+				break;
 		}
 	}
 	if (lock) cs_readunlock(&rdr->lb_stat_lock);
@@ -316,6 +320,7 @@ void save_stat_to_file_thread()
 {
 	stat_load_save = 0;
 	char buf[256];
+
 	char *fname;
 	if (!cfg.lb_savepath || !cfg.lb_savepath[0]) {
 		snprintf(buf, sizeof(buf), "%s/stat", get_tmp_dir());
@@ -331,6 +336,8 @@ void save_stat_to_file_thread()
 		return;
 	}
 	
+	setvbuf(file, NULL, _IOFBF, 128*1024);
+
 	struct timeb ts, te;
     cs_ftime(&ts);
          
@@ -361,7 +368,13 @@ void save_stat_to_file_thread()
 				fprintf(file, "%s,%d,%04hX,%06X,%04hX,%04hX,%d,%d,%ld,%d,%02hX\n",
 					rdr->label, stat->rc, stat->caid, stat->prid,
 					stat->srvid, stat->chid, stat->time_avg, stat->ecm_count, stat->last_received, stat->fail_factor, stat->ecmlen);
+
 				count++;
+//				if (count % 500 == 0) { //Saving stats is using too much cpu and causes high file load. so we need a break
+//					cs_readunlock(&rdr->lb_stat_lock);
+//					cs_sleepms(100);
+//					cs_readlock(&rdr->lb_stat_lock);
+//				}
 			}
 			cs_readunlock(&rdr->lb_stat_lock);
 		}
@@ -924,9 +937,9 @@ int32_t get_best_reader(ECM_REQUEST *er)
 			if (nr>5) continue;
 
 			if (!(ea->status & READER_FALLBACK))
-				snprintf(rptr, 32, "%s ", ea->reader->label);
+				snprintf(rptr, 32, "%s%s%s ", ea->reader->label, (ea->status&READER_CACHEEX)?"*":"", (ea->status&READER_LOCAL)?"L":"");
 			else
-				snprintf(rptr, 32, "[%s] ", ea->reader->label);
+				snprintf(rptr, 32, "[%s%s%s] ", ea->reader->label, (ea->status&READER_CACHEEX)?"*":"", (ea->status&READER_LOCAL)?"L":"");
 			rptr = strend(rptr);
 		}
 
@@ -939,7 +952,7 @@ int32_t get_best_reader(ECM_REQUEST *er)
 #endif	
 
 	for(ea = er->matching_rdr; ea; ea = ea->next) {
-		ea->status &= !(READER_ACTIVE|READER_FALLBACK);
+		ea->status &= ~(READER_ACTIVE|READER_FALLBACK);
 		ea->value = 0;
 	}
 
@@ -1006,7 +1019,7 @@ int32_t get_best_reader(ECM_REQUEST *er)
 					case LB_NONE:
 					case LB_LOG_ONLY:
 						//cs_debug_mask(D_LB, "loadbalance disabled");
-						ea->status = READER_ACTIVE;
+						ea->status |= READER_ACTIVE;
 						if (rdr->fallback)
 							ea->status |= READER_FALLBACK;
 						continue;
@@ -1178,9 +1191,9 @@ int32_t get_best_reader(ECM_REQUEST *er)
 			if (nr>5) continue;
 
 			if (!(ea->status & READER_FALLBACK))
-				snprintf(rptr, 32, "%s ", ea->reader->label);
+				snprintf(rptr, 32, "%s%s%s ", ea->reader->label, (ea->status&READER_CACHEEX)?"*":"", (ea->status&READER_LOCAL)?"L":"");
 			else
-				snprintf(rptr, 32, "[%s] ", ea->reader->label);
+				snprintf(rptr, 32, "[%s%s%s] ", ea->reader->label, (ea->status&READER_CACHEEX)?"*":"", (ea->status&READER_LOCAL)?"L":"");
 			rptr = strend(rptr);
 		}
 
@@ -1360,6 +1373,25 @@ void update_ecmlen_from_stat(struct s_reader *rdr)
 		}
 	}
 	cs_readunlock(&rdr->lb_stat_lock);
+}
+
+int32_t lb_valid_btun(ECM_REQUEST *er, uint16_t caidto)
+{
+	STAT_QUERY q;
+	READER_STAT *stat;
+	struct s_reader *rdr;
+
+	get_stat_query(er, &q);
+	q.caid = caidto;
+
+	for (rdr=first_active_reader; rdr ; rdr=rdr->next) {
+		if (rdr->lb_stat && rdr->client) {
+			stat = get_stat(rdr, &q);
+			if (stat && stat->rc == E_FOUND)
+				return 1;
+		}
+	}
+	return 0;
 }
 
 #endif

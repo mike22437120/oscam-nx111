@@ -12,6 +12,7 @@ static FILE *fpa=(FILE *)0;
 #endif
 static int8_t logStarted = 0;
 LLIST *log_list;
+char *vbuf;
 
 struct s_log {
 	char *txt;
@@ -105,6 +106,7 @@ int32_t cs_open_logfiles()
 			fp = (FILE *)0;
 			fprintf(stderr, "couldn't open logfile: %s (errno %d %s)\n", cfg.logfile, errno, strerror(errno));
 		} else {
+			setvbuf(fp, NULL, _IOFBF, 8*1024);
 			time_t t;
 			char line[80];
 			memset(line, '-', sizeof(line));
@@ -266,6 +268,10 @@ static void write_to_log(char *txt, struct s_log *log, int8_t do_flush)
 
 static void write_to_log_int(char *txt, int8_t header_len)
 {
+#if !defined(WEBIF) && !defined(MODULE_MONITOR)
+	if (cfg.disablelog) return;
+#endif
+
 	struct s_log *log = cs_malloc(&log, sizeof(struct s_log), 0);
 	log->txt = strnew(txt);
 	log->header_len = header_len;
@@ -294,7 +300,8 @@ static void write_to_log_int(char *txt, int8_t header_len)
 		}
 		log->cl_typ = cl->typ;
 	}
-	if(exit_oscam == 1){
+
+	if(exit_oscam == 1 || cfg.disablelog){ //Exit or log disabled. if disabled, just display on webif/monitor
 		char buf[LOG_BUF_SIZE];
 		cs_strncpy(buf, log->txt, LOG_BUF_SIZE);
 		write_to_log(buf, log, 1);
@@ -528,9 +535,11 @@ void log_list_thread()
 {
 	char buf[LOG_BUF_SIZE];
 
+	int last_count=ll_count(log_list), count, grow_count=0, write_count;
 	while (1) {
 		LL_ITER it = ll_iter_create(log_list);
 		struct s_log *log;
+		write_count = 0;
 		while ((log=ll_iter_next_remove(&it))) {
 			int8_t do_flush = ll_count(log_list) == 0; //flush on writing last element
 
@@ -541,7 +550,35 @@ void log_list_thread()
 				write_to_log(buf, log, do_flush);
 			free(log->txt);
 			free(log);
+
+			//If list is faster growing than we could write to file, drop list:
+			write_count++;
+			if (write_count%10000 == 0) { //check every 10000 writes:
+				count = ll_count(log_list);
+				if (count > last_count) {
+					grow_count++;
+					if (grow_count > 5) { //5 times still growing
+						cs_write_log("------------->logging temporary disabled (30s) - too much data!\n", 1);
+						cfg.disablelog = 1;
+						ll_iter_reset(&it);
+						while ((log=ll_iter_next_remove(&it))) { //clear log
+							free(log->txt);
+							free(log);
+						}
+						cs_sleepms(30*1000);
+						cfg.disablelog = 0;
+
+						grow_count = 0;
+						last_count = 0;
+						break;
+					}
+				}
+				else
+					grow_count = 0;
+				last_count = count;
+			}
 		}
+
 		cs_sleepms(250);
 	}
 }

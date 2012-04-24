@@ -154,10 +154,14 @@
 #ifndef READER_STREAMGUARD
 #define READER_STREAMGUARD
 #endif
+
+#ifndef READER_BULCRYPT
+#define READER_BULCRYPT
 #endif
 
 #ifndef CS_CACHEEX
 #define CS_CACHEEX
+#endif
 #endif
 
 
