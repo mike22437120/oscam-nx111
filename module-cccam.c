@@ -265,7 +265,10 @@ struct cc_srvid * is_sid_blocked(struct cc_card *card, struct cc_srvid *srvid_bl
 	struct cc_srvid *srvid;
 	while ((srvid = ll_iter_next(&it))) {
 		if (sid_eq(srvid, srvid_blocked)) {
-			break;
+			if(srvid->ecmlen && ((struct cc_srvid_block *)srvid)->blocked_till < time(NULL))
+				ll_iter_remove_data(&it);
+			else
+				break;
 		}
 	}
 	return srvid;
@@ -282,7 +285,7 @@ struct cc_srvid *  is_good_sid(struct cc_card *card, struct cc_srvid *srvid_good
 	return srvid;
 }
 
-#define BLOCKING_SECONDS 60
+#define BLOCKING_SECONDS 60*5
 
 void add_sid_block(struct s_client *cl __attribute__((unused)), struct cc_card *card,
 		struct cc_srvid *srvid_blocked) {
@@ -1332,11 +1335,10 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 			}
 		}
 
-		if (!card)
-			card = get_matching_card(cl, cur_er, 0);
 
-		if (!card && has_srvid(rdr->client, cur_er)) {
-			reopen_sids(cc, 1, cur_er, &cur_srvid);
+		if (!card) {
+			if(has_srvid(rdr->client, cur_er))
+				reopen_sids(cc, 1, cur_er, &cur_srvid);
 			card = get_matching_card(cl, cur_er, 0);
 		}
 
