@@ -1614,6 +1614,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 				</TD>\n\
 			</TR>\n\
 			<TR class=\"cfg_cccam\"><TD>CCcam.cfg:</TD><TD><input name=\"cccamcfgfile\" type=\"text\" size=\"80\" maxlength=\"80\" value=\"##CCCFGFILE##\"></TD></TR>\n\
+			<TR class=\"cfg_cccam\"><TD>Auto Sid Block:</A></TD><TD><SELECT NAME=\"autosidblock\"><OPTION VALUE=\"0\" >OFF</OPTION><OPTION VALUE=\"1\" ##AUTOSIDBLOCK##>ON</OPTION></SELECT></TD></TR>\n\
 			<TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
 		</TABLE>\n\
 	</form>\n\
