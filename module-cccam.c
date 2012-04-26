@@ -285,7 +285,7 @@ struct cc_srvid *  is_good_sid(struct cc_card *card, struct cc_srvid *srvid_good
 	return srvid;
 }
 
-#define BLOCKING_SECONDS 60*5
+#define BLOCKING_SECONDS 60*3
 
 void add_sid_block(struct s_client *cl __attribute__((unused)), struct cc_card *card,
 		struct cc_srvid *srvid_blocked) {
