@@ -732,6 +732,7 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	tpl_addVar(vars, TPLADD, "HTTPJSCRIPT", cfg.http_jscript);
 
 	if (cfg.http_hide_idle_clients > 0) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
+	if (cfg.http_showpicons > 0) tpl_addVar(vars, TPLADD, "SHOWPICONSCHECKED", "checked");
 
 	char *value = mk_t_iprange(cfg.mon_allowed);
 	tpl_addVar(vars, TPLADD, "NOCRYPT", value);
@@ -2271,6 +2272,8 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 	int32_t casc_users = 0;
 	int32_t casc_users2 = 0;
 
+	if (cfg.http_showpicons) tpl_addVar(vars, TPLADD, "PICONHEADER", "<TH>Image</TH>");
+
 	for (account=cfg.account; (account); account=account->next) {
 		//clear for next client
 		total_users++;
@@ -2279,6 +2282,16 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		status = "offline"; lastchan = "&nbsp;", expired = ""; classname = "offline";
 		isec = 0;
 		chsec = 0;
+
+		//reset caid/srevid template variables
+		tpl_addVar(vars, TPLADD, "CLIENTCAID", "");
+		tpl_addVar(vars, TPLADD, "CLIENTSRVID", "");
+		tpl_addVar(vars, TPLADD, "CLIENTPICON", "");
+
+		if (cfg.http_showpicons) {
+			tpl_addVar(vars, TPLADD, "PICONCOLUMNSTART", "<TD>");
+			tpl_addVar(vars, TPLADD, "PICONCOLUMNEND", "</TD>");
+		}
 
 		if(account->expirationdate && account->expirationdate < now) {
 			expired = " (expired)";
@@ -2387,9 +2400,24 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 					tpl_printf(vars, TPLADDONCE, "CLIENTTIMETOSLEEP", "Sleeping in %d minutes", account->tosleep - (chsec / 60));
 				else
 					tpl_addVar(vars, TPLADDONCE, "CLIENTTIMETOSLEEP", "No sleep defined");
+
+				if(latestclient){
+					tpl_printf(vars, TPLADD, "CLIENTCAID", "%04X", latestclient->last_caid);
+					tpl_printf(vars, TPLADD, "CLIENTSRVID", "%04X", latestclient->last_srvid);
+
+					if (cfg.http_showpicons) {
+						tpl_printf(vars, TPLADD, "CLIENTPICON", "<img class=\"clientpicon\" src=\"image?i=IC_%04X_%04X\">",
+																latestclient->last_caid,
+																latestclient->last_srvid);
+					}
+				}
+
 			} else {
 				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMEONCHANNEL", "");
 				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMETOSLEEP", "");
+				tpl_addVar(vars, TPLADD, "CLIENTCAID", "");
+				tpl_addVar(vars, TPLADD, "CLIENTSRVID", "");
+				tpl_addVar(vars, TPLADD, "CLIENTPICON", "");
 			}
 
 			if ((strcmp(proto,"newcamd") == 0) && (latestclient->typ == 'c'))
@@ -4339,6 +4367,8 @@ static int8_t check_valid_origin(struct in6_addr addr) {
 		// check for IPv4 as before
 		if(check_ip(cfg.http_allowed, *((in_addr_t *)&addr.s6_addr32[3])))
 			return 1;
+		else if (inet_addr("127.0.0.1") == *((in_addr_t *)&addr.s6_addr32[3])))
+			return 1;
 
 	} else {
 		// Allow all IPv6
@@ -4361,6 +4391,8 @@ static int8_t check_valid_origin(in_addr_t addr) {
 
 	// check whether requesting IP is in allowed IP ranges
 	if(check_ip(cfg.http_allowed, addr))
+		return 1;
+	else if (inet_addr("127.0.0.1") == addr)
 		return 1;
 
 	// we havn't found the requesting IP in allowed range. So we check for allowed httpdyndns as last chance
