@@ -131,7 +131,7 @@ int32_t has_srvid(struct s_client *cl, ECM_REQUEST *er) {
 }
 
 
-static int32_t chk_srvid_match_by_caid_prov(uint16_t caid, uint32_t provid, SIDTAB *sidtab)
+int32_t chk_srvid_match_by_caid_prov(uint16_t caid, uint32_t provid, SIDTAB *sidtab)
 {
   int32_t i, rc=0;
 
@@ -466,11 +466,28 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr) {
   }
 
   if ((!(rdr->typ & R_IS_NETWORK)) && ((rdr->caid >> 8) != ((er->caid >> 8) & 0xFF) && (rdr->caid >> 8) != ((er->ocaid >> 8) & 0xFF)))
-    return 0;
+  {
+    int i, caid_found = 0;
+    for (i = 0; i < 2; i++) {
+      if (rdr->csystem.caids[i] == er->caid || rdr->csystem.caids[i] == er->ocaid) {
+        caid_found = 1;
+        break;
+      }
+    }
+    if (!caid_found)
+      return 0;
+  }
+
+  //Supports long ecms?
+  if (er->l > 255 && (rdr->typ & R_IS_NETWORK) && !rdr->ph.large_ecm_support) {
+	  cs_debug_mask(D_TRACE, "no large ecm support (l=%d) for reader %s", er->l, rdr->label);
+	  return 0;
+  }
+
 
   //Checking services:
   if (!chk_srvid(rdr->client, er)) {
-    cs_debug_mask(D_TRACE, "service %04X not matching  reader %s", er->srvid, rdr->label);
+    cs_debug_mask(D_TRACE, "service %04X not matching reader %s", er->srvid, rdr->label);
     return(0);
   }
 

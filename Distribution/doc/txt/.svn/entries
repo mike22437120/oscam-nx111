@@ -1,14 +1,14 @@
 10
 
 dir
-6644
+6685
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-04-23T09:25:53.788151Z
-6624
+2012-05-02T03:23:40.086640Z
+6653
 docman
 
 
@@ -25,6 +25,120 @@ docman
 
 
 4b0bc96b-bc66-0410-9d44-ebda105a78c1
+
+oscam.conf.txt
+file
+
+
+
+
+
+c51b15e995ad6e19f6425de2c9a69e22
+2012-05-02T03:23:40.086640Z
+6653
+docman
+
+oscam.guess.txt
+file
+
+
+
+
+2012-01-29T04:06:30.943663Z
+7da33fae382850e5e7e0268484bee763
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+671
+
+oscam.tiers.txt
+file
+
+
+
+
+2012-01-29T04:06:30.943663Z
+4ecd0df5ade62da449bb6ac4d9662cbb
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+702
+
+oscam.srvid.txt
+file
+
+
+
+
+2012-01-29T04:06:30.943663Z
+675138ccc87310c8254329982a9f5391
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1148
 
 oscam.cert.txt
 file
@@ -242,40 +356,6 @@ docman
 
 1627
 
-oscam.ird.txt
-file
-
-
-
-
-2012-01-29T04:06:30.939663Z
-0bf2f664b6b7c549f9faec947f514f65
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-574
-
 oscam.user.txt
 file
 
@@ -309,6 +389,40 @@ docman
 
 
 6157
+
+oscam.ird.txt
+file
+
+
+
+
+2012-01-29T04:06:30.939663Z
+0bf2f664b6b7c549f9faec947f514f65
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+574
 
 list_smargo.txt
 file
@@ -411,118 +525,4 @@ docman
 
 
 919
-
-oscam.conf.txt
-file
-
-
-
-
-
-f5e1ec91771994271eb8b0770d84a896
-2012-04-11T17:45:05.473316Z
-6596
-docman
-
-oscam.guess.txt
-file
-
-
-
-
-2012-01-29T04:06:30.943663Z
-7da33fae382850e5e7e0268484bee763
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-671
-
-oscam.tiers.txt
-file
-
-
-
-
-2012-01-29T04:06:30.943663Z
-4ecd0df5ade62da449bb6ac4d9662cbb
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-702
-
-oscam.srvid.txt
-file
-
-
-
-
-2012-01-29T04:06:30.943663Z
-675138ccc87310c8254329982a9f5391
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1148
 

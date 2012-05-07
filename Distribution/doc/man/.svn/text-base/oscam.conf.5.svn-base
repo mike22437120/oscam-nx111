@@ -22,9 +22,30 @@ additionally to log to stdout or syslog (you can also only log to stdout or sysl
 the filename).
 .RE
 .PP
+\fBecmfmt\fP = \fBformat\fP
+.RS 3n
+define ECM log format, default:c&p/i/s/l:h
+
+possible variables:
+
+  \fBc\fP = CAID
+  \fBp\fP = provider ID
+  \fBi\fP = Channel ID
+  \fBd\fP = PID
+  \fBs\fP = service ID
+  \fBl\fP = length
+  \fBh\fP = checksum
+
+use a value as prefix to hide variable with this value, control characters will be escaped by "\\"
+
+ expample: ecmfmt = c&0p/i/d/s/l:h
+           (hide provider ID if 0)
+
+.RE
+.PP
 \fBloghistorysize\fP = \fBbytes\fP
 .RS 3n
-size of log message history in web interface or monitor, 0 = disabled , default:4096
+size of log message history in web interface or monitor, 0 = disabled, default:4096
 .RE
 .PP
 \fBmaxlogsize\fP = \fBkbytes\fP
@@ -434,7 +455,7 @@ path for external CSS file, default:none
 .PP
 \fBhttptpl\fP = \fBpath\fP
 .RS 3n
-path for external templates, default:none
+path for external templates and picons, default:none
 .RE
 .PP
 \fBhttprefresh\fP = \fBseconds\fP
@@ -478,6 +499,11 @@ write config:
 \fBhttpreadonly\fP = \fB0\fP|\fB1\fP
 .RS 3n
 1 = read only modus for web interface, default:0
+.RE
+.PP
+\fBhttpshowpicons\fP = \fB0\fP|\fB1\fP
+.RS 3n
+1 = show picons in user list, default:0
 .RE
 .PP
 \fBhttphelplang\fP = \fBen\fP|\fBde\fP|\fBfr\fP|\fB<available wiki languages>\fP
@@ -1030,10 +1056,6 @@ ECM and CW in cache already.
 \fBcache2\fP
 
 ECM and checksum in cache already.
-.SH LOGGING
-log file format:
-
-CAID&ProviderID/ECMPID/ServiceID/length:checksum
 .SH EXAMPLES
  [global]
  logfile      = /var/log/oscam/oscam.log

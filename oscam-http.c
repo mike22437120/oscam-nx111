@@ -2286,12 +2286,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		//reset caid/srevid template variables
 		tpl_addVar(vars, TPLADD, "CLIENTCAID", "");
 		tpl_addVar(vars, TPLADD, "CLIENTSRVID", "");
-		tpl_addVar(vars, TPLADD, "CLIENTPICON", "");
-
-		if (cfg.http_showpicons) {
-			tpl_addVar(vars, TPLADD, "PICONCOLUMNSTART", "<TD>");
-			tpl_addVar(vars, TPLADD, "PICONCOLUMNEND", "</TD>");
-		}
+		tpl_addVar(vars, TPLADD, "LASTCHANNEL", "");
 
 		if(account->expirationdate && account->expirationdate < now) {
 			expired = " (expired)";
@@ -2390,7 +2385,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		tpl_printf(vars, TPLADD, "CASCUSERSCOMB", "%d/%d", casc_users, casc_users2);
 
 		if ( isactive > 0 || !cfg.http_hide_idle_clients) {
-			tpl_addVar(vars, TPLADDONCE, "LASTCHANNEL", lastchan);
+
 			tpl_printf(vars, TPLADDONCE, "CWLASTRESPONSET", "%d", lastresponsetm);
 			tpl_addVar(vars, TPLADDONCE, "IDLESECS", sec2timeformat(vars, isec));
 
@@ -2406,9 +2401,13 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 					tpl_printf(vars, TPLADD, "CLIENTSRVID", "%04X", latestclient->last_srvid);
 
 					if (cfg.http_showpicons) {
-						tpl_printf(vars, TPLADD, "CLIENTPICON", "<img class=\"clientpicon\" src=\"image?i=IC_%04X_%04X\">",
+						tpl_printf(vars, TPLADD, "LASTCHANNEL", "<img class=\"clientpicon\" src=\"image?i=IC_%04X_%04X\" alt=\"%s\" title=\"%s\">",
 																latestclient->last_caid,
-																latestclient->last_srvid);
+																latestclient->last_srvid,
+																lastchan,
+																lastchan);
+					} else {
+						tpl_addVar(vars, TPLADDONCE, "LASTCHANNEL", lastchan);
 					}
 				}
 
@@ -2451,7 +2450,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		tpl_addVar(vars, TPLADD, "DESCRIPTION", xml_encode(vars, account->description?account->description:""));
 		tpl_addVar(vars, TPLADD, "STATUS", status);
 		tpl_addVar(vars, TPLAPPEND, "STATUS", expired);
-		if(nrclients > 1) tpl_printf(vars, TPLADDONCE, "CLIENTCOUNT", "&nbsp;&nbsp;%d", nrclients);
+		if(nrclients > 1) tpl_printf(vars, TPLADDONCE, "CLIENTCOUNTNOTIFIER", "<DIV CLASS=\"div_notifier\"><SPAN CLASS=\"span_notifier\">%d</SPAN></DIV>", nrclients);
 
 		// append row to table template
 		if (!apicall)
@@ -3013,10 +3012,10 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 				if(!apicall) {
 					if(cl->typ == 'c' && !cfg.http_readonly) {
-						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=kill&threadid=%p\" TITLE=\"Kill this client\"><IMG HEIGHT=\"16\" WIDTH=\"16\" SRC=\"image?i=ICKIL\" ALT=\"Kill\"></A>", cl);
+						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=kill&threadid=%p\" TITLE=\"Kill this client\"><IMG CLASS=\"icon\" SRC=\"image?i=ICKIL\" ALT=\"Kill\"></A>", cl);
 					}
 					else if((cl->typ == 'p') && !cfg.http_readonly) {
-						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this reader/ proxy\"><IMG HEIGHT=\"16\" WIDTH=\"16\" SRC=\"image?i=ICKIL\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
+						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this reader/ proxy\"><IMG CLASS=\"icon\" SRC=\"image?i=ICKIL\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
 					}
 					else {
 						tpl_printf(vars, TPLADD, "CSIDX", "%p&nbsp;", cl);
@@ -3127,10 +3126,12 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 				}
 
 				if (!apicall) {
+					tpl_addVar(vars, TPLADD, "CLIENTIDLESECS", sec2timeformat(vars, isec));
+
 					if((cl->typ != 'p' && cl->typ != 'r') || cl->reader->card_status == CARD_INSERTED)
-						tpl_addVar(vars, TPLADD, "CLIENTIDLESECS", sec2timeformat(vars, isec));
+						tpl_addVar(vars, TPLADD, "CLIENTIDLESECSCLASS", "idlesec_normal");
 					else
-						tpl_printf(vars, TPLADD, "CLIENTIDLESECS", "<font color=\"red\">%s</font>", sec2timeformat(vars, isec));
+						tpl_addVar(vars, TPLADD, "CLIENTIDLESECSCLASS", "idlesec_alert");
 				} else {
 					tpl_printf(vars, TPLADD, "CLIENTIDLESECS", "%d", isec);
 				}
@@ -4734,7 +4735,7 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 				tpl_addVar(vars, TPLAPPEND, "BTNDISABLED", "DISABLED");
 
 			i = ll_count(cfg.v_list);
-			if(i > 0)tpl_printf(vars, TPLADD, "FAILBANNOTIFIER", "(%d)", i);
+			if(i > 0)tpl_printf(vars, TPLADD, "FAILBANNOTIFIER", "<DIV CLASS=\"div_notifier\"><SPAN CLASS=\"span_notifier\">%d</SPAN></DIV>", i);
 
 			char *result = NULL;
 			

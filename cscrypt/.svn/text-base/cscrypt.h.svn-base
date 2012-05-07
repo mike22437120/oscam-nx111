@@ -5,8 +5,8 @@
 #  include <openssl/sha.h>
 #  include <openssl/bn.h>
 #else
-#  include "aes/aes.h"
-#  include "sha/sha1.h"
+#  include "aes.h"
+#  include "sha1.h"
 #  include "bn.h"
 #endif
 
@@ -17,18 +17,6 @@
 
 #ifdef  __cplusplus
 extern "C" {
-#endif
-
-#if !defined(OS_SOLARIS7) && !defined (OS_AIX42)
-#include <sys/cdefs.h>
-#endif
-
-#if !defined(__P)
-#define __P(a)	a
-#endif
-
-#if defined(OS_SOLARIS) || defined (OS_AIX)
-#define u_int32_t unsigned long
 #endif
 
 #define MD5_DIGEST_LENGTH 16
