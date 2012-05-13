@@ -45,7 +45,7 @@ pid_t server_pid=0;
 #if defined(LIBUSB)
 CS_MUTEX_LOCK sr_lock;
 #endif
-#ifdef ARM
+#if defined(__ARM__)
 pthread_t	arm_led_thread = 0;
 LLIST		*arm_led_actions = NULL;
 #endif
@@ -347,7 +347,7 @@ static void usage()
   fprintf(stderr, "\t-c <dir>   : read configuration from <dir>\n");
   fprintf(stderr, "\t             default = %s\n", CS_CONFDIR);
   fprintf(stderr, "\t-t <dir>   : tmp dir <dir>\n");
-#ifdef CS_CYGWIN32
+#if defined(__CYGWIN__)
   fprintf(stderr, "\t             default = (OS-TMP)\n");
 #else
   fprintf(stderr, "\t             default = /tmp/.oscam\n");
@@ -383,7 +383,7 @@ static void usage()
 }
 
 #ifdef NEED_DAEMON
-#ifdef OS_MACOSX
+#if defined(__APPLE__)
 // this is done because daemon is being deprecated starting with 10.5 and -Werror will always trigger an error
 static int32_t daemon_compat(int32_t nochdir, int32_t noclose)
 #else
@@ -905,7 +905,7 @@ static void init_signal()
 {
 		set_signal_handler(SIGINT, 3, cs_exit);
 		//set_signal_handler(SIGKILL, 3, cs_exit);
-#ifdef OS_MACOSX
+#if defined(__APPLE__)
 		set_signal_handler(SIGEMT, 3, cs_exit);
 #else
 		//set_signal_handler(SIGPOLL, 3, cs_exit);
@@ -968,7 +968,7 @@ void cs_exit(int32_t sig)
   	return;
 
   if(cl->typ == 'h' || cl->typ == 's'){
-#ifdef ARM
+#if defined(__ARM__)
 		if(cfg.enableled == 1){
 			cs_switch_led(LED1B, LED_OFF);
 			cs_switch_led(LED2, LED_OFF);
@@ -990,7 +990,7 @@ void cs_exit(int32_t sig)
     end_lcd_thread();
 #endif
 
-#ifndef OS_CYGWIN32
+#if !defined(__CYGWIN__)
 	char targetfile[256];
 		snprintf(targetfile, 255, "%s%s", get_tmp_dir(), "/oscam.version");
 		if (unlink(targetfile) < 0)
@@ -1837,6 +1837,10 @@ void cs_cache_push(ECM_REQUEST *er)
 	}
 
 	//cacheex=3 mode: reverse push (reader->server)
+
+	cs_readlock(&readerlist_lock);
+	cs_readlock(&clientlist_lock);
+
 	struct s_reader *rdr;
 	for (rdr = first_active_reader; rdr; rdr = rdr->next) {
 		struct s_client *cl = rdr->client;
@@ -1855,6 +1859,9 @@ void cs_cache_push(ECM_REQUEST *er)
 			}
 		}
 	}
+
+	cs_readunlock(&clientlist_lock);
+	cs_readunlock(&readerlist_lock);
 
 	er->cacheex_pushed = 1;
 	if (er->ecmcacheptr) er->ecmcacheptr->cacheex_pushed = 1;
@@ -2494,7 +2501,7 @@ int32_t send_dcw(struct s_client * client, ECM_REQUEST *er)
 
 	cs_ddump_mask (D_ATR, er->cw, 16, "cw:");
 
-#ifdef ARM
+#if defined(__ARM__)
 	if(!er->rc &&cfg.enableled == 1) cs_switch_led(LED2, LED_BLINK_OFF);
 #endif
 
@@ -3180,6 +3187,9 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 		er->reader_avail=0;
 		struct s_reader *rdr;
 
+		cs_readlock(&readerlist_lock);
+		cs_readlock(&clientlist_lock);
+
 		for (rdr=first_active_reader; rdr ; rdr=rdr->next) {
 			int8_t match = matching_reader(er, rdr);
 #ifdef WITH_LB
@@ -3222,6 +3232,9 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 					er->reader_avail++;
 			}
 		}
+
+		cs_readunlock(&clientlist_lock);
+		cs_readunlock(&readerlist_lock);
 
 #ifdef WITH_LB
 		if (cfg.lb_mode && er->reader_avail) {
@@ -4540,7 +4553,7 @@ int32_t main (int32_t argc, char *argv[])
 		exit(1);
 	}
 
-#ifdef ARM
+#if defined(__ARM__)
 	cs_switch_led(LED1A, LED_DEFAULT);
 	cs_switch_led(LED1A, LED_ON);
 #endif
@@ -4699,7 +4712,7 @@ int32_t main (int32_t argc, char *argv[])
   }
 
 
-#ifdef OS_MACOSX
+#if defined(__APPLE__)
   if (bg && daemon_compat(1,0))
 #else
   if (bg && daemon(1,0))
@@ -4773,7 +4786,7 @@ int32_t main (int32_t argc, char *argv[])
   write_versionfile();
   server_pid = getpid();
 
-#ifdef ARM
+#if defined(__ARM__)
   arm_led_start_thread();
 #endif
 
@@ -4821,7 +4834,7 @@ int32_t main (int32_t argc, char *argv[])
 
 	cs_waitforcardinit();
 
-#ifdef ARM
+#if defined(__ARM__)
 	if(cfg.enableled == 1){
 		cs_switch_led(LED1A, LED_OFF);
 		cs_switch_led(LED1B, LED_ON);
@@ -4890,7 +4903,7 @@ int32_t cs_get_restartmode() {
 
 #endif
 
-#ifdef ARM
+#if defined(__ARM__)
 static void cs_switch_led_from_thread(int32_t led, int32_t action) {
 
 	if(action < 2) { // only LED_ON and LED_OFF

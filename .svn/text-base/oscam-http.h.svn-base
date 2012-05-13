@@ -191,7 +191,7 @@ A.debugls:visited {color: white;background-color:red;}\n\
 A:visited {color: #050840;}\n\
 A:active {color: #050840;}\n\
 A:hover {color: #ff9e5f;}\n\
-DIV.message {float:right}\n\
+DIV.message {position:absolute;right:0;font-family: Arial; font-size: 12px;font-weight:bold;}\n\
 IMG{border:0px solid;}\n\
 IMG.icon{border: 0px solid;width:16px;height:16px;background-color:#660000;border-radius:3px;-webkit-border-radius:3px;}\n\
 A:hover IMG.icon {border: 1px solid yellow;width:14px;height:14px;}\n\
@@ -200,7 +200,7 @@ a.tooltip  {position: relative; text-decoration: none; cursor:default;}\n\
 a.tooltip1 {position: relative; text-decoration: none; cursor:default;color:red;}\n\
 a.tooltip  span {display: none; z-index:99;}\n\
 a.tooltip1 span {display: none; z-index:99;}\n\
-a:hover span{display: block;position: absolute;top: 2em; left: 1em; margin: 0px;padding: 10px;color: #335500;font-weight: normal;background: #ffffdd;text-align: left;border: 1px solid #666;}\n\
+a:hover span{display: block;position: absolute;top: 2em; right: 1em; margin: 0px;padding: 10px;color: #335500;font-weight: normal;background: #ffffdd;text-align: left;border: 1px solid #666;}\n\
 H4.styleauthor:after {content:\"Eneen\";}\n\
 rect.graph_bg {fill:white;}\n\
 text.graph_error {text-anchor:middle;fill:red}\n\
@@ -777,7 +777,7 @@ SFRTIFJFU0VSVkVEADs="
 	</TABLE>\n\
 	<TABLE CLASS=\"users\">\n\
 		<TR>\n\
-			<TH>Lock</TH>\n\
+			<TH>Enabled</TH>\n\
 			<TH>Label</TH>\n\
 			<TH>Status</TH>\n\
 			<TH>Address</TH>\n\
@@ -1065,7 +1065,7 @@ SFRTIFJFU0VSVkVEADs="
 	<form action=\"readerconfig.html\" method=\"get\">\n\
 		<TABLE CLASS=\"readers\">\n\
 			<TR>\n\
-				<TH>Lock</TH>\n\
+				<TH>Enabled</TH>\n\
 				<TH>Reader</TH>\n\
 				<TH>Protocol</TH>\n\
 				<TH>EMM error<br><span title=\"unknown EMM\"> UK </span>/<span title=\"global EMM\"> G </span>/<span title=\"shared EMM\"> S </span>/<span title=\"unique EMM\"> UQ </span></TH>\n\
@@ -1165,7 +1165,7 @@ SFRTIFJFU0VSVkVEADs="
 <TD class=\"centered\">##TIMELAST##</TD>\
 <TD class=\"centered\">##COUNT##</TD>\
 <TD class=\"centered\">##LAST## <A HREF=\"readerstats.html?label=##ENCODEDLABEL##&amp;action=deleterecord&amp;record=##CHANNEL##:##ECMLEN##\">\
-<IMG SRC=\"image?i=ICDEL\" ALT=\"Delete Entry\"/></A></TD></TR>\n"
+<IMG CLASS=\"icon\" SRC=\"image?i=ICDEL\" ALT=\"Delete Entry\"/></A></TD></TR>\n"
 
 #define TPLSCANUSB "\
 ##TPLHEADER##\
@@ -1641,7 +1641,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<TR><TD>##TPLHELPPREFIX##conf#httptpl##TPLHELPSUFFIX##Http tpl:</A></TD><TD><input name=\"httptpl\" type=\"text\" size=\"63\" maxlength=\"127\" value=\"##HTTPTPL##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httpscript##TPLHELPSUFFIX##Http script:</A></TD><TD><input name=\"httpscript\" type=\"text\" size=\"63\" maxlength=\"127\" value=\"##HTTPSCRIPT##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httphideidleclients##TPLHELPSUFFIX##Http Hide Idle Clients:</A></TD><TD><input name=\"httphideidleclients\" type=\"checkbox\" value=\"1\" ##CHECKED##>\n\
-			<TR><TD>##TPLHELPPREFIX##conf#httpshowpicons##TPLHELPSUFFIX##Http Show Icons:</A></TD><TD><input name=\"httpshowpicons\" type=\"checkbox\" value=\"1\" ##SHOWPICONSCHECKED##>\n\
+			<TR><TD>##TPLHELPPREFIX##conf#httpshowpicons##TPLHELPSUFFIX##Http Show Picons:</A></TD><TD><input name=\"httpshowpicons\" type=\"checkbox\" value=\"1\" ##SHOWPICONSCHECKED##>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httpallowed##TPLHELPSUFFIX##Http allowed:</A></TD><TD><input name=\"httpallowed\" type=\"text\" size=\"63\" maxlength=\"200\" value=\"##HTTPALLOW##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httpdyndns##TPLHELPSUFFIX##Http dyndns:</A></TD><TD><input name=\"httpdyndns\" type=\"text\" size=\"63\" maxlength=\"200\" value=\"##HTTPDYNDNS##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httpsavefullcfg##TPLHELPSUFFIX##Http save full config:</A></TD><TD><SELECT NAME=\"httpsavefullcfg\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##HTTPSAVEFULLSELECT##>YES</OPTION></SELECT></TD></TR>\n\
@@ -1794,7 +1794,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<TR><TD>##TPLHELPPREFIX##conf#cacheexenablestats##TPLHELPSUFFIX##Cacheex write statistic:</A></TD><TD><SELECT NAME=\"cacheexenablestats\"><OPTION VALUE=\"0\">OFF</OPTION><OPTION VALUE=\"1\" ##CACHEEXSTATSSELECTED##>ON</OPTION></SELECT></TD></TR>\n"
 #endif
 
-#if defined(QBOXHD) || defined(ARM) 
+#if defined(QBOXHD) || defined(__ARM__)
 #define TPLENABLELEDBIT "\
 			<TR><TD>##TPLHELPPREFIX##conf#enableled##TPLHELPSUFFIX##Enable LED:</A></TD><TD><SELECT NAME=\"enableled\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##ENABLELEDSELECTED1##>For Router</OPTION><OPTION VALUE=\"2\" ##ENABLELEDSELECTED2##>For QboxHD</OPTION></SELECT></TD></TR>\n"
 #endif
@@ -2471,7 +2471,7 @@ char *tpl[]={
 	,"CONFIGMENUANTICASC"
 	,"FILEMENUANTICASC"
 #endif
-#if defined(QBOXHD) || defined(ARM) 
+#if defined(QBOXHD) || defined(__ARM__)
 	,"ENABLELEDBIT"
 #endif
 #if defined(QBOXHD_LED) || defined(CS_LED) 
@@ -2648,7 +2648,7 @@ char *tplmap[]={
 	,TPLCONFIGMENUANTICASC
 	,TPLFILEMENUANTICASC
 #endif
-#if defined(QBOXHD) || defined(ARM) 
+#if defined(QBOXHD) || defined(__ARM__)
 	,TPLENABLELEDBIT
 #endif
 #if defined(QBOXHD_LED) || defined(CS_LED) 

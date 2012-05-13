@@ -41,14 +41,14 @@
 #include "cscrypt/cscrypt.h"
 
 #ifdef HAVE_PCSC
-  #ifdef OS_CYGWIN32
+  #if defined(__CYGWIN__)
     #define __reserved
     #define __nullnullterminated
     #include <specstrings.h>
     #include "cygwin/WinSCard.h"
   #else
     #include <PCSC/pcsclite.h>
-    #ifdef OS_MACOSX
+    #if defined(__APPLE__)
         #include <PCSC/wintypes.h>
     #else
         #include <PCSC/reader.h>
@@ -57,7 +57,7 @@
 #endif
 
 #if defined(LIBUSB)
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__)
 #include <libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
@@ -69,7 +69,7 @@
  *         macros
  * =========================== */
 // Prevent use of unsafe functions (doesn't work for MacOSX)
-#ifndef OS_MACOSX
+#if !defined(__APPLE__)
 #define strcpy(a,b) UNSAFE_STRCPY_USE_CS_STRNCPY_INSTEAD()
 #define sprintf(a,...) UNSAFE_SPRINTF_USE_SNPRINTF_INSTEAD()
 #define strtok(a,b,c) UNSAFE_STRTOK_USE_STRTOK_R_INSTEAD()
@@ -384,7 +384,7 @@ enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_
 
 #define CTA_RES_LEN 512
 
-#ifdef ARM
+#if defined(__ARM__)
 #define  LED1A 		0
 #define  LED1B 		1
 #define  LED2 		2
@@ -476,7 +476,7 @@ struct s_arm_led {
 
 #define LB_MAX_STAT_TIME		10
 
-#if defined OS_MACOSX || defined OS_FREEBSD
+#if defined(__APPLE__) || defined(__FreeBSD__)
 #define OSCAM_SIGNAL_WAKEUP		SIGCONT
 #else
 #define OSCAM_SIGNAL_WAKEUP		SIGRTMAX-2
@@ -907,6 +907,7 @@ struct s_client {
 	int32_t         cwcacheexgot;		// count got ecms/cws
 	int32_t         cwcacheexhit;		// count hit ecms/cws
 	LLIST			*ll_cacheex_stats;	// List for cacheex statistics
+	int8_t          cacheex_maxhop;
 #endif
 
 #ifdef WEBIF
@@ -1101,6 +1102,7 @@ struct s_reader  									//contains device info, reader info and card info
 	int8_t			fallback;
 #ifdef CS_CACHEEX
 	int8_t			cacheex;
+	int8_t			cacheex_maxhop;
 #endif
 	int32_t			typ;
 #ifdef COOL
@@ -1329,6 +1331,7 @@ struct s_auth
 	int8_t			uniq;
 #ifdef CS_CACHEEX
 	int8_t			cacheex;
+	int8_t          cacheex_maxhop;
 #endif
 	int16_t			allowedprotocols;
 	LLIST			*aureader_list;
@@ -1633,7 +1636,7 @@ struct s_config
 	struct		s_cpmap *cpmap;
 #endif
 
-#if defined(QBOXHD) || defined(ARM) 
+#if defined(QBOXHD) || defined(__ARM__)
 	int8_t enableled; 						// 0=disabled led, 1=enable led for routers, 2=enable qboxhd led
 #endif
 #ifdef LCDSUPPORT
@@ -1754,6 +1757,7 @@ extern uint32_t cfg_sidtab_generation;
 extern uint8_t cs_http_use_utf8;
 extern pthread_key_t getclient;
 extern struct s_client *first_client;
+extern CS_MUTEX_LOCK clientlist_lock;
 extern uint32_t ecmcwcache_size;
 extern struct s_reader *first_active_reader;		//points to list of _active_ readers (enable = 1, deleted = 0)
 extern LLIST *configured_readers;

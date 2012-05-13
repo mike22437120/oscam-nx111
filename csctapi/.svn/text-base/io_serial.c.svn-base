@@ -24,7 +24,7 @@
 
 #include "../globals.h"
 #ifdef WITH_CARDREADER
-#ifdef OS_HPUX
+#if defined(__HPUX__)
 #include <sys/modem.h>
 #endif
 #include <unistd.h>
@@ -37,7 +37,7 @@
 #endif
 #include <sys/ioctl.h>
 
-#ifdef OS_LINUX
+#if defined(__linux__)
 #include <linux/serial.h>
 #endif
 
@@ -58,7 +58,7 @@ bool IO_Serial_WaitToRead (struct s_reader * reader, uint32_t delay_ms, uint32_t
 
 static bool IO_Serial_WaitToWrite (struct s_reader * reader, uint32_t delay_ms, uint32_t timeout_ms);
 
-#if defined(TUXBOX) && defined(PPC)
+#if defined(TUXBOX) && defined(__powerpc__)
 void IO_Serial_Ioctl_Lock(struct s_reader * reader, int32_t flag)
 {
   static int32_t oscam_sem=0;
@@ -120,7 +120,7 @@ static bool IO_Serial_DTR_RTS_dbox2(struct s_reader * reader, int32_t * dtr, int
 
 bool IO_Serial_DTR_RTS(struct s_reader * reader, int32_t * dtr, int32_t * rts)
 {
-#if defined(TUXBOX) && defined(PPC)
+#if defined(TUXBOX) && defined(__powerpc__)
 	if ((reader->typ == R_DB2COM1) || (reader->typ == R_DB2COM2))
 		return(IO_Serial_DTR_RTS_dbox2(reader, dtr, rts));
 #endif
@@ -176,7 +176,7 @@ bool IO_Serial_DTR_RTS(struct s_reader * reader, int32_t * dtr, int32_t * rts)
 bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct termios * tio)
 {
    /* Set the bitrate */
-#ifdef OS_LINUX
+#if defined(__linux__)
   //FIXME workaround for Smargo until native mode works
   if ((reader->mhz == reader->cardmhz) && (reader->smargopatch != 1) && IO_Serial_Bitrate(bitrate) != B0)
 #else
@@ -192,10 +192,10 @@ bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct te
     cfsetispeed(tio, IO_Serial_Bitrate(bitrate));
     cs_debug_mask(D_DEVICE, "standard baudrate: cardmhz=%d mhz=%d -> effective baudrate %u", reader->cardmhz, reader->mhz, bitrate);
   }
-#ifdef OS_LINUX
+#if defined(__linux__)
   else
   { //over or underclocking
-    /* these structures are only available on linux as fas as we know so limit this code to OS_LINUX */
+    /* these structures are only available on linux */
     struct serial_struct nuts;
     ioctl(reader->handle, TIOCGSERIAL, &nuts);
     int32_t custom_baud_asked = bitrate * reader->mhz / reader->cardmhz;
@@ -412,7 +412,7 @@ bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, 
 {
 	BYTE c;
 	uint32_t count = 0;
-#ifdef SH4
+#if defined(__SH4__)
 	bool readed;
 	struct timeval tv, tv_spent;
 #endif
@@ -422,14 +422,14 @@ bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, 
 		BYTE buf[256];
 		int32_t n = reader->written;
 		reader->written = 0;
-	
+		
 		if(IO_Serial_Read (reader, timeout, n, buf))
 			return ERROR;
 	}
 	
 	for (count = 0; count < size ; count++)
 	{
-#ifdef SH4
+#if defined(__SH4__)
 		gettimeofday(&tv,0);
 		memcpy(&tv_spent,&tv,sizeof(struct timeval));
 		readed=FALSE;
@@ -447,27 +447,29 @@ bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, 
 			return ERROR;
 		}
 #else
+		int16_t readed = 0, errorcount=0;
 		if (!IO_Serial_WaitToRead (reader, 0, timeout))
 		{
-			if (read (reader->handle, &c, 1) != 1)
-			{
-				cs_ddump_mask(D_DEVICE, data, count, "IO: Receiving:");
-				cs_log("ERROR in IO_Serial_Read (errno=%d %s)", errno, strerror(errno));
-				//tcflush (reader->handle, TCIFLUSH);
-				return ERROR;
+			while (readed == 0){
+				readed = read (reader->handle, &c, 1);
+				if (readed < 0) {
+					cs_log("Reader %s: ERROR in IO_Serial_Read (errno=%d %s)", reader->label, errno, strerror(errno));
+					if (errorcount > 10) return ERROR;
+					errorcount++;
+					//tcflush (reader->handle, TCIFLUSH);
+				}
 			}
+			cs_debug_mask(D_DEVICE, "Reader %s: IO_Received: %02X", reader->label, c);
 		}
 		else
 		{
-			cs_ddump_mask(D_DEVICE, data, count, "IO: Receiving:");
-			cs_debug_mask(D_DEVICE, "TIMEOUT in IO_Serial_Read");
+			cs_debug_mask(D_DEVICE, "Reader %s: Timeout in IO_Serial_WaitToRead, timeout=%d ms", reader->label, timeout);
 			//tcflush (reader->handle, TCIFLUSH);
 			return ERROR;
 		}
 #endif
 		data[count] = c;
 	}
-	cs_ddump_mask(D_DEVICE, data, count, "IO: Receiving:");
 	return OK;
 }
 
@@ -480,7 +482,8 @@ bool IO_Serial_Write (struct s_reader * reader, uint32_t delay, uint32_t size, c
 //	tcflush (reader->handle, TCIFLUSH);
 	
 	to_send = (delay? 1: size);
-
+	uint16_t errorcount=0, to_do=to_send;
+	
 	for (count = 0; count < size; count += to_send)
 	{
 		if (!IO_Serial_WaitToWrite (reader, delay, 1000))
@@ -488,24 +491,26 @@ bool IO_Serial_Write (struct s_reader * reader, uint32_t delay, uint32_t size, c
 			for (i_w=0; i_w < to_send; i_w++)
 				data_w [i_w] = data [count + i_w];
 
-			uint32_t u = write (reader->handle, data_w, to_send);
-			if (u != to_send)
-			{
-				cs_log("ERROR in IO_Serial_Write u=%d to_send=%d (errno=%d %s)", u, to_send, errno, strerror(errno));
-				if ((reader->typ != R_INTERNAL && reader->crdr.active==0) || (reader->crdr.active==1 && reader->crdr.read_written==1))
+			while (to_do !=0){
+				cs_ddump_mask(D_DEVICE, data_w, to_send, "IO: Sending: ");
+				int32_t u = write (reader->handle, data_w, to_send);
+				if (u < 0) {
+					errorcount++;
+					cs_log("Reader %s: ERROR in IO_Serial_Write actual written=%d of=%d (errno=%d %s)", reader->label, u, size, errno, strerror(errno));
+					if (errorcount > 10) return ERROR; //exit if more than 10 errors
+					}
+				else {
+					to_do -= u;
+					errorcount = 0;
+					if ((reader->typ != R_INTERNAL && reader->crdr.active==0) || (reader->crdr.active==1 && reader->crdr.read_written==1))
 					reader->written += u;
-				//tcflush (reader->handle, TCIFLUSH);
-				return ERROR;
+					//tcflush (reader->handle, TCIFLUSH);
+					}
 			}
-			
-			if ((reader->typ != R_INTERNAL && reader->crdr.active==0) || (reader->crdr.active==1 && reader->crdr.read_written==1))
-				reader->written += to_send;
-			
-			cs_ddump_mask(D_DEVICE, data_w, to_send, "IO: Sending: ");
 		}
 		else
 		{
-			cs_log("TIMEOUT in IO_Serial_Write");
+			cs_log("Reader %s: timeout in IO_Serial_WaitToWrite, timeout=%d ms", reader->label, delay);
 			//tcflush (reader->handle, TCIFLUSH);
 			return ERROR;
 		}
@@ -518,7 +523,7 @@ bool IO_Serial_Close (struct s_reader * reader)
 	
 	cs_debug_mask(D_DEVICE, "IO: Closing serial port %s\n", reader->device);
 	cs_sleepms(100); // maybe a dirty fix for the restart problem posted by wonderdoc
-#if defined(TUXBOX) && defined(PPC)
+#if defined(TUXBOX) && defined(__powerpc__)
 	if(reader->fdmc >= 0) close(reader->fdmc);
 #endif
 	if (reader->handle >= 0 && close (reader->handle) != 0)
@@ -643,14 +648,12 @@ bool IO_Serial_WaitToRead (struct s_reader * reader, uint32_t delay_ms, uint32_t
 			if (errno==EINTR) {
 				//try again in case of Interrupted system call
 				continue;
-			} else
-				cs_log("ERROR in IO_Serial_WaitToRead: (errno=%d %s)", errno, strerror(errno));
+			} else {
+				cs_log("Reader %s: ERROR in IO_Serial_WaitToRead, timeout=%d ms: (errno=%d %s)", reader->label, timeout_ms, errno, strerror(errno));
 				return ERROR;
+				}
 		}
-		if (select_ret==0) {
-			cs_debug_mask(D_DEVICE, "TIMEOUT in IO_Serial_WaitToRead");
-			return ERROR;
-		}
+		if (select_ret==0) return ERROR;
 		break;
    	}
 
@@ -696,13 +699,13 @@ static bool IO_Serial_WaitToWrite (struct s_reader * reader, uint32_t delay_ms, 
 
    if(select_ret==-1)
    {
-	cs_log("ERROR in IO_Serial_WaitToWrite: select_ret=%i, errno=%d", select_ret, errno);
+	cs_log("Reader %s: ERROR in IO_Serial_WaitToWrite, timeout=%d ms: select_ret=%i, errno=%d", reader->label, timeout_ms, select_ret, errno);
 	return ERROR;
    }
 
    if (FD_ISSET(out_fd, &ewfds))
    {
-	cs_log("ERROR in IO_Serial_WaitToWrite: fd is in error fds, (errno=%d %s)", errno, strerror(errno));
+	cs_log("Reader %s: ERROR in IO_Serial_WaitToWrite, timeout=%d ms: fd is in error fds, (errno=%d %s)", reader->label, timeout_ms, errno, strerror(errno));
 	return ERROR;
    }
 

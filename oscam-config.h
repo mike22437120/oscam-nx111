@@ -14,7 +14,7 @@
 #endif
 
 #ifndef HAVE_DVBAPI
-#if !defined(OS_CYGWIN32) && !defined(OS_HPUX) && !defined(OS_FREEBSD) && !defined(OS_MACOSX)
+#if defined(__linux__)
 #define HAVE_DVBAPI
 #endif
 #endif
@@ -166,7 +166,7 @@
 
 
 #ifdef TUXBOX
-#  ifdef MIPSEL
+#  if defined(__MIPSEL__)
 #    define CS_LOGFILE "/dev/null"
 #  else
 #    define CS_LOGFILE "/dev/tty"
@@ -188,43 +188,32 @@
 #  define CS_EMBEDDED
 #endif
 
-#ifdef OS_CYGWIN32
+#if defined(__CYGWIN__)
 #  define CS_LOGFILE "/dev/tty"
-#  define NO_ENDIAN_H
 #endif
 
-#ifdef OS_SOLARIS
-#  define NO_ENDIAN_H
+#if defined(__AIX__) || defined(__SGI__) || defined(__OSF__) || defined(__HPUX__) || defined(__SOLARIS__) || defined(__APPLE__)
 #  define NEED_DAEMON
 #endif
 
-#ifdef OS_OSF
+#if defined(__AIX__) || defined(__SGI__) || defined(__OSF__) || defined(__HPUX__) || defined(__SOLARIS__) || defined(__CYGWIN__)
 #  define NO_ENDIAN_H
-#  define NEED_DAEMON
 #endif
 
-#ifdef OS_AIX
-#  define NO_ENDIAN_H
-#  define NEED_DAEMON
+#if defined(__AIX__) || defined(__SGI__)
 #  define socklen_t unsigned long
 #endif
 
-#ifdef OS_IRIX
-#  define NO_ENDIAN_H
-#  define NEED_DAEMON
-#  define socklen_t unsigned long
+#if defined(__SOLARIS__) || defined(__FreeBSD__)
+#  define BSD_COMP
 #endif
 
-#ifdef OS_HPUX
-#  define NO_ENDIAN_H
-#  define NEED_DAEMON
+#if defined(__HPUX__)
+#  define _XOPEN_SOURCE_EXTENDED
 #endif
 
-#ifdef ARM
+#if defined(__ARM__)
 #  define CS_EMBEDDED
 #endif
 
-//#ifdef ALIGNMENT
-//#  define STRUCTS_PACKED
-//#endif
 #endif //OSCAM_CONFIG_H_

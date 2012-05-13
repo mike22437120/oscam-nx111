@@ -268,7 +268,7 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 
 	if(cfg.double_check == 1)
 		tpl_addVar(vars, TPLADD, "DCHECKCSELECTED", "selected");
-#if defined(QBOXHD) || defined(ARM) 
+#if defined(QBOXHD) || defined(__ARM__)
 	if(cfg.enableled == 1)
 		tpl_addVar(vars, TPLADD, "ENABLELEDSELECTED1", "selected");
 	else if(cfg.enableled == 2)
@@ -1636,12 +1636,28 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 }
 
 static char *send_oscam_reader_stats(struct templatevars *vars, struct uriparams *params, int32_t apicall) {
-	struct s_reader *rdr = get_reader_by_label(getParam(params, "label"));
-	if(!rdr) return "0";
-	struct s_client *cl = rdr->client;
-	if(!cl) return "0";
 
 	if(!apicall) setActiveMenu(vars, MNU_READERS);
+
+	int8_t error;
+	struct s_client *cl;
+	struct s_reader *rdr;
+
+	rdr = get_reader_by_label(getParam(params, "label"));
+	error = (rdr ? 0 : 1);
+
+	if(!error){
+		cl = rdr->client;
+		error = (cl ? 0 : 1);
+	}
+
+	if(error){
+		tpl_addVar(vars, TPLAPPEND, "READERSTATSROW","<TR><TD colspan=\"8\"> No statistics found - Reader exist and active?</TD></TR>");
+		if(!apicall)
+			return tpl_getTpl(vars, "READERSTATS");
+		else
+			return tpl_getTpl(vars, "APIREADERSTATS");
+	}
 
 #ifdef WITH_LB
 	char *stxt[]={"found", "cache1", "cache2", "cache3",
@@ -3638,7 +3654,7 @@ static char *send_oscam_script(struct templatevars *vars) {
 
 static char *send_oscam_scanusb(struct templatevars *vars) {
 	setActiveMenu(vars, MNU_READERS);
-#ifndef OS_CYGWIN32
+#if !defined(__CYGWIN__)
 	FILE *fp;
 	int32_t err=0;
 	char path[1035];

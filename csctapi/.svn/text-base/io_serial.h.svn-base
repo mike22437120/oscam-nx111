@@ -35,7 +35,7 @@
 //Type of parity of the serial device
 //Chosen to Smartreader definition
 //Since for io_serial it doesnt matter which values we choose
-#ifdef OS_CYGWIN32
+#if defined(__CYGWIN__)
 #undef	PARITY_NONE
 #undef	PARITY_ODD
 #undef	PARITY_EVEN
@@ -68,7 +68,7 @@ bool IO_Serial_Close (struct s_reader * reader);
 
 /* Transmission properties */
 bool IO_Serial_DTR_RTS(struct s_reader * reader, int32_t * dtr, int32_t * rts);
-#if defined(TUXBOX) && defined(PPC)
+#if defined(TUXBOX) && defined(__powerpc__)
 void IO_Serial_Ioctl_Lock(struct s_reader * reader, int32_t);
 #else
 #define IO_Serial_Ioctl_Lock(a,b) {} //FIXME ugly !!

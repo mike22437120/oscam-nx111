@@ -1,128 +1,314 @@
 SHELL		= /bin/sh
 
-ifeq ($(wildcard oscam-boxkeys.np), oscam-boxkeys.np)
-  KFLAG		= -DCS_WITH_BOXKEYS
+ifeq ($(subst ",,$(filter-out \#define, $(shell grep '^\#define WITH_SSL' oscam-config.h))), WITH_SSL)
+	override USE_SSL=1
+	override USE_LIBCRYPTO=1
+endif
+ifdef USE_SSL
+	override USE_LIBCRYPTO=1
 endif
 
-WITH_SSL=$(subst ",,$(filter-out \#define, $(shell grep '^\#define WITH_SSL' oscam-config.h)))
-ifeq ($(WITH_SSL), WITH_SSL)
-	LIBSSL=-lssl
+CONF_DIR = /usr/local/etc
+
+LIB_PTHREAD = -lpthread
+LIB_MATH = -lm
+
+override STD_LIBS := $(LIB_PTHREAD) $(LIB_MATH)
+override STD_DEFS := -D'CS_SVN_VERSION="$(SVN_REV)"'
+
+# The following is workaround until Makefile is fixed not to
+# set -DCS_CONFDIR=/blah in DS_OPTS variable. Basically it
+# sets CONF_DIR from in DS_OPTS and removes -DCS_CONFDIR=blah
+# from DS_OTS to avoid warnings about CS_CONFDIR being redefined.
+ifeq "$(findstring -DCS_CONFDIR,$(DS_OPTS))" "-DCS_CONFDIR"
+override CONF_DIR:= $(subst ",,$(subst ',,$(subst -DCS_CONFDIR=,,$(filter -DCS_CONFDIR=%,$(DS_OPTS)))))
+override DS_OPTS := $(filter-out -DCS_CONFDIR%,$(DS_OPTS))
+endif
+override STD_DEFS += -D'CS_CONFDIR="$(CONF_DIR)"'
+
+# Compiler warnings
+CC_WARN = -W -Wall -Winline -fno-strict-aliasing
+
+# Compiler optimizations
+ifndef DEBUG
+CC_OPTS = -O2
+else
+CC_OPTS = -O0 -ggdb
 endif
 
-CC		= $(DS_CC)
-AR		= $(DS_AR)
-STRIP		= $(DS_ST)
-RANLIB		= $(DS_RL)
-CFLAGS		= $(DS_OPTS) $(KFLAG) $(DS_CFLAGS)
-LDFLAGS		= $(DS_OPTS) $(DS_LDFLAGS)
-ARFLAGS		= $(DS_ARFLAGS)
-LIBS		= $(DS_LIBS) $(OS_LIBS) $(OS_PTLI) $(LIBSSL)
-export		CC AR STRIP RANLIB CFLAGS LDFLAGS ARFLAGS
+CC = $(CROSS)gcc
+AR = $(CROSS)ar
+STRIP = $(CROSS)strip
+RANLIB = $(CROSS)ranlib
 
-GENERAL		= Makefile Maketype globals.h oscam-config.h
+# The compiler knows for what target it compiles, so use this information
+TARGET := $(shell $(CC) -dumpmachine 2>/dev/null)$(EXTRA_TARGET)
 
-ifeq ($(wildcard csgbox), csgbox)
- VERX	= -gbx-$(subst ",,$(filter-out \#define GBXVERSION,$(shell grep GBXVERSION csgbox/gbox.h)))
+# CROSS variable was never used or set in the times when DS_xxx
+# variables ruled the world. So it fairly safe to assume that if
+# it is set then no compatability with DS_CC, DS_AR, DS_ST and DS_RL
+# is needed.
+ifeq "$(CROSS)" ""
+# Backwards compatability
+ifdef TYP
+override TARGET = $(TYP)
+endif
+# Backwards compatability. It was expected that when DS_CC,
+# DS_AR, DS_ST and DS_RL were set they are used as CC, AR,
+# STRIP and RANLIB
+ifneq "$(DS_CC)" ""
+override CC=$(DS_CC)
+endif
+ifneq "$(DS_AR)" ""
+override AR=$(DS_AR)
+endif
+ifneq "$(DS_ST)" ""
+override STRIP=$(DS_ST)
+endif
+ifneq "$(DS_RL)" ""
+override RANLIB=$(DS_RL)
+endif
 endif
 
-EXEFILE1	= Distribution/oscam-$(VER)$(VERX)-$(subst cygwin,cygwin.exe,$(TYP))
-EXEFILE2	= Distribution/list_smargo-$(VER)$(VERX)-$(subst cygwin,cygwin.exe,$(TYP))
+CFLAGS  = $(strip $(DS_OPTS) $(KFLAG) $(DS_CFLAGS))
+LDFLAGS = $(strip $(DS_OPTS) $(DS_LDFLAGS))
+ARFLAGS = -rcsl
+LIBS    = $(strip $(LIBUSB) $(LIBPCSC) $(LIBRT) $(DS_LIBS) $(OS_LIBS) $(OS_PTLI))
+
+# Process USE_ variables
+ifdef USE_STAPI
+STAPI_FLAGS = -DWITH_STAPI
+STAPI_CFLAGS = $(STAPI_FLAGS)
+STAPI_LDFLAGS = $(STAPI_FLAGS)
+STAPI_LIB = -L./stapi -loscam_stapi
+endif
+
+ifdef USE_LIBCRYPTO
+LIBCRYPTO_FLAGS = -DWITH_LIBCRYPTO
+LIBCRYPTO_CFLAGS = $(LIBCRYPTO_FLAGS)
+LIBCRYPTO_LDFLAGS = $(LIBCRYPTO_FLAGS)
+LIBCRYPTO_LIB = -lcrypto
+endif
+
+ifdef USE_SSL
+SSL_FLAGS = -DWITH_SSL
+SSL_CFLAGS = $(SSL_FLAGS)
+SSL_LDFLAGS = $(SSL_FLAGS)
+SSL_LIB = -lssl
+endif
+
+ifdef USE_LIBUSB
+LIBUSB_FLAGS = -DLIBUSB
+LIBUSB_CFLAGS = $(LIBUSB_FLAGS)
+LIBUSB_LDFLAGS = $(LIBUSB_FLAGS)
+LIBUSB_LIB = -lusb-1.0
+endif
+
+ifdef USE_PCSC
+PCSC_FLAGS = -DHAVE_PCSC=1
+PCSC_CFLAGS = $(PCSC_FLAGS)
+PCSC_LDFLAGS = $(PCSC_FLAGS)
+PCSC_LIB = -lpcsclite
+endif
+
+# Set USE_ flags
+override USE_CFLAGS = $(STAPI_CFLAGS) $(LIBCRYPTO_CFLAGS) $(SSL_CFLAGS) $(LIBUSB_CFLAGS) $(PCSC_CFLAGS)
+override USE_LDFLAGS= $(STAPI_LDFLAGS) $(LIBCRYPTO_LDFLAGS) $(SSL_LDFLAGS) $(LIBUSB_LDFLAGS) $(PCSC_LDFLAGS)
+override USE_LIBS   = $(STAPI_LIB) $(LIBCRYPTO_LIB) $(SSL_LIB) $(LIBUSB_LIB) $(PCSC_LIB)
+
+EXTRA_CFLAGS = $(EXTRA_FLAGS)
+EXTRA_LDFLAGS = $(EXTRA_FLAGS)
+
+# Add USE_xxx, EXTRA_xxx and STD_xxx vars
+override CC_WARN += $(EXTRA_CC_WARN)
+override CC_OPTS += $(EXTRA_CC_OPTS)
+override CFLAGS  += $(USE_CFLAGS) $(EXTRA_CFLAGS)
+override LDFLAGS += $(USE_LDFLAGS) $(EXTRA_LDFLAGS)
+override LIBS    += $(USE_LIBS) $(EXTRA_LIBS) $(STD_LIBS)
+
+export		CC AR STRIP RANLIB CFLAGS LDFLAGS ARFLAGS TARGET
+
+# Setup quiet build
+Q =
+SAY = @true
+ifndef V
+Q = @
+NP = --no-print-directory
+SAY = @echo
+endif
+export Q SAY
+
+EXEFILE1	= Distribution/oscam-$(VER)-$(subst cygwin,cygwin.exe,$(TARGET))
+EXEFILE2	= Distribution/list_smargo-$(VER)-$(subst cygwin,cygwin.exe,$(TARGET))
 
 LIBDIR		= lib
-LIBFILE1	= $(LIBDIR)/libcs-$(TYP).a
-LIBFILE2	= $(LIBDIR)/libcscrypt-$(TYP).a
-LIBFILE3	= $(LIBDIR)/libcsctapi-$(TYP).a
-LIBFILE4	= $(LIBDIR)/libminilzo-$(TYP).a
 
-OBJECTS1	= $(LIBFILE1)(oscam-simples.o) \
-		  $(LIBFILE1)(oscam-config.o) \
-		  $(LIBFILE1)(oscam-log.o) \
-		  $(LIBFILE1)(oscam-reader.o) \
-		  $(LIBFILE1)(oscam-garbage.o) \
-		  $(LIBFILE1)(reader-common.o) \
-		  $(LIBFILE1)(reader-irdeto.o) \
-		  $(LIBFILE1)(reader-viaccess.o) \
-		  $(LIBFILE1)(reader-videoguard1.o) \
-		  $(LIBFILE1)(reader-videoguard12.o) \
-		  $(LIBFILE1)(reader-videoguard2.o) \
-		  $(LIBFILE1)(reader-videoguard-common.o) \
-		  $(LIBFILE1)(reader-nds.o) \
-		  $(LIBFILE1)(reader-seca.o) \
-		  $(LIBFILE1)(reader-bulcrypt.o) \
-		  $(LIBFILE1)(reader-cryptoworks.o) \
-		  $(LIBFILE1)(reader-conax.o) \
-		  $(LIBFILE1)(reader-dre.o) \
-		  $(LIBFILE1)(reader-nagra.o) \
-		  $(LIBFILE1)(reader-tongfang.o) \
-		  $(LIBFILE1)(module-camd33.o) \
-		  $(LIBFILE1)(module-camd35.o) \
-		  $(LIBFILE1)(module-radegast.o) \
-		  $(LIBFILE1)(module-serial.o) \
-		  $(LIBFILE1)(module-monitor.o) \
-		  $(LIBFILE1)(module-newcamd.o) \
-		  $(LIBFILE1)(module-cccam.o) \
-		  $(LIBFILE1)(module-cccshare.o) \
-		  $(LIBFILE1)(module-pandora.o) \
-		  $(LIBFILE1)(module-gbox.o) \
-		  $(LIBFILE1)(module-pandora.o) \
-		  $(LIBFILE1)(module-constcw.o) \
-		  $(LIBFILE1)(module-dvbapi.o) \
-		  $(LIBFILE1)(module-stat.o) \
-		  $(LIBFILE1)(module-csp.o) \
-		  $(LIBFILE1)(module-datastruct-llist.o) \
-		  $(LIBFILE1)(oscam-chk.o) \
-		  $(LIBFILE1)(oscam-http.o) \
-		  $(LIBFILE1)(oscam-http-helpers.o) \
-		  $(LIBFILE1)(oscam-ac.o) \
-		  $(LIBFILE1)(module-coolapi.o)\
-		  $(LIBFILE1)(module-lcd.o)
+GLOBAL_DEP = Makefile Maketype
 
-ifneq ($(LIBUSB),)
+ALGO_LIB = $(LIBDIR)/libminilzo-$(TARGET).a
+ALGO_DEP = $(GLOBAL_DEP) algo/minilzo.h
+ALGO_OBJ = \
+	$(ALGO_LIB)(algo/minilzo.o)
+
+CSCRYPT_LIB = $(LIBDIR)/libcscrypt-$(TARGET).a
+CSCRYPT_DEP = $(GLOBAL_DEP) cscrypt/cscrypt.h cscrypt/des.h cscrypt/bn.h
+CSCRYPT_OBJ = \
+	$(CSCRYPT_LIB)(cscrypt/aes.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_add.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_asm.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_ctx.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_div.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_exp.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_lib.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_mul.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_print.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_shift.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_sqr.o) \
+	$(CSCRYPT_LIB)(cscrypt/bn_word.o) \
+	$(CSCRYPT_LIB)(cscrypt/crc32.o) \
+	$(CSCRYPT_LIB)(cscrypt/des.o) \
+	$(CSCRYPT_LIB)(cscrypt/i_cbc.o) \
+	$(CSCRYPT_LIB)(cscrypt/i_ecb.o) \
+	$(CSCRYPT_LIB)(cscrypt/i_skey.o) \
+	$(CSCRYPT_LIB)(cscrypt/md5.o) \
+	$(CSCRYPT_LIB)(cscrypt/mem.o) \
+	$(CSCRYPT_LIB)(cscrypt/rc6.o) \
+	$(CSCRYPT_LIB)(cscrypt/sha1.o)
+
+CSCTAPI_LIB = $(LIBDIR)/libcsctapi-$(TARGET).a
+CSCTAPI_DEP = $(GLOBAL_DEP) csctapi/defines.h csctapi/atr.h
+CSCTAPI_OBJ = \
+	$(CSCTAPI_LIB)(csctapi/atr.o) \
+	$(CSCTAPI_LIB)(csctapi/icc_async.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_cool.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_mp35.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_pcsc.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_phoenix.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_sc8in1.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_sci.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_smargo.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_smartreader.o) \
+	$(CSCTAPI_LIB)(csctapi/io_serial.o) \
+	$(CSCTAPI_LIB)(csctapi/protocol_t0.o) \
+	$(CSCTAPI_LIB)(csctapi/protocol_t1.o) \
+	$(CSCTAPI_LIB)(csctapi/t1_block.o)
+
+OSCAM_LIB = $(LIBDIR)/libcs-$(TARGET).a
+OSCAM_DEP = $(GLOBAL_DEP) globals.h oscam-config.h
+OSCAM_OBJ = \
+	$(OSCAM_LIB)(module-camd33.o) \
+	$(OSCAM_LIB)(module-camd35.o) \
+	$(OSCAM_LIB)(module-cccam.o) \
+	$(OSCAM_LIB)(module-cccshare.o) \
+	$(OSCAM_LIB)(module-constcw.o) \
+	$(OSCAM_LIB)(module-coolapi.o)\
+	$(OSCAM_LIB)(module-csp.o) \
+	$(OSCAM_LIB)(module-datastruct-llist.o) \
+	$(OSCAM_LIB)(module-dvbapi.o) \
+	$(OSCAM_LIB)(module-gbox.o) \
+	$(OSCAM_LIB)(module-lcd.o) \
+	$(OSCAM_LIB)(module-monitor.o) \
+	$(OSCAM_LIB)(module-newcamd.o) \
+	$(OSCAM_LIB)(module-pandora.o) \
+	$(OSCAM_LIB)(module-pandora.o) \
+	$(OSCAM_LIB)(module-radegast.o) \
+	$(OSCAM_LIB)(module-serial.o) \
+	$(OSCAM_LIB)(module-stat.o) \
+	$(OSCAM_LIB)(oscam-ac.o) \
+	$(OSCAM_LIB)(oscam-chk.o) \
+	$(OSCAM_LIB)(oscam-config.o) \
+	$(OSCAM_LIB)(oscam-garbage.o) \
+	$(OSCAM_LIB)(oscam-http-helpers.o) \
+	$(OSCAM_LIB)(oscam-http.o) \
+	$(OSCAM_LIB)(oscam-log.o) \
+	$(OSCAM_LIB)(oscam-reader.o) \
+	$(OSCAM_LIB)(oscam-simples.o) \
+	$(OSCAM_LIB)(reader-bulcrypt.o) \
+	$(OSCAM_LIB)(reader-common.o) \
+	$(OSCAM_LIB)(reader-conax.o) \
+	$(OSCAM_LIB)(reader-cryptoworks.o) \
+	$(OSCAM_LIB)(reader-dre.o) \
+	$(OSCAM_LIB)(reader-irdeto.o) \
+	$(OSCAM_LIB)(reader-nagra.o) \
+	$(OSCAM_LIB)(reader-nds.o) \
+	$(OSCAM_LIB)(reader-seca.o) \
+	$(OSCAM_LIB)(reader-tongfang.o) \
+	$(OSCAM_LIB)(reader-viaccess.o) \
+	$(OSCAM_LIB)(reader-videoguard-common.o) \
+	$(OSCAM_LIB)(reader-videoguard1.o) \
+	$(OSCAM_LIB)(reader-videoguard12.o) \
+	$(OSCAM_LIB)(reader-videoguard2.o)
+
+ifneq ($(USE_LIBUSB)$(LIBUSB),)
 all:		prepare $(EXEFILE1) $(EXEFILE2)
 else
 all:		prepare $(EXEFILE1)
 endif
 
 prepare:
-		@-echo "-----------------------------------------------------"
-		@-echo "Build for platform $(TYP)"
-		@-echo "-----------------------------------------------------"
-		@echo "$(TYP)" | awk -F- ' \
-		  { \
-		    printf("#define CS_OSTYPE \"%s\"\n", $$0);  \
-		    printf("#define CS_OS_CPU \"%s\"\n", $$1);  \
-		    printf("#define CS_OS_HW  \"%s\"\n", $$2);  \
-		    printf("#define CS_OS_SYS \"%s\"\n", $$3);  \
-		  }' > oscam-ostype.h
-		@[ -d "$(LIBDIR)" ] || mkdir "$(LIBDIR)"
+	@-test -d "$(LIBDIR)" || mkdir "$(LIBDIR)"
+	@-printf "\
++-------------------------------------------------------------------------------\n\
+| OSCAM ver: $(VER) rev: $(SVN_REV) target: $(TARGET)\n\
+| Tools:\n\
+|  CROSS    = $(CROSS)\n\
+|  CC       = $(CC)\n\
+|  AR       = $(AR)\n\
+|  STRIP    = $(STRIP)\n\
+|  RANLIB   = $(RANLIB)\n\
+| Settings:\n\
+|  CONF_DIR = $(CONF_DIR)\n\
+|  CC_OPTS  = $(CC_OPTS)\n\
+|  CC_WARN  = $(CC_WARN)\n\
+|  CFLAGS   = $(CFLAGS)\n\
+|  LDFLAGS  = $(LDFLAGS)\n\
+|  LIBS     = $(LIBS)\n\
++-------------------------------------------------------------------------------\n"
+	@echo "$(TYPE)" | awk -F- ' \
+	  { \
+	    printf("#define CS_OSTYPE \"%s\"\n", $$0);  \
+	    printf("#define CS_OS_CPU \"%s\"\n", $$1);  \
+	    printf("#define CS_OS_HW  \"%s\"\n", $$2);  \
+	    printf("#define CS_OS_SYS \"%s\"\n", $$3);  \
+	  }' > oscam-ostype.h
 
-ifeq ($(wildcard csgbox), csgbox)
-		@-echo "#define CS_WITH_GBOX 1" >> oscam-ostype.h
-		$(MAKE) -C csgbox
-endif
+$(ALGO_OBJ): $(ALGO_DEP)
+$(ALGO_LIB): $(ALGO_OBJ)
+	-@$(RANLIB) $@
 
-		$(MAKE) -C cscrypt
-		$(MAKE) -C csctapi
-		$(MAKE) -C algo
+$(CSCRYPT_OBJ): $(CSCRYPT_DEP)
+$(CSCRYPT_LIB): $(CSCRYPT_OBJ)
+	-@$(RANLIB) $@
 
-$(EXEFILE1):	oscam.c $(LIBFILE1) $(LIBFILE2) $(LIBFILE3) $(LIBFILE4) $(GENERAL)
-		$(CC) $(LDFLAGS) oscam.c $(LIBFILE1) $(LIBFILE2) $(LIBFILE3) $(LIBFILE4) $(LIBUSB) $(LIBPCSC) $(LIBRT) -o "$@" $(LIBS)
-ifdef DS_ST
-		$(STRIP) $@
+$(CSCTAPI_OBJ): $(CSCTAPI_DEP)
+$(CSCTAPI_LIB): $(CSCTAPI_OBJ)
+	-@$(RANLIB) $@
+
+$(OSCAM_OBJ): $(OSCAM_DEP)
+$(OSCAM_LIB): $(OSCAM_OBJ)
+	-@$(RANLIB) $@
+
+$(EXEFILE1): oscam.c $(ALGO_LIB) $(CSCRYPT_LIB) $(CSCTAPI_LIB) $(OSCAM_LIB)
+	$(SAY) "LINK	$@"
+	$(Q)$(CC) $(STD_DEFS) $(LDFLAGS) oscam.c $(OSCAM_LIB) $(ALGO_LIB) $(CSCRYPT_LIB) $(CSCTAPI_LIB) $(LIBS) -o $@
+ifndef DEBUG
+	$(SAY) "STRIP	$@"
+	$(Q)$(STRIP) $@
 endif
 
 $(EXEFILE2):	utils/list_smargo.c
-		$(CC) $(LDFLAGS) utils/list_smargo.c $(LIBUSB) $(LIBRT) -o "$@" $(LIBS)
-		$(STRIP) $@
-
-$(LIBFILE1):	$(OBJECTS1)
-		-$(RANLIB) $@
-
-$(OBJECTS1):	$(GENERAL)
+	$(SAY) "LINK	$@"
+	$(Q)$(CC) $(STD_DEFS) $(LDFLAGS) utils/list_smargo.c $(LIBS) -o $@
+ifndef DEBUG
+	$(SAY) "STRIP	$@"
+	$(Q)$(STRIP) $@
+endif
 
 .c.a:
-		$(CC) $(CFLAGS) -Icsctapi $<
-		$(AR) $(ARFLAGS) $@ $*.o
-		-@rm -f $*.o
+	$(SAY) "CC	$<"
+	$(Q)$(CC) $(STD_DEFS) $(CC_OPTS) $(CC_WARN) $(CFLAGS) -c $< -o $(subst .c,.o,$<)
+	@$(AR) $(ARFLAGS) $@ $*.o
+	-@rm -f $*.o
 
 .SUFFIXES:	.o .c .a
+.NOTPARALLEL: all

@@ -26,7 +26,7 @@ char *get_tmp_dir(){
   if (cs_tmpdir[0])
     return cs_tmpdir;
 
-#ifdef OS_CYGWIN32
+#if defined(__CYGWIN__)
   char *d = getenv("TMPDIR");
   if (!d || !d[0])
     d = getenv("TMP");
@@ -661,7 +661,7 @@ void cs_sleepus(uint32_t usec)
 	errno = olderrno;
 }
 
-#ifdef OS_CYGWIN32
+#if defined(__CYGWIN__)
 #include <windows.h>
 void cs_setpriority(int32_t prio)
 {
@@ -1429,7 +1429,7 @@ int32_t ecmfmt(uint16_t caid, uint32_t prid, uint16_t chid, uint16_t pid, uint16
 	if (!cfg.ecmfmt[0])
 		return snprintf(result, size, "%04X&%06X/%04X/%04X/%02X:%04X", caid, prid, chid, srvid, l, htons(checksum));
 
-	uint32_t s=0, zero=0, flen, value=0;
+	uint32_t s=0, zero=0, flen=0, value=0;
 	char *c = cfg.ecmfmt, fmt[5] = "%04X";
 	while (*c) {
 		switch(*c)
@@ -1487,6 +1487,16 @@ int32_t format_cxm(struct s_cacheex_matcher *entry, char *result, size_t size)
 	s += snprintf(result+s, size-s, " valid %d/%d", entry->valid_from, entry->valid_to);
 
 	return s;
+}
+
+int8_t cs_cacheex_maxhop(struct s_client *cl)
+{
+	int maxhop = 10;
+	if (cl->reader && cl->reader->cacheex_maxhop)
+		maxhop = cl->reader->cacheex_maxhop;
+	else if (cl->account && cl->account->cacheex_maxhop)
+		maxhop = cl->account->cacheex_maxhop;
+	return maxhop;
 }
 #endif
 

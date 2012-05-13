@@ -2,10 +2,10 @@
 
 #include "globals.h"
 
-#if defined OS_MACOSX || defined OS_FREEBSD
+#if defined(__APPLE__) || defined(__FreeBSD__)
 #include <net/if_dl.h>
 #include <ifaddrs.h>
-#elif defined OS_SOLARIS
+#elif defined(__SOLARIS__)
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <sys/sockio.h>
@@ -431,7 +431,7 @@ void chk_t_global(const char *token, char *value)
 {
 	char *saveptr1 = NULL;
 
-#if defined(QBOXHD) || defined(ARM)
+#if defined(QBOXHD) || defined(__ARM__)
 	if (!strcmp(token, "enableled")) {
 		cfg.enableled = strToIntVal(value, 0);
 		return;
@@ -1925,6 +1925,11 @@ void chk_account(const char *token, char *value, struct s_auth *account)
 		account->cacheex = strToIntVal(value, 0);
 		return;
 	}
+
+	if (!strcmp(token, "cacheex_maxhop")) {
+		account->cacheex_maxhop = strToIntVal(value, 0);
+		return;
+	}
 #endif
 
 	if (!strcmp(token, "sleep")) {
@@ -2273,7 +2278,7 @@ int32_t write_config()
 	if (cfg.cacheex_enable_stats != 0 || cfg.http_full_cfg)
 		fprintf_conf(f, "cacheexenablestats", "%d\n", cfg.cacheex_enable_stats);
 #endif
-#if defined(QBOXHD) || defined(ARM) 
+#if defined(QBOXHD) || defined(__ARM__)
 	if (cfg.enableled || cfg.http_full_cfg)
 		fprintf_conf(f, "enableled", "%d\n", cfg.enableled);
 #endif
@@ -2747,6 +2752,9 @@ int32_t write_userdb()
 #ifdef CS_CACHEEX
 		if (account->cacheex || cfg.http_full_cfg)
 			fprintf_conf(f, "cacheex", "%d\n", account->cacheex);
+
+		if (account->cacheex_maxhop || cfg.http_full_cfg)
+			fprintf_conf(f, "cacheex_maxhop", "%d\n", account->cacheex_maxhop);
 #endif
 
 		if (account->tosleep != cfg.tosleep || cfg.http_full_cfg)
@@ -2962,6 +2970,9 @@ int32_t write_server()
 #ifdef CS_CACHEEX
 			if (rdr->cacheex || cfg.http_full_cfg)
 				fprintf_conf(f, "cacheex", "%d\n", rdr->cacheex);
+
+			if (rdr->cacheex_maxhop || cfg.http_full_cfg)
+				fprintf_conf(f, "cacheex_maxhop", "%d\n", rdr->cacheex_maxhop);
 #endif
 
 #ifdef COOL
@@ -3207,7 +3218,7 @@ int32_t write_server()
 
 void write_versionfile() {
 
-#ifndef OS_CYGWIN32
+#if !defined(__CYGWIN__)
   // /tmp/oscam.version file (Uptime + Version)
   char targetfile[256];
   snprintf(targetfile, sizeof(targetfile),"%s%s", get_tmp_dir(), "/oscam.version");
@@ -4096,7 +4107,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
     }
 
     if (!memcmp(mac, "\x00\x00\x00\x00\x00\x00", 6)) {
-#if defined OS_MACOSX || defined OS_FREEBSD
+#if defined(__APPLE__) || defined(__FreeBSD__)
       // no mac address specified so use mac of en0 on local box
       struct ifaddrs *ifs, *current;
 
@@ -4113,7 +4124,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
          }
          freeifaddrs(ifs);
       }
-#elif defined OS_SOLARIS
+#elif defined(__SOLARIS__)
 			// no mac address specified so use first filled mac
 			int32_t j, sock, niccount;
 			struct ifreq nicnumber[16];
@@ -4301,6 +4312,11 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 #ifdef CS_CACHEEX
 	if (!strcmp(token, "cacheex")) {
 		rdr->cacheex  = strToIntVal(value, 0);
+		return;
+	}
+
+	if (!strcmp(token, "cacheex_maxhop")) {
+		rdr->cacheex_maxhop  = strToIntVal(value, 0);
 		return;
 	}
 #endif

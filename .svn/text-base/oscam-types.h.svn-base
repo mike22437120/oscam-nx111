@@ -1,19 +1,19 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
-#if !defined(OS_AIX)
+#ifndef uchar
 typedef unsigned char uchar;
 #endif
 
 #endif // _TYPES_H_
 
 #ifndef NO_ENDIAN_H
- #ifdef OS_MACOSX
+ #if defined(__APPLE__)
     #include <machine/endian.h>
     #define __BYTE_ORDER __DARWIN_BYTE_ORDER 
     #define __BIG_ENDIAN    __DARWIN_BIG_ENDIAN 
     #define __LITTLE_ENDIAN __DARWIN_LITTLE_ENDIAN
- #elif defined OS_FREEBSD
+ #elif defined(__FreeBSD__)
     #include <sys/endian.h>
     #define __BYTE_ORDER _BYTE_ORDER
     #define __BIG_ENDIAN    _BIG_ENDIAN
@@ -24,7 +24,7 @@ typedef unsigned char uchar;
  #endif
 #endif
 
-#if defined(CS_EMBEDDED) || defined(OS_LINUX)
+#if defined(CS_EMBEDDED) || defined(__linux__)
 
 #ifdef ntohl
 #undef ntohl
@@ -53,4 +53,4 @@ typedef unsigned char uchar;
 #  endif
 #endif
 
-#endif // CS_EMBEDDED || OS_LINUX
+#endif // CS_EMBEDDED

@@ -198,6 +198,13 @@ static void camd35_request_emm(ECM_REQUEST *er)
 	if (!aureader)
 		return;  // TODO
 
+	uint16_t au_caid = aureader->caid;
+
+	// Bulcrypt has 2 caids and aureader->caid can't be used.
+	// Use 5581 for AU.
+	if (!au_caid && (er->caid == 0x5581 || er->caid == 0x4aee))
+		au_caid = 0x5581;
+
 	time(&now);
 	if (!memcmp(cl->lastserial, aureader->hexserial, 8))
 		if (abs(now-cl->last) < 180) return;
@@ -205,7 +212,7 @@ static void camd35_request_emm(ECM_REQUEST *er)
 	memcpy(cl->lastserial, aureader->hexserial, 8);
 	cl->last = now;
 
-	if (aureader->caid)
+	if (au_caid)
 	{
 		cl->disable_counter = 0;
 		log_emm_request(aureader);
@@ -233,17 +240,23 @@ static void camd35_request_emm(ECM_REQUEST *er)
 	i2b_buf(2, er->pid, mbuf + 16);
 	mbuf[0] = 5;
 	mbuf[1] = 111;
-	if (aureader->caid)
+	if (au_caid)
 	{
 		mbuf[39] = 1;							// no. caids
-		mbuf[20] = aureader->caid>>8;		// caid's (max 8)
-		mbuf[21] = aureader->caid&0xff;
+		mbuf[20] = au_caid >> 8;		// caid's (max 8)
+		mbuf[21] = au_caid & 0xff;
+		if (au_caid == 0x5581) {
+			// Bulcrypt have two CAIDs, add the second one
+			mbuf[39]++;
+			mbuf[22] = 0x4aee >> 8;
+			mbuf[23] = 0x4aee & 0xff;
+		}
 		memcpy(mbuf + 40, aureader->hexserial, 6);	// serial now 6 bytes
 		mbuf[47] = aureader->nprov;
 		for (i = 0; i < aureader->nprov; i++)
 		{
-			if (((aureader->caid >= 0x1700) && (aureader->caid <= 0x1799))  || // Betacrypt
-					((aureader->caid >= 0x0600) && (aureader->caid <= 0x0699)))    // Irdeto (don't know if this is correct, cause I don't own a IRDETO-Card)
+			if ((au_caid >= 0x1700 && au_caid <= 0x1799)  || // Betacrypt
+					(au_caid >= 0x0600 && au_caid <= 0x0699))    // Irdeto (don't know if this is correct, cause I don't own a IRDETO-Card)
 			{
 				mbuf[48 + (i*5)] = aureader->prid[i][0];
 				memcpy(&mbuf[50 + (i*5)], &aureader->prid[i][1], 3);
@@ -451,8 +464,8 @@ void camd35_cache_push_receive_remote_id(struct s_client *cl, uint8_t *buf) {
 int32_t camd35_cache_push_chk(struct s_client *cl, ECM_REQUEST *er)
 {
 	//check max 10 nodes to push:
-	if (ll_count(er->csp_lastnodes) >= 10) {
-		cs_debug_mask(D_CACHEEX, "cacheex: nodelist reached 10 nodes, no push");
+	if (ll_count(er->csp_lastnodes) >= cs_cacheex_maxhop(cl)) {
+		cs_debug_mask(D_CACHEEX, "cacheex: nodelist reached %d nodes, no push", cs_cacheex_maxhop(cl));
 		return 0;
 	}
 
@@ -616,18 +629,20 @@ void camd35_cache_push_in(struct s_client *cl, uchar *buf)
 
 	//Check auf neues Format:
 	uint8_t *data;
-	er->csp_lastnodes = ll_create("csp_lastnodes");
 	if (size > (sizeof(er->ecmd5) + sizeof(er->csp_hash) + sizeof(er->cw))) {
 
 		//Read lastnodes:
 		uint8_t count = *ofs;
 		ofs++;
 
-		if (count > 10) {
-			cs_debug_mask(D_CACHEEX, "cacheex: received %d nodes (max=10), ignored! %s", (int32_t)count, username(cl));
-			count = 0;
+		//check max nodes:
+		if (count > cs_cacheex_maxhop(cl)) {
+			cs_debug_mask(D_CACHEEX, "cacheex: received %d nodes (max=%d), ignored! %s", (int32_t)count, cs_cacheex_maxhop(cl), username(cl));
+			free(er);
+			return;
 		}
 		cs_debug_mask(D_CACHEEX, "cacheex: received %d nodes %s", (int32_t)count, username(cl));
+		er->csp_lastnodes = ll_create("csp_lastnodes");
 		while (count) {
 			data = cs_malloc(&data, 8, 0);
 			memcpy(data, ofs, 8);
@@ -637,8 +652,10 @@ void camd35_cache_push_in(struct s_client *cl, uchar *buf)
 			cs_debug_mask(D_CACHEEX, "cacheex: received lasnode %llX %s", cnode(data), username(cl));
 		}
 	}
-	else
+	else {
 		cs_debug_mask(D_CACHEEX, "cacheex: received old cachex from %s", username(cl));
+		er->csp_lastnodes = ll_create("csp_lastnodes");
+	}
 
 	//store remote node id if we got one. The remote node is the first node in the node list
 	data = ll_has_elements(er->csp_lastnodes);

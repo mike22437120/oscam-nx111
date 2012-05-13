@@ -2,7 +2,7 @@
 #include "../globals.h"
 
 #ifdef HAVE_PCSC
-  #ifdef OS_CYGWIN32
+  #if defined(__CYGWIN__)
     #define __reserved
     #define __nullnullterminated
     #include <specstrings.h>
@@ -10,7 +10,7 @@
   #else
     #include <PCSC/pcsclite.h> 
     #include <PCSC/winscard.h>
-    #ifdef OS_MACOSX 
+    #if defined(__APPLE__)
         #include <PCSC/wintypes.h> 
     #else 
         #include <PCSC/reader.h> 
