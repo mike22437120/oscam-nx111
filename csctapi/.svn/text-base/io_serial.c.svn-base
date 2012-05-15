@@ -81,7 +81,6 @@ static bool IO_Serial_DTR_RTS_dbox2(struct s_reader * reader, int32_t * dtr, int
 {
   int32_t rc;
   uint16_t msr;
-  uint32_t mbit;
   uint16_t rts_bits[2]={ 0x10, 0x800};
   uint16_t dtr_bits[2]={0x100,     0};
   int32_t mcport = (reader->typ == R_DB2COM2);
@@ -190,7 +189,7 @@ bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct te
   { //no overclocking
     cfsetospeed(tio, IO_Serial_Bitrate(bitrate));
     cfsetispeed(tio, IO_Serial_Bitrate(bitrate));
-    cs_debug_mask(D_DEVICE, "standard baudrate: cardmhz=%d mhz=%d -> effective baudrate %u", reader->cardmhz, reader->mhz, bitrate);
+    cs_debug_mask(D_DEVICE, "standard baudrate: cardmhz=%d interface speed=%d -> effective baudrate %u", reader->cardmhz, reader->mhz, bitrate);
   }
 #if defined(__linux__)
   else
@@ -452,7 +451,7 @@ bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, 
 		{
 			while (readed == 0){
 				readed = read (reader->handle, &c, 1);
-				if (readed < 0) {
+				if (readed < 1) {
 					cs_log("Reader %s: ERROR in IO_Serial_Read (errno=%d %s)", reader->label, errno, strerror(errno));
 					if (errorcount > 10) return ERROR;
 					errorcount++;
@@ -494,9 +493,9 @@ bool IO_Serial_Write (struct s_reader * reader, uint32_t delay, uint32_t size, c
 			while (to_do !=0){
 				cs_ddump_mask(D_DEVICE, data_w, to_send, "IO: Sending: ");
 				int32_t u = write (reader->handle, data_w, to_send);
-				if (u < 0) {
+				if (u < 1) {
 					errorcount++;
-					cs_log("Reader %s: ERROR in IO_Serial_Write actual written=%d of=%d (errno=%d %s)", reader->label, u, size, errno, strerror(errno));
+					cs_log("Reader %s: ERROR in IO_Serial_Write actual written=%d of=%d (errno=%d %s)", reader->label, (size - to_do), size, errno, strerror(errno));
 					if (errorcount > 10) return ERROR; //exit if more than 10 errors
 					}
 				else {

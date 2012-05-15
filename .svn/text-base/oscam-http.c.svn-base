@@ -701,7 +701,7 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 
 	DIR *hdir;
 	struct dirent entry;
-  struct dirent *result;
+	struct dirent *result;
 	if((hdir = opendir(cs_confdir)) != NULL){
 		while(cs_readdir_r(hdir, &entry, &result) == 0 && result != NULL){
 			if (strstr(entry.d_name, ".css")) {
@@ -714,6 +714,9 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 		}
 		closedir(hdir);
 	}
+
+	if(cfg.http_prepend_embedded_css)
+		tpl_addVar(vars, TPLADD, "HTTPPREPENDEMBEDDEDCSS", "checked");
 
 	if (cfg.http_help_lang[0])
 		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
@@ -831,6 +834,9 @@ static char *send_oscam_config_dvbapi(struct templatevars *vars, struct uriparam
 		
 	if (cfg.dvbapi_reopenonzap > 0)
 		tpl_addVar(vars, TPLADD, "REOPENONZAPCHECKED", "checked");
+		
+	if (cfg.dvbapi_delayer > 0)
+		tpl_printf(vars, TPLADD, "DELAYER", "%d", cfg.dvbapi_delayer);
 
 	tpl_printf(vars, TPLADD, "BOXTYPE", "<option value=\"\"%s>None</option>\n", cfg.dvbapi_boxtype == 0 ? " selected" : "");
 	for (i=1; i<=BOXTYPES; i++) {
@@ -1122,7 +1128,7 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 #endif
 
 		for (i=0; i<CS_MAX_MOD; i++) {
-			if (cardreader[i].desc[0]!=0)
+			if (cardreader[i].desc)
 				tpl_printf(vars, TPLAPPEND, "ADDPROTOCOL", "<option>%s</option>\n", xml_encode(vars, cardreader[i].desc));
 		}
 		return tpl_getTpl(vars, "READERS");
@@ -1254,6 +1260,7 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	} else {
 		tpl_printf(vars, TPLADD, "CACHEEX", "%d", rdr->cacheex);
 	}
+	tpl_printf(vars, TPLADD, "CACHEEX_MAXHOP", "%d", rdr->cacheex_maxhop);
 #endif
 
 #ifdef COOL
@@ -2104,6 +2111,7 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 	} else {
 		tpl_printf(vars, TPLADD, "CACHEEX", "%d", account->cacheex);
 	}
+	tpl_printf(vars, TPLADD, "CACHEEX_MAXHOP", "%d", account->cacheex_maxhop);
 #endif
 
 	//Keepalive
@@ -2396,12 +2404,15 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 			tpl_addVar(vars, TPLADDONCE, "IDLESECS", sec2timeformat(vars, isec));
 
 			if (isactive > 0) {
+				tpl_printf(vars, TPLADDONCE, "CLIENTTIMEONCHANNELAPI", "%d", chsec);
 				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMEONCHANNEL", sec2timeformat(vars, chsec));
-				if (account->tosleep)
+				if (account->tosleep){
 					tpl_printf(vars, TPLADDONCE, "CLIENTTIMETOSLEEP", "Sleeping in %d minutes", account->tosleep - (chsec / 60));
-				else
+					tpl_printf(vars, TPLADDONCE, "CLIENTTIMETOSLEEPAPI", "%d", account->tosleep - (chsec / 60));
+				} else {
 					tpl_addVar(vars, TPLADDONCE, "CLIENTTIMETOSLEEP", "No sleep defined");
-
+					tpl_addVar(vars, TPLADDONCE, "CLIENTTIMETOSLEEPAPI", "undefined");
+				}
 				if(latestclient){
 					tpl_printf(vars, TPLADD, "CLIENTCAID", "%04X", latestclient->last_caid);
 					tpl_printf(vars, TPLADD, "CLIENTSRVID", "%04X", latestclient->last_srvid);
@@ -2418,8 +2429,10 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 				}
 
 			} else {
+				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMEONCHANNELAPI", "");
 				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMEONCHANNEL", "");
 				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMETOSLEEP", "");
+				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMETOSLEEPAPI", "");
 				tpl_addVar(vars, TPLADD, "CLIENTCAID", "");
 				tpl_addVar(vars, TPLADD, "CLIENTSRVID", "");
 				tpl_addVar(vars, TPLADD, "CLIENTPICON", "");
@@ -2571,7 +2584,7 @@ static void print_cards(struct templatevars *vars, struct uriparams *params, str
 			struct s_cardsystem *cs = get_cardsystem_by_caid(card->caid);
 
 			if (cs)
-				tpl_addVar(vars, TPLADD, "SYSTEM", cs->desc ? cs->desc : "");
+				tpl_addVar(vars, TPLADD, "SYSTEM", cs->desc);
 			else
 				tpl_addVar(vars, TPLADD, "SYSTEM", "???");
 
@@ -2828,7 +2841,7 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 				if(rdr->card_atr_length)
 					for(i = 0; i < rdr->card_atr_length; i++) tpl_printf(vars, TPLAPPEND, "READERATR", "%02X ", rdr->card_atr[i]);
 
-				tpl_addVar(vars, TPLADD, "READERCSYSTEM", rdr->csystem.desc ? rdr->csystem.desc : "unknown");
+				tpl_addVar(vars, TPLADD, "READERCSYSTEM", rdr->csystem.desc);
 
 				tpl_addVar(vars, TPLADD, "ENTITLEMENTCONTENT", tpl_getTpl(vars, "ENTITLEMENTBIT"));
 
@@ -4906,6 +4919,9 @@ void http_srv() {
 
 	/* Create random string for nonce value generation */
 	create_rand_str(noncekey,32);
+	
+	/* Prepare base64 decoding array */
+	b64prepare();
 	
 	cs_lock_create(&http_lock, 10, "http_lock");
 

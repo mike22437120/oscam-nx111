@@ -187,12 +187,6 @@
 #endif
 #define PTHREAD_STACK_SIZE PTHREAD_STACK_MIN+32768
 
-#ifdef  CS_EMBEDDED
-#define CS_MAXPENDING   16
-#else
-#define CS_MAXPENDING   32
-#endif
-
 #define CS_MAXEMMBLOCKBYLEN 10
 
 #define CS_EMMCACHESIZE  127 //nr of EMMs that each client will cache; cache is per client, so memory-expensive...
@@ -656,7 +650,7 @@ struct s_module {
 	int8_t			type;
 	int8_t			large_ecm_support;
 	int16_t			listenertype;
-	char 			desc[16];
+	char 			*desc;
 	char 			*logtxt;
 	//int32_t  		s_port;
 	in_addr_t		s_ip;
@@ -694,7 +688,7 @@ struct s_ATR ;
 struct s_cardreader
 {
 	int8_t			active;
-	char			desc[16];
+	char			*desc;
 	int32_t			(*reader_init)(struct s_reader*);
 	int32_t			(*get_status)(struct s_reader*, int*);
 	int32_t			(*activate)(struct s_reader*, struct s_ATR *);
@@ -1508,6 +1502,7 @@ struct s_config
 	char			http_user[65];
 	char			http_pwd[65];
 	char			http_css[128];
+	int32_t			http_prepend_embedded_css;
 	char			http_jscript[128];
 	char			http_tpl[128];
 	char			http_script[128];
@@ -1621,7 +1616,8 @@ struct s_config
 	int32_t		dvbapi_ecm_infomode;//ecm.info  format:0 oscam 1 cccam 2 
 	SIDTABBITS	dvbapi_sidtabok;					// positiv services
 	SIDTABBITS	dvbapi_sidtabno;					// negative services
-	int8_t dvbapi_reopenonzap;
+	int8_t          dvbapi_reopenonzap;
+	int32_t         dvbapi_delayer;                                         // delayer ms, minimum time to write cw
 #endif
 
 #ifdef CS_ANTICASC
@@ -1679,6 +1675,8 @@ struct s_config
 	int8_t global_whitelist_use_m;
 
 	char ecmfmt[ECM_FMT_LEN];
+
+	uint8_t max_pending;
 };
 
 struct s_clientinit

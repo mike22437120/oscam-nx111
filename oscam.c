@@ -216,171 +216,117 @@ void cs_add_lastresponsetime(struct s_client *cl, int32_t ltime, time_t timestam
 /*****************************************************************************
         Statics
 *****************************************************************************/
-static const char *logo = "  ___  ____   ___                \n / _ \\/ ___| / __|__ _ _ __ ___  \n| | | \\___ \\| |  / _` | '_ ` _ \\ \n| |_| |___) | |_| (_| | | | | | |\n \\___/|____/ \\___\\__,_|_| |_| |_|\n";
+#define _check(CONFIG_VAR, text) \
+	do { \
+		if (config_##CONFIG_VAR()) \
+			printf(" %s", text); \
+	} while(0)
 
 /* Prints usage information and information about the built-in modules. */
 static void usage()
 {
-  fprintf(stderr, "%s\n\n", logo);
-  fprintf(stderr, "OSCam cardserver v%s, build #%s (%s) - (w) 2009-2012 Streamboard SVN\n", CS_VERSION_X, CS_SVN_VERSION, CS_OSTYPE);
-  fprintf(stderr, "\tsee http://streamboard.gmc.to/oscam/ for more details\n");
-  fprintf(stderr, "\tbased on Streamboard mp-cardserver v0.9d - (w) 2004-2007 by dukat\n");
-  fprintf(stderr, "\tThis program is distributed under GPL.\n");
-  fprintf(stderr, "\tinbuilt add-ons: ");
-#ifdef WEBIF
-  fprintf(stderr, "webif ");
-#endif
-#ifdef MODULE_MONITOR
-  fprintf(stderr, "monitor ");
-#endif
-#ifdef WITH_SSL
-  fprintf(stderr, "ssl ");
-#endif
-#ifdef HAVE_DVBAPI
-#ifdef WITH_STAPI
-  fprintf(stderr, "dvbapi_stapi ");
-#else
-  fprintf(stderr, "dvbapi ");
-#endif
-#endif
-#ifdef IRDETO_GUESSING
-  fprintf(stderr, "irdeto-guessing ");
-#endif
-#ifdef CS_ANTICASC
-  fprintf(stderr, "anticascading ");
-#endif
-#ifdef WITH_DEBUG
-  fprintf(stderr, "debug ");
-#endif
-#ifdef LIBUSB
-  fprintf(stderr, "smartreader ");
-#endif
-#ifdef HAVE_PCSC
-  fprintf(stderr, "pcsc ");
-#endif
-#ifdef WITH_LB
-  fprintf(stderr, "loadbalancing ");
-#endif
-#ifdef LCDSUPPORT
-  fprintf(stderr, "lcd ");
-#endif
-  fprintf(stderr, "\n\tinbuilt protocols: ");
-#ifdef MODULE_CAMD33
-  fprintf(stderr, "camd33 ");
-#endif
-#ifdef MODULE_CAMD35
-  fprintf(stderr, "camd35_udp ");
-#endif
-#ifdef MODULE_CAMD35_TCP
-  fprintf(stderr, "camd35_tcp ");
-#endif
-#ifdef MODULE_NEWCAMD
-  fprintf(stderr, "newcamd ");
-#endif
-#ifdef MODULE_CCCAM
-  fprintf(stderr, "cccam ");
-#endif
-#ifdef MODULE_CCCSHARE
-  fprintf(stderr, "cccam share ");
-#endif
-#ifdef MODULE_PANDORA
-  fprintf(stderr, "pandora ");
-#endif
-#ifdef CS_CACHEEX
-  fprintf(stderr, "cache-exchange ");
-#endif
-#ifdef MODULE_GBOX
-  fprintf(stderr, "gbox ");
-#endif
-#ifdef MODULE_RADEGAST
-  fprintf(stderr, "radegast ");
-#endif
-#ifdef MODULE_SERIAL
-  fprintf(stderr, "serial ");
-#endif
-#ifdef MODULE_CONSTCW
-  fprintf(stderr, "constcw ");
-#endif
-  fprintf(stderr, "\n\tinbuilt cardreaders: ");
-#ifdef READER_NAGRA
-  fprintf(stderr, "nagra ");
-#endif
-#ifdef READER_IRDETO
-  fprintf(stderr, "irdeto ");
-#endif
-#ifdef READER_CONAX
-  fprintf(stderr, "conax ");
-#endif
-#ifdef READER_CRYPTOWORKS
-  fprintf(stderr, "cryptoworks ");
-#endif
-#ifdef READER_SECA
-  fprintf(stderr, "seca ");
-#endif
-#ifdef READER_VIACCESS
-  fprintf(stderr, "viaccess ");
-#endif
-#ifdef READER_VIDEOGUARD
-  fprintf(stderr, "videoguard ");
-#endif
-#ifdef READER_DRE
-  fprintf(stderr, "dre ");
-#endif
-#ifdef READER_TONGFANG
-  fprintf(stderr, "tongfang ");
-#endif
-#ifdef READER_STREAMGUARD
-  fprintf(stderr, "streamguard ");
-#endif
-#ifdef READER_BULCRYPT
-  fprintf(stderr, "bulcrypt ");
-#endif
-  fprintf(stderr, "\n\n");
-#ifdef WEBIF
-  fprintf(stderr, "oscam [-a] [-b] [-s] [-c <config dir>] [-t <tmp dir>] [-d <level>] [-r <level>] [-w <secs>] [-g <mode>] [-u] [-h]");
-#else
-	fprintf(stderr, "oscam [-a] [-b] [-s] [-c <config dir>] [-t <tmp dir>] [-d <level>] [-w <secs>] [-g <mode>] [-h]");
-#endif
-  fprintf(stderr, "\n\n\t-a         : write oscam.crash on segfault (needs installed GDB and OSCam compiled with debug infos -ggdb)\n");
-  fprintf(stderr, "\t-b         : start in background\n");
-  fprintf(stderr, "\t-s         : capture segmentation faults\n");
-  fprintf(stderr, "\t-c <dir>   : read configuration from <dir>\n");
-  fprintf(stderr, "\t             default = %s\n", CS_CONFDIR);
-  fprintf(stderr, "\t-t <dir>   : tmp dir <dir>\n");
+	printf("%s",
+"  ___  ____   ___\n"
+" / _ \\/ ___| / __|__ _ _ __ ___\n"
+"| | | \\___ \\| |  / _` | '_ ` _ \\\n"
+"| |_| |___) | |_| (_| | | | | | |\n"
+" \\___/|____/ \\___\\__,_|_| |_| |_|\n\n");
+	printf("OSCam cardserver v%s, build #%s (%s)\n", CS_VERSION_X, CS_SVN_VERSION, CS_OSTYPE);
+	printf("Copyright (C) 2009-2012 OSCam developers.\n");
+	printf("This program is distributed under GPLv3.\n");
+	printf("OSCam is based on Streamboard mp-cardserver v0.9d written by dukat\n");
+	printf("Visit http://streamboard.gmc.to/oscam/ for more details.\n\n");
+
+	printf(" Features  :");
+	_check(WEBIF, "webif");
+	_check(MODULE_MONITOR, "monitor");
+	_check(WITH_SSL, "ssl");
+	if (!config_WITH_STAPI())
+		_check(HAVE_DVBAPI, "dvbapi");
+	else
+		_check(WITH_STAPI, "dvbapi_stapi");
+	_check(IRDETO_GUESSING, "irdeto-guessing");
+	_check(CS_ANTICASC, "anticascading");
+	_check(WITH_DEBUG, "debug");
+	_check(LIBUSB, "smartreader");
+	_check(HAVE_PCSC, "pcsc");
+	_check(WITH_LB, "loadbalancing");
+	_check(LCDSUPPORT, "lcd");
+	printf("\n");
+
+	printf(" Protocols :");
+	_check(MODULE_CAMD33, "camd33");
+	_check(MODULE_CAMD35, "camd35_udp");
+	_check(MODULE_CAMD35_TCP, "camd35_tcp");
+	_check(MODULE_NEWCAMD, "newcamd");
+	_check(MODULE_CCCAM, "cccam");
+	_check(MODULE_CCCSHARE, "cccam_share");
+	_check(MODULE_PANDORA, "pandora");
+	_check(CS_CACHEEX, "cache-exchange");
+	_check(MODULE_GBOX, "gbox");
+	_check(MODULE_RADEGAST, "radegast");
+	_check(MODULE_SERIAL, "serial");
+	_check(MODULE_CONSTCW, "constcw");
+	printf("\n");
+
+	printf(" Readers   :");
+	_check(READER_NAGRA, "nagra");
+	_check(READER_IRDETO, "irdeto");
+	_check(READER_CONAX, "conax");
+	_check(READER_CRYPTOWORKS, "cryptoworks");
+	_check(READER_SECA, "seca");
+	_check(READER_VIACCESS, "viaccess");
+	_check(READER_VIDEOGUARD, "videoguard");
+	_check(READER_DRE, "dre");
+	_check(READER_TONGFANG, "tongfang");
+	_check(READER_STREAMGUARD, "streamguard");
+	_check(READER_BULCRYPT, "bulcrypt");
+	printf("\n");
+
+	printf("\n");
+	printf(" Usage: oscam [-a] [-b] [-s] [-c <config dir>] [-t <tmp dir>] [-d <level>] [-w <secs>] [-g <mode>] [-p <num>]");
+	if (config_WEBIF())
+		printf(" [-r <level>] [-u]");
+	printf(" [-h]\n");
+	printf("\n");
+	printf("\t-a         : write oscam.crash on segfault (needs installed GDB and OSCam compiled with debug infos -ggdb)\n");
+	printf("\t-b         : start in background\n");
+	printf("\t-s         : capture segmentation faults\n");
+	printf("\t-c <dir>   : read configuration from <dir>\n");
+	printf("\t             default = %s\n", CS_CONFDIR);
+	printf("\t-t <dir>   : tmp dir <dir>\n");
 #if defined(__CYGWIN__)
-  fprintf(stderr, "\t             default = (OS-TMP)\n");
+	printf("\t             default = (OS-TMP)\n");
 #else
-  fprintf(stderr, "\t             default = /tmp/.oscam\n");
+	printf("\t             default = /tmp/.oscam\n");
 #endif
-  fprintf(stderr, "\t-d <level> : debug level mask\n");
-  fprintf(stderr, "\t               0 = no debugging (default)\n");
-  fprintf(stderr, "\t               1 = detailed error messages\n");
-  fprintf(stderr, "\t               2 = ATR parsing info, ECM, EMM and CW dumps\n");
-  fprintf(stderr, "\t               4 = traffic from/to the reader\n");
-  fprintf(stderr, "\t               8 = traffic from/to the clients\n");
-  fprintf(stderr, "\t              16 = traffic to the reader-device on IFD layer\n");
-  fprintf(stderr, "\t              32 = traffic to the reader-device on I/O layer\n");
-  fprintf(stderr, "\t              64 = EMM logging\n");
-  fprintf(stderr, "\t             128 = DVBAPI logging\n");
-  fprintf(stderr, "\t             256 = Loadbalancer logging\n");
-  fprintf(stderr, "\t             512 = CACHEEX logging\n");
-  fprintf(stderr, "\t            1024 = Client ECM logging\n");
-  fprintf(stderr, "\t           65535 = Debug all\n");
-#ifdef WEBIF
-  fprintf(stderr, "\t-r <level> : restart level\n");
-  fprintf(stderr, "\t               0 = disabled, restart request sets exit status 99\n");
-  fprintf(stderr, "\t               1 = restart activated, web interface can restart oscam (default)\n");
-  fprintf(stderr, "\t               2 = like 1, but also restart on segmentation faults\n");
-#endif
-	fprintf(stderr, "\t-g <mode>  : garbage collector debug mode (1=immediate free, 2=check for double frees); these options are only intended for debug!\n");
-  fprintf(stderr, "\t-w <secs>  : wait up to <secs> seconds for the system time to be set correctly (default 60)\n");
-#ifdef WEBIF 
-  fprintf(stderr, "\t-u         : enable output of web interface in UTF-8 charset\n");
-#endif
-  fprintf(stderr, "\t-h         : show this help\n");
-  fprintf(stderr, "\n");
-  exit(1);
+	printf("\t-d <level> : debug level mask\n");
+	printf("\t               0 = no debugging (default)\n");
+	printf("\t               1 = detailed error messages\n");
+	printf("\t               2 = ATR parsing info, ECM, EMM and CW dumps\n");
+	printf("\t               4 = traffic from/to the reader\n");
+	printf("\t               8 = traffic from/to the clients\n");
+	printf("\t              16 = traffic to the reader-device on IFD layer\n");
+	printf("\t              32 = traffic to the reader-device on I/O layer\n");
+	printf("\t              64 = EMM logging\n");
+	printf("\t             128 = DVBAPI logging\n");
+	printf("\t             256 = Loadbalancer logging\n");
+	printf("\t             512 = CACHEEX logging\n");
+	printf("\t            1024 = Client ECM logging\n");
+	printf("\t           65535 = Debug all\n");
+	printf("\t-g <mode>  : garbage collector debug mode (1=immediate free, 2=check for double frees); these options are only intended for debug!\n");
+	printf("\t-w <secs>  : wait up to <secs> seconds for the system time to be set correctly (default 60)\n");
+	if (config_WEBIF()) {
+		printf("\t-r <level> : restart level\n");
+		printf("\t               0 = disabled, restart request sets exit status 99\n");
+		printf("\t               1 = restart activated, web interface can restart oscam (default)\n");
+		printf("\t               2 = like 1, but also restart on segmentation faults\n");
+		printf("\t-u         : enable output of web interface in UTF-8 charset\n");
+	}
+	printf("\t-p <num>   : how much pending packets to keep (default 32)\n");
+	printf("\t-h         : show this help\n");
 }
+#undef _check
 
 #ifdef NEED_DAEMON
 #if defined(__APPLE__)
@@ -597,7 +543,7 @@ static void cleanup_ecmtasks(struct s_client *cl)
 
 	if (cl->ecmtask) {
 		int32_t i;
-		for (i=0; i<CS_MAXPENDING; i++) {
+		for (i = 0; i < cfg.max_pending; i++) {
 			ecm = &cl->ecmtask[i];
 			ecm->matching_rdr=NULL;
 			ecm->client = NULL;
@@ -641,7 +587,7 @@ static void cleanup_ecmtasks(struct s_client *cl)
 		if (rdr->client && rdr->client->ecmtask) {
 			ECM_REQUEST *ecm;
 			int i;
-			for (i=0; i<CS_MAXPENDING; i++) {
+			for (i = 0; i < cfg.max_pending; i++) {
 				ecm = &rdr->client->ecmtask[i];
 				if (ecm->client == cl)
 					ecm->client = NULL;
@@ -2247,7 +2193,7 @@ ECM_REQUEST *get_ecmtask()
 	er->rc=E_UNHANDLED;
 	er->client=cl;
 	er->grp = cl->grp;
-	//cs_log("client %s ECMTASK %d multi %d ctyp %d", username(cl), n, (ph[cl->ctyp].multi)?CS_MAXPENDING:1, cl->ctyp);
+	//cs_log("client %s ECMTASK %d multi %d ctyp %d", username(cl), n, (ph[cl->ctyp].multi)?cfg.max_pending:1, cl->ctyp);
 
 	return(er);
 }
@@ -3866,7 +3812,7 @@ void * work_thread(void *ptr) {
 
 				reader->last_g=now; // for reconnect timeout
 
-				for (i=0, n=0; i<CS_MAXPENDING && n == 0; i++) {
+				for (i = 0, n = 0; i < cfg.max_pending && n == 0; i++) {
 					if (cl->ecmtask[i].idx==idx) {
 						cl->pending--;
 						casc_check_dcw(reader, i, rc, dcw);
@@ -4547,6 +4493,8 @@ static void restart_daemon()
 
 int32_t main (int32_t argc, char *argv[])
 {
+	uint8_t max_pending = 32;
+
 	prog_name = argv[0];
 	if (pthread_key_create(&getclient, NULL)) {
 		fprintf(stderr, "Could not create getclient, exiting...");
@@ -4656,7 +4604,7 @@ int32_t main (int32_t argc, char *argv[])
 	0
   };
 
-  while ((i=getopt(argc, argv, "g:bsauc:t:d:r:w:hm:x"))!=EOF)
+  while ((i=getopt(argc, argv, "g:bsauc:t:d:r:w:hm:xp:"))!=EOF)
   {
 	  switch(i) {
 		  case 'g':
@@ -4705,9 +4653,15 @@ int32_t main (int32_t argc, char *argv[])
 		  case 'm':
 				printf("WARNING: -m parameter is deprecated, ignoring it.\n");
 				break;
+		  case 'p':
+			  max_pending = MAX(atoi(optarg), 1);
+			  break;
 		  case 'h':
+			  usage();
+			  exit(0);
 		  default :
 			  usage();
+			  exit(1);
 	  }
   }
 
@@ -4728,6 +4682,7 @@ int32_t main (int32_t argc, char *argv[])
 #endif
 
   memset(&cfg, 0, sizeof(struct s_config));
+  cfg.max_pending = max_pending;
 
   if (cs_confdir[strlen(cs_confdir)]!='/') strcat(cs_confdir, "/");
   init_signal_pre(); // because log could cause SIGPIPE errors, init a signal handler first

@@ -2322,6 +2322,19 @@ void dvbapi_write_cw(int32_t demux_id, uchar *cw, int32_t index) {
 	}
 }
 
+void delayer(ECM_REQUEST *er)
+{
+  if (cfg.dvbapi_delayer <= 0) return;
+  
+  struct timeb tpe;           
+  cs_ftime(&tpe);
+  int32_t t = 1000 * (tpe.time-er->tps.time) + tpe.millitm-er->tps.millitm;
+  if (t < cfg.dvbapi_delayer) {
+    cs_debug_mask(D_DVBAPI, "delayer: t=%dms, cfg=%dms -> delay=%dms", t, cfg.dvbapi_delayer, cfg.dvbapi_delayer-t);
+    cs_sleepms(cfg.dvbapi_delayer-t);
+  }
+}
+
 void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
 {
 #ifdef AZBOX
@@ -2343,6 +2356,7 @@ void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
 			if (j==demux[i].ECMpidcount) continue;
 
 			if (er->rc < E_NOTFOUND && cfg.dvbapi_requestmode==0 && (demux[i].pidindex==-1) && er->caid!=0) {
+			                delayer(er);
 			                dvbapi_start_descrambling(i);
 			}
 			if (er->rc < E_NOTFOUND && cfg.dvbapi_requestmode==1 && er->caid!=0 && demux[i].ECMpids[j].checked != 2) { //FOUND
@@ -2377,11 +2391,13 @@ void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
                                         
                                         if (demux[i].pidindex==-1) {
                                                 demux[i].curindex = j;
+                                                delayer(er);
                                                 dvbapi_start_descrambling(i);
                                         } else if (demux[i].curindex != j) {
                                                 demux[i].curindex = j;
                                                 //I hope this trick works for all: adjust the index to write the right cw:
                                                 demux[i].ECMpids[j].index = demux[i].ECMpids[demux[i].pidindex].index;
+                                                delayer(er);
                                                 dvbapi_start_descrambling(i);
                                         }
 			}
@@ -3383,7 +3399,7 @@ void azbox_send_dcw(struct s_client *client, ECM_REQUEST *er) {
 
 void module_dvbapi(struct s_module *ph)
 {
-	cs_strncpy(ph->desc, "dvbapi", sizeof(ph->desc));
+	ph->desc="dvbapi";
 	ph->type=MOD_CONN_SERIAL;
 	ph->listenertype = LIS_DVBAPI;
 	ph->multi=1;

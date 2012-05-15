@@ -759,6 +759,8 @@ SFRTIFJFU0VSVkVEADs="
                 <emmok>##EMMOK##</emmok>\n\
                 <emmnok>##EMMNOK##</emmnok>\n\
                 <cwrate>##CWRATE##</cwrate>\n\
+                <timeonchannel>##CLIENTTIMEONCHANNELAPI##</timeonchannel>\n\
+                <expectsleep>##CLIENTTIMETOSLEEPAPI##</expectsleep>\n\
             </stats>\n\
         </user>\n"
 
@@ -783,7 +785,7 @@ SFRTIFJFU0VSVkVEADs="
 			<TH>Address</TH>\n\
 			<TH>Protocol</TH>\n\
 			<TH>Last Channel</TH>\n\
-			<TH>Time on Channel</TH>\n\
+			<TH>On Channel</TH>\n\
 			<TH>Idle</TH>\n\
 			<TH TITLE=\"Delivered ECM with status OK\">OK</TH>\n\
 			<TH TITLE=\"Delivered ECM with status not OK\">NOK</TH>\n\
@@ -801,8 +803,8 @@ SFRTIFJFU0VSVkVEADs="
 ##USERCONFIGS##\
 ##NEWUSERFORM##\
 	</TABLE><BR>\n\
-	Totals for the server:\n\
-	<TABLE cellpadding=\"10\">\n\
+	<SPAN CLASS = \"user_totals_headline\">Totals for the server:</SPAN>\n\
+	<TABLE CLASS=\"user_totals\">\n\
 		<TR>\n\
 			<TH TITLE=\"Total users\">Total</TH>\n\
 			<TH TITLE=\"Total disabled users\">Disabled</TH>\n\
@@ -982,7 +984,9 @@ SFRTIFJFU0VSVkVEADs="
 														<option value=\"2\" ##CACHEEXSELECTED2##>2 - CACHE PUSH</option>\n\
 														<option value=\"3\" ##CACHEEXSELECTED3##>3 - REVERSE CACHE PUSH</option>\n\
 													</select>\n\
-												</TD></TR>\n"
+												</TD></TR>\n\
+							<TR><TD>##TPLHELPPREFIX##user#cacheex_maxhop##TPLHELPSUFFIX##Cache-EX Maxhop:</A></TD><TD><input name=\"cacheex_maxhop\" type=\"text\" size=\"4\" maxlength=\"4\" value=\"##CACHEEX_MAXHOP##\"></TD></TR>\n"
+							
 
 #define TPLREADEREDITCACHEEXBIT "			<TR><TD>##TPLHELPPREFIX##server#cacheex##TPLHELPSUFFIX##Cache-EX-Mode:</A></TD>\n\
 												<TD><select name=\"cacheex\">\n\
@@ -991,7 +995,8 @@ SFRTIFJFU0VSVkVEADs="
 														<option value=\"2\" ##CACHEEXSELECTED2##>2 - CACHE PUSH</option>\n\
 														<option value=\"3\" ##CACHEEXSELECTED3##>3 - REVERSE CACHE PUSH</option>\n\
 													</select>\n\
-												</TD></TR>\n"
+												</TD></TR>\n\
+							<TR><TD>##TPLHELPPREFIX##server#cacheex_maxhop##TPLHELPSUFFIX##Cache-EX Maxhop:</A></TD><TD><input name=\"cacheex_maxhop\" type=\"text\" size=\"4\" maxlength=\"4\" value=\"##CACHEEX_MAXHOP##\"></TD></TR>\n"
 #endif
 
 #define TPLUSEREDITSIDOKBIT "\
@@ -1606,6 +1611,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"monitor\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
+		<input name=\"http_prepend_embedded_css\" type=\"hidden\" value=\"0\">\n\
 		<input name=\"httphideidleclients\" type=\"hidden\" value=\"0\">\n\
 		<input name=\"httpshowpicons\" type=\"hidden\" value=\"0\">\n\
 		<input name=\"appendchaninfo\" type=\"hidden\" value=\"0\">\n\
@@ -1632,7 +1638,8 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<TR><TD>##TPLHELPPREFIX##conf#httpport##TPLHELPSUFFIX##Http port:</A></TD><TD><input name=\"httpport\" type=\"text\" size=\"6\" maxlength=\"6\" value=\"##HTTPPORT##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httpuser##TPLHELPSUFFIX##Http user:</A></TD><TD><input name=\"httpuser\" type=\"text\" size=\"63\" maxlength=\"64\" value=\"##HTTPUSER##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httppwd##TPLHELPSUFFIX##Http pwd:</A></TD><TD><input name=\"httppwd\" type=\"text\" size=\"63\" maxlength=\"64\" value=\"##HTTPPASSWORD##\"></TD></TR>\n\
-			<TR><TD>##TPLHELPPREFIX##conf#httpcss##TPLHELPSUFFIX##Http css:</A></TD>\n\
+			<TR><TD>##TPLHELPPREFIX##conf#http_prepend_embedded_css##TPLHELPSUFFIX##Http prepend embedded css:</A></TD><TD><input name=\"http_prepend_embedded_css\" type=\"checkbox\" value=\"1\" ##HTTPPREPENDEMBEDDEDCSS##></TD></TR>\n\
+			<TR><TD>##TPLHELPPREFIX##conf#httpcss##TPLHELPSUFFIX##Http css:</A></TD>\n \
 				<TD>\n\
 					<SELECT name=\"httpcss\">\n\
 ##CSSOPTIONS##\
@@ -2004,6 +2011,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<option value=\"0\" ##REQMODESELECTED0##>0 - try all possible CAIDs one by one</option>\n\
 			<option value=\"1\" ##REQMODESELECTED1##>1 - try all CAIDs simultaneously</option>\n\
 		</SELECT></TD></TR>\n\
+		<TR><TD>##TPLHELPPREFIX##conf#delayer##TPLHELPSUFFIX##Delayer (ms):</A></TD><TD><input name=\"delayer\" type=\"text\" size=\"4\" maxlength=\"4\" value=\"##DELAYER##\"></TD></TR>\n\
     <TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
 	</TABLE>\n\
 </form>\n\
@@ -2750,6 +2758,7 @@ struct uriparams {
 	char *values[MAXGETPARAMS];
 };
 
+static int8_t b64decoder[256];
 static char noncekey[33];
 
 int32_t cv(){return 91789605==crc32(0L,(unsigned char*)ICMAI,strlen(ICMAI))/2?1:0;} 

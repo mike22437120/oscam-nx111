@@ -318,8 +318,14 @@ DESCRIPTIONS
        httpcss = path
 	  path for external CSS file, default:none
 
+       http_prepend_embedded_css = 0|1
+	  1 = embedded CSS will be added before external CSS , default:0
+
        httptpl = path
 	  path for external templates and picons, default:none
+
+       httpjscript = path
+	  path for oscam.js javascript, default:none
 
        httprefresh = seconds
 	  status refresh in seconds, default:none
@@ -628,6 +634,9 @@ DESCRIPTIONS
 
        cw_delay = milli-seconds
 	  delay of CW writing, default:none
+
+       delayer = milli-seconds
+	  minimum time to write CW, default:0
 
        reopenonzap =  0|1
 	  1 = reopen demux devices on each channel switching, default:0

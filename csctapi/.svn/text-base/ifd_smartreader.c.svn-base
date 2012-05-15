@@ -480,7 +480,6 @@ int32_t SR_Close (struct s_reader *reader)
 int32_t SR_FastReset(struct s_reader *reader, int32_t delay)
 {
     unsigned char data[ATR_MAX_SIZE];
-    int32_t ret;
 
     smart_fastpoll(reader, TRUE);
     //Set the DTR HIGH and RTS HIGH
@@ -494,7 +493,7 @@ int32_t SR_FastReset(struct s_reader *reader, int32_t delay)
     smartreader_setdtr_rts(reader, 1, 0);
 
     //Read the ATR
-    ret = smart_read(reader,data, ATR_MAX_SIZE,1);
+    smart_read(reader,data, ATR_MAX_SIZE,1);
     smart_fastpoll(reader, FALSE);
     return 0;
 }
@@ -531,7 +530,6 @@ int32_t SR_FastReset_With_ATR(struct s_reader *reader, ATR *atr)
 
 static void EnableSmartReader(S_READER *reader, int32_t clock, uint16_t  Fi, unsigned char Di, unsigned char Ni, unsigned char T, unsigned char inv,int32_t parity) {
 
-    int32_t ret = 0;
     unsigned char FiDi[4];
     uint16_t  freqk;
     unsigned char Freq[3];
@@ -540,9 +538,9 @@ static void EnableSmartReader(S_READER *reader, int32_t clock, uint16_t  Fi, uns
     unsigned char Invert[2];
     unsigned char temp_T;
 
-    ret = smartreader_set_baudrate(reader, 9600);
+    smartreader_set_baudrate(reader, 9600);
     smartreader_setflowctrl(reader, 0);
-    ret = smartreader_set_line_property(reader, (enum smartreader_bits_type) 5, STOP_BIT_2, NONE);
+    smartreader_set_line_property(reader, (enum smartreader_bits_type) 5, STOP_BIT_2, NONE);
 
     // command 1, set F and D parameter
     if(!reader->sr_config->irdeto) {
@@ -552,7 +550,7 @@ static void EnableSmartReader(S_READER *reader, int32_t clock, uint16_t  Fi, uns
         FiDi[1]=HIBYTE(Fi);
         FiDi[2]=LOBYTE(Fi);
         FiDi[3]=Di;
-        ret = smart_write(reader,FiDi, sizeof (FiDi));
+        smart_write(reader,FiDi, sizeof (FiDi));
     }
     else {
         cs_debug_mask(D_ATR, "Not setting F and D as we're in Irdeto mode");
@@ -565,13 +563,13 @@ static void EnableSmartReader(S_READER *reader, int32_t clock, uint16_t  Fi, uns
     Freq[0]=0x02;
     Freq[1]=HIBYTE(freqk);
     Freq[2]=LOBYTE(freqk);
-    ret = smart_write(reader, Freq, sizeof (Freq));
+    smart_write(reader, Freq, sizeof (Freq));
 
     // command 3, set paramter N
     cs_debug_mask (D_DEVICE, "IO:SR: sending N=%02X (%d) to smartreader",Ni,Ni);
     N[0]=0x03;
     N[1]=Ni;
-    ret = smart_write(reader, N, sizeof (N));
+    smart_write(reader, N, sizeof (N));
 
     // command 4 , set parameter T
     temp_T=T;
@@ -588,28 +586,28 @@ static void EnableSmartReader(S_READER *reader, int32_t clock, uint16_t  Fi, uns
     cs_debug_mask (D_DEVICE, "IO:SR: sending T=%02X (%d) to smartreader",T,T);
     Prot[0]=0x04;
     Prot[1]=T;
-    ret = smart_write(reader, Prot, sizeof (Prot));
+    smart_write(reader, Prot, sizeof (Prot));
 
     // command 5, set invert y/n
     cs_debug_mask (D_DEVICE, "IO:SR: sending inv=%02X to smartreader",inv);
     Invert[0]=0x05;
     Invert[1]=inv;
-    ret = smart_write(reader, Invert, sizeof (Invert));
+    smart_write(reader, Invert, sizeof (Invert));
 
-    ret = smartreader_set_line_property2(reader, BITS_8, STOP_BIT_2, parity, BREAK_ON);
+    smartreader_set_line_property2(reader, BITS_8, STOP_BIT_2, parity, BREAK_ON);
     //  send break for 350ms, also comes from JoePub debugging.
     cs_sleepms(350);
     if(temp_T==1)
-        ret = smartreader_set_line_property2(reader, BITS_8, STOP_BIT_1, parity, BREAK_OFF);
+        smartreader_set_line_property2(reader, BITS_8, STOP_BIT_1, parity, BREAK_OFF);
     else
-        ret = smartreader_set_line_property2(reader, BITS_8, STOP_BIT_2, parity, BREAK_OFF);
+        smartreader_set_line_property2(reader, BITS_8, STOP_BIT_2, parity, BREAK_OFF);
 
     smart_flush(reader);
 }
 
 static bool smartreader_check_endpoint(libusb_device *usb_dev,uint8_t out_endpoint)
 {
-    struct libusb_device_descriptor desc;
+    struct libusb_device_descriptor usbdesc;
     struct libusb_config_descriptor *configDesc;
     int32_t ret;
     int32_t j,k,l;
@@ -618,12 +616,12 @@ static bool smartreader_check_endpoint(libusb_device *usb_dev,uint8_t out_endpoi
 
 
     nb_endpoint_ok=0;
-    ret = libusb_get_device_descriptor(usb_dev, &desc);
+    ret = libusb_get_device_descriptor(usb_dev, &usbdesc);
     if (ret < 0) {
         cs_log("Smartreader : couldn't read device descriptor, assuming this is not a smartreader");
         return FALSE;
     }
-    if (desc.bNumConfigurations) {
+    if (usbdesc.bNumConfigurations) {
         ret=libusb_get_active_config_descriptor(usb_dev,&configDesc);
         if(ret) {
             cs_log("Smartreader : couldn't read config descriptor , assuming this is not a smartreader");
@@ -653,7 +651,7 @@ static struct libusb_device* find_smartreader(const char *busname,const char *de
     ssize_t cnt;
   int32_t i = 0;
   int32_t ret;
-    struct libusb_device_descriptor desc;
+    struct libusb_device_descriptor usbdesc;
 
   cnt = libusb_get_device_list(NULL, &devs);
   if (cnt < 0)
@@ -661,13 +659,13 @@ static struct libusb_device* find_smartreader(const char *busname,const char *de
 
   while ((dev = devs[i++]) != NULL) {
         dev_found=FALSE;
-    ret = libusb_get_device_descriptor(dev, &desc);
+    ret = libusb_get_device_descriptor(dev, &usbdesc);
     if (ret < 0) {
       cs_log("failed to get device descriptor for device %s on bus %s\n",devname,busname);
       return NULL;
     }
 
-    if (desc.idVendor==0x0403 && desc.idProduct==0x6001) {
+    if (usbdesc.idVendor==0x0403 && usbdesc.idProduct==0x6001) {
             ret=libusb_open(dev,&usb_dev_handle);
             if (ret) {
                 cs_log ("coulnd't open device %03d:%03d\n", libusb_get_bus_number(dev), libusb_get_device_address(dev));
@@ -691,7 +689,7 @@ static struct libusb_device* find_smartreader(const char *busname,const char *de
             // If the device is specified as "Serial:number", check iSerial
             if(!strcmp(busname,"Serial")) {
                 char iserialbuffer[128];
-                if(libusb_get_string_descriptor_ascii(usb_dev_handle,desc.iSerialNumber,iserialbuffer,sizeof(iserialbuffer))>0)  {
+                if(libusb_get_string_descriptor_ascii(usb_dev_handle,usbdesc.iSerialNumber,(unsigned char *)iserialbuffer,sizeof(iserialbuffer))>0)  {
                     if(!strcmp(trim(iserialbuffer),devname)) {
                         cs_log("Found reader with serial %s at %03d:%03d",devname,libusb_get_bus_number(dev),libusb_get_device_address(dev));
                         if(smartreader_check_endpoint(dev,out_endpoint))
@@ -746,7 +744,7 @@ void smartreader_init(S_READER *reader,uint8_t out_endpoint)
 static uint32_t  smartreader_determine_max_packet_size(S_READER *reader)
 {
     uint32_t  packet_size;
-    struct libusb_device_descriptor desc;
+    struct libusb_device_descriptor usbdesc;
     struct libusb_config_descriptor *configDesc;
     struct libusb_interface interface;
     struct libusb_interface_descriptor intDesc;
@@ -760,12 +758,12 @@ static uint32_t  smartreader_determine_max_packet_size(S_READER *reader)
     else
         packet_size = 64;
 
-    ret = libusb_get_device_descriptor(reader->sr_config->usb_dev, &desc);
+    ret = libusb_get_device_descriptor(reader->sr_config->usb_dev, &usbdesc);
     if (ret < 0) {
         cs_log("Smartreader : couldn't read device descriptor , using default packet size");
         return packet_size;
     }
-    if (desc.bNumConfigurations)
+    if (usbdesc.bNumConfigurations)
     {
         ret=libusb_get_active_config_descriptor(reader->sr_config->usb_dev,&configDesc);
         if(ret) {
@@ -827,7 +825,7 @@ int32_t smartreader_usb_reset(S_READER *reader)
 int32_t smartreader_usb_open_dev(S_READER *reader)
 {
     int32_t detach_errno = 0;
-    struct libusb_device_descriptor desc;
+    struct libusb_device_descriptor usbdesc;
     int32_t ret;
 
 #ifdef __WIN32__
@@ -869,14 +867,14 @@ int32_t smartreader_usb_open_dev(S_READER *reader)
         return(LIBUSB_ERROR_NOT_SUPPORTED);
     }
 #endif
-    ret = libusb_get_device_descriptor(reader->sr_config->usb_dev, &desc);
+    ret = libusb_get_device_descriptor(reader->sr_config->usb_dev, &usbdesc);
 
 #ifdef __WIN32__
     // set configuration (needed especially for windows)
     // tolerate EBUSY: one device with one configuration, but two interfaces
     //    and libftdi sessions to both interfaces (e.g. FT2232)
 
-    if (desc.bNumConfigurations > 0)
+    if (usbdesc.bNumConfigurations > 0)
     {
         ret=libusb_get_configuration(reader->sr_config->usb_dev_handle,&config);
 
@@ -929,18 +927,18 @@ int32_t smartreader_usb_open_dev(S_READER *reader)
 
     // Try to guess chip type
     // Bug in the BM type chips: bcdDevice is 0x200 for serial == 0
-    if (desc.bcdDevice == 0x400 || (desc.bcdDevice == 0x200
-            && desc.iSerialNumber == 0))
+    if (usbdesc.bcdDevice == 0x400 || (usbdesc.bcdDevice == 0x200
+            && usbdesc.iSerialNumber == 0))
         reader->sr_config->type = TYPE_BM;
-    else if (desc.bcdDevice == 0x200)
+    else if (usbdesc.bcdDevice == 0x200)
         reader->sr_config->type = TYPE_AM;
-    else if (desc.bcdDevice == 0x500)
+    else if (usbdesc.bcdDevice == 0x500)
         reader->sr_config->type = TYPE_2232C;
-    else if (desc.bcdDevice == 0x600)
+    else if (usbdesc.bcdDevice == 0x600)
         reader->sr_config->type = TYPE_R;
-    else if (desc.bcdDevice == 0x700)
+    else if (usbdesc.bcdDevice == 0x700)
         reader->sr_config->type = TYPE_2232H;
-    else if (desc.bcdDevice == 0x800)
+    else if (usbdesc.bcdDevice == 0x800)
         reader->sr_config->type = TYPE_4232H;
 
     // Set default interface on dual/quad type chips

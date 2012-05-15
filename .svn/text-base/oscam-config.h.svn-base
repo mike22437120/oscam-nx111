@@ -160,56 +160,6 @@
 #define CS_CACHEEX
 #endif
 
-
-#ifdef TUXBOX
-#  if defined(__MIPSEL__)
-#    define CS_LOGFILE "/dev/null"
-#  else
-#    define CS_LOGFILE "/dev/tty"
-#  endif
-#  define CS_EMBEDDED
-#  if !defined(COOL) && !defined(SCI_DEV)
-#    define SCI_DEV 1
-#  endif
-#  ifndef HAVE_DVBAPI
-#    define HAVE_DVBAPI
-#  endif
-#endif
-
-#if defined(WITH_SSL) && !defined(WITH_LIBCRYPTO)
-#  define WITH_LIBCRYPTO
-#endif
-
-#ifdef UCLIBC
-#  define CS_EMBEDDED
-#endif
-
-#if defined(__CYGWIN__)
-#  define CS_LOGFILE "/dev/tty"
-#endif
-
-#if defined(__AIX__) || defined(__SGI__) || defined(__OSF__) || defined(__HPUX__) || defined(__SOLARIS__) || defined(__APPLE__)
-#  define NEED_DAEMON
-#endif
-
-#if defined(__AIX__) || defined(__SGI__) || defined(__OSF__) || defined(__HPUX__) || defined(__SOLARIS__) || defined(__CYGWIN__)
-#  define NO_ENDIAN_H
-#endif
-
-#if defined(__AIX__) || defined(__SGI__)
-#  define socklen_t unsigned long
-#endif
-
-#if defined(__SOLARIS__) || defined(__FreeBSD__)
-#  define BSD_COMP
-#endif
-
-#if defined(__HPUX__)
-#  define _XOPEN_SOURCE_EXTENDED
-#endif
-
-#if defined(__ARM__)
-#  define CS_EMBEDDED
-#endif
+#include "oscam-config-funcs.h"
 
 #endif //OSCAM_CONFIG_H_

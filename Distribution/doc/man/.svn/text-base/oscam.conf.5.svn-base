@@ -453,9 +453,19 @@ password for password protection, default:none
 path for external CSS file, default:none
 .RE
 .PP
+\fBhttp_prepend_embedded_css\fP = \fB0\fP|\fB1\fP
+.RS 3n
+1 = embedded CSS will be added before external CSS , default:0
+.RE
+.PP
 \fBhttptpl\fP = \fBpath\fP
 .RS 3n
 path for external templates and picons, default:none
+.RE
+.PP
+\fBhttpjscript\fP = \fBpath\fP
+.RS 3n
+path for oscam.js javascript, default:none
 .RE
 .PP
 \fBhttprefresh\fP = \fBseconds\fP
@@ -875,6 +885,11 @@ pc is for generic pc support (currently supported on VDR with vdr-plugin-dvbapi)
 \fBcw_delay\fP = \fBmilli-seconds\fP
 .RS 3n
 delay of CW writing, default:none
+.RE
+.PP
+\fBdelayer\fP = \fBmilli-seconds\fP
+.RS 3n
+minimum time to write CW, default:0
 .RE
 .PP
 \fBreopenonzap\fP =  \fB0\fP|\fB1\fP
