@@ -1,7 +1,7 @@
 SHELL	= /bin/sh
 
-SVN_REV = $(shell (svnversion -n . 2>/dev/null || echo -n 0) | cut -d: -f1 | sed 's/[^0-9]*$$//; s/^$$/0/')
-VER	= $(subst ",,$(filter-out \#define CS_VERSION,$(shell grep CS_VERSION globals.h)))$(SVN_REV)
+SVN_REV := $(shell ./config.sh --oscam-revision)
+VER     := $(shell ./config.sh --oscam-version)$(SVN_REV)
 
 CS_CONFDIR = '\"/usr/local/etc\"'
 
@@ -51,8 +51,10 @@ extra:	all
 config:
 	$(SHELL) ./config.sh
 
+menuconfig: config
+
 clean:
-	@-rm -rfv oscam-ostype.h lib
+	@-rm -rfv lib
 
 distclean: clean
 	@-rm -rfv Distribution/oscam-* Distribution/list_smargo-*
@@ -237,7 +239,7 @@ cross-powerpc-tuxbox-linux:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto -ldl" \
 		OS_PTLI="" \
-		DS_OPTS="-DTUXBOX -DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"'" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"'" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=powerpc-tuxbox-linux-gnu-gcc \
@@ -251,7 +253,7 @@ cross-powerpc-tuxbox-linux-uclibc:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="" \
 		OS_PTLI="" \
-		DS_OPTS="-DTUXBOX -DCS_CONFDIR='\"/var/tuxbox/config\"'" \
+		DS_OPTS="-DCS_CONFDIR='\"/var/tuxbox/config\"'" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=powerpc-tuxbox-linux-uclibc-gcc \
@@ -289,7 +291,7 @@ cross-sh4-linux:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto" \
 		OS_PTLI="" \
-		DS_OPTS="-DTUXBOX -DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"'" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"'" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=sh4-linux-gcc \
@@ -303,7 +305,7 @@ cross-sh4-linux-stapi:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto -L./stapi -loscam_stapi" \
 		OS_PTLI="" \
-		DS_OPTS="-DWITH_STAPI -DWITH_LIBCRYPTO -DTUXBOX -DSCI_DEV -DCS_CONFDIR='\"/var/tuxbox/config\"'" \
+		DS_OPTS="-DWITH_STAPI -DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"'" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=sh4-linux-gcc \
@@ -639,7 +641,7 @@ cross-mipsel-tuxbox-linux-glibc:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto" \
 		OS_PTLI="" \
-		DS_OPTS="-DTUXBOX -DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"' -static-libgcc" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"' -static-libgcc" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=mipsel-linux-glibc-gcc \
@@ -653,7 +655,7 @@ cross-mipsel-tuxbox-linux:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto" \
 		OS_PTLI="" \
-		DS_OPTS="-DTUXBOX -DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"' -static-libgcc" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR='\"/var/tuxbox/config\"' -static-libgcc" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=mipsel-linux-gcc \

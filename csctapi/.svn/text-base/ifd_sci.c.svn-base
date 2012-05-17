@@ -6,7 +6,6 @@
 #include "ifd_sci.h"
 #include "io_serial.h"
 #ifdef WITH_CARDREADER
-#ifdef SCI_DEV
 
 #include <stdio.h>
 #include <time.h>
@@ -39,8 +38,8 @@ int32_t Sci_Reset (struct s_reader * reader, ATR * atr)
 	memset(&params,0,sizeof(SCI_PARAMETERS));
 	
 	params.ETU = 372; //initial ETU (in iso this parameter F)
-	params.EGT = 0; //initial guardtime should be 0 (in iso this is parameter N)
-	params.fs = 1; //initial cardmhz (in iso this is parameter D)
+	params.EGT = 3; //initial guardtime should be 0 (in iso this is parameter N)
+	params.fs = 5; //initial cardmhz should be 1 (in iso this is parameter D)
 	params.T = 0;
 	
 	call (ioctl(reader->handle, IOCTL_SET_PARAMETERS, &params)!=0);
@@ -104,14 +103,12 @@ int32_t Sci_Activate (struct s_reader * reader)
 		cs_debug_mask(D_IFD, "IFD: Activating card");
 		int32_t in;
 
-#if defined(TUXBOX) && (defined(__MIPSEL__) || defined(__powerpc__) || defined(__SH4__))
+	cs_debug_mask(D_IFD, "IFD: Is card activated?");
+	if (ioctl(reader->handle, IOCTL_GET_IS_CARD_ACTIVATED, &in) < 0) {
 		cs_debug_mask(D_IFD, "IFD: Is card present?");
-		call (ioctl(reader->handle, IOCTL_GET_IS_CARD_PRESENT, &in)<0);
-#else
-		cs_debug_mask(D_IFD, "IFD: Is card activated?");
-		call (ioctl(reader->handle, IOCTL_GET_IS_CARD_ACTIVATED, &in)<0);
-#endif
-			
+		call(ioctl(reader->handle, IOCTL_GET_IS_CARD_PRESENT, &in) < 0);
+	}
+
 		if(in)
 			cs_sleepms(50);
 		else
@@ -124,11 +121,8 @@ int32_t Sci_Deactivate (struct s_reader * reader)
 	cs_debug_mask(D_IFD, "IFD: Deactivating card");
 	int32_t in;
 		
-#if defined(TUXBOX) && (defined(__MIPSEL__) || defined(__powerpc__) || defined(__SH4__))
-	call (ioctl(reader->handle, IOCTL_GET_IS_CARD_PRESENT, &in)<0);
-#else
-	call (ioctl(reader->handle, IOCTL_GET_IS_CARD_ACTIVATED, &in)<0);
-#endif
+	if (ioctl(reader->handle, IOCTL_GET_IS_CARD_ACTIVATED, &in) < 0)
+		call(ioctl(reader->handle, IOCTL_GET_IS_CARD_PRESENT, &in) < 0);
 			
 	if(in)
 		call (ioctl(reader->handle, IOCTL_SET_DEACTIVATE)<0);
@@ -156,5 +150,4 @@ int32_t Sci_FastReset (struct s_reader *reader)
     return 0;
 }
 
-#endif
 #endif

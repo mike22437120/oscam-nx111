@@ -1,15 +1,15 @@
 10
 
 dir
-6829
+6853
 http://streamboard.gmc.to/svn/oscam/trunk
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-05-15T09:56:45.776150Z
-6829
-gf
+2012-05-16T22:58:07.631680Z
+6853
+Deas
 has-props
 
 
@@ -35,17 +35,17 @@ has-props
 
 ((conflict datastruct-llist.c file update deleted edited (version http://streamboard.gmc.to/svn/oscam 4 3599 trunk/datastruct-llist.c file) (version http://streamboard.gmc.to/svn/oscam 4 3640 trunk/datastruct-llist.c none)))
 
-module-monitor.c
+module-lcd.c
 file
 
 
 
 
-2012-05-15T12:11:36.203755Z
-ac1ed831890739db51574d04a7aa0eae
-2012-05-15T01:44:11.595611Z
-6818
-gf
+2011-08-19T13:29:31.576971Z
+e60bbd0859e08a7d0ff0b1b98cce8792
+2011-08-18T19:26:06.684831Z
+5887
+kpc
 
 
 
@@ -67,16 +67,28 @@ gf
 
 
 
-22223
+6353
 
-reader-videoguard2.c
+oscam-config-funcs.h
 file
 
 
 
 
-2012-05-13T10:10:39.637543Z
-502afc25d60e34fa4b0bd289c446d7f2
+
+5efc4199f3ccd779d8708ed085762229
+2012-05-16T07:26:56.918599Z
+6836
+gf
+
+reader-videoguard12.c
+file
+
+
+
+
+2012-05-13T10:10:39.633543Z
+935e85fa1d41a4246e18c364c2599e75
 2012-05-10T12:00:51.410301Z
 6759
 gf
@@ -101,211 +113,7 @@ gf
 
 
 
-27636
-
-reader-seca.c
-file
-
-
-
-
-2012-03-19T06:08:20.127465Z
-94f0d0833bd8c26c02b4be26ba5eb2e1
-2012-03-17T15:05:09.384690Z
-6535
-theparasol
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-15196
-
-README
-file
-
-
-
-
-2012-05-15T12:11:36.203755Z
-e8181afbe9c480bcc39300bcd10d568e
-2012-05-14T20:04:36.441153Z
-6810
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-3434
-
-OSCam.xcodeproj
-dir
-
-cygwin
-dir
-
-utils
-dir
-
-.gitignore
-file
-
-
-
-
-2011-07-12T10:32:04.690201Z
-d7d108f85ab07f05ba9ed501adcc94c5
-2011-07-11T13:14:44.135820Z
-5604
-JrCs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-182
-
-module-datastruct-llist.c
-file
-
-
-
-
-2012-05-05T03:05:22.117271Z
-9b4dd8b0085516dc83b66050d625139e
-2012-05-03T09:53:29.788254Z
-6657
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-10097
-
-globals.h
-file
-
-
-
-
-
-1d6ca7992669f01429bbd1ae5c3a9058
-2012-05-15T09:56:32.075957Z
-6826
-gf
-
-module-cccam.c
-file
-
-
-
-
-
-11499e6b9998a1bc7e8b916d5532ecc0
-2012-05-15T09:56:32.075957Z
-6826
-gf
-has-props
-
-module-datastruct-llist.h
-file
-
-
-
-
-2012-02-21T00:46:56.744283Z
-020b8d468f6b7c68bfb31dc39f43bbad
-2012-02-20T10:36:24.115765Z
-6429
-corsair
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-3026
+11946
 
 module-camd33.c
 file
@@ -341,33 +149,6 @@ gf
 
 4237
 
-module-cccam.h
-file
-
-
-
-
-
-75707374bcff0a5960d3e39242d124c0
-2012-05-09T06:59:29.332732Z
-6705
-gf
-
-Distribution
-dir
-
-Maketype
-file
-
-
-
-
-
-c6918987a34cbe9e918a129b549f40f9
-2012-05-15T01:44:38.925791Z
-6824
-gf
-
 module-camd35.c
 file
 
@@ -402,23 +183,20 @@ gf
 
 27967
 
-cmake
+algo
 dir
 
-openxcas
-dir
-
-reader-viaccess.c
+module-constcw.c
 file
 
 
 
 
-2012-04-24T04:42:42.205550Z
-7f9ecc85a9473a62170050d55eb1da08
-2012-04-23T20:05:58.810328Z
-6632
-theparasol
+2012-05-15T12:11:36.199755Z
+158246e0b5b6315d3bcbecf66a8ad9b8
+2012-05-15T01:44:11.595611Z
+6818
+gf
 
 
 
@@ -440,7 +218,41 @@ theparasol
 
 
 
-31862
+4236
+
+reader-bulcrypt.c
+file
+
+
+
+
+2012-04-25T06:05:41.199039Z
+6546df4865352457a14f3c25b6046730
+2012-04-24T17:08:47.982759Z
+6635
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+21548
 
 VERSION
 file
@@ -475,6 +287,464 @@ landlord
 
 
 117
+
+oscam-config.c
+file
+
+
+
+
+
+571158b1ae4d88b73223fade7a02a071
+2012-05-16T17:17:50.646983Z
+6847
+theparasol
+
+reader-conax.c
+file
+
+
+
+
+2012-01-30T02:17:53.446337Z
+3ae678cc07b06fa19dab8a68959517ea
+2012-01-29T04:57:42.922307Z
+6309
+Admin
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+10708
+
+module-csp.c
+file
+
+
+
+
+2012-05-15T12:11:36.203755Z
+a05c1a022d286684d0ca0a9d15580db6
+2012-05-15T01:44:11.595611Z
+6818
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4633
+
+oscam-config.h
+file
+
+
+
+
+
+ca19804a24a0bc70493092fb61633c75
+2012-05-15T01:28:16.557705Z
+6811
+gf
+
+module-monitor.c
+file
+
+
+
+
+2012-05-17T03:44:46.396966Z
+41a7ff068acee64f62fd9592f2c305ef
+2012-05-16T08:44:43.836976Z
+6839
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+22129
+
+global-functions.h
+file
+
+
+
+
+
+eff8bcb5518b336cc7ace26cbe84b72d
+2012-05-16T10:56:59.262086Z
+6844
+gf
+
+reader-videoguard2.c
+file
+
+
+
+
+2012-05-13T10:10:39.637543Z
+502afc25d60e34fa4b0bd289c446d7f2
+2012-05-10T12:00:51.410301Z
+6759
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+27636
+
+oscam-log.c
+file
+
+
+
+
+2012-05-17T03:44:46.216965Z
+6ef81d5228575a7f83e00d2fc8ea8f62
+2012-05-16T08:44:43.836976Z
+6839
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+16141
+
+COPYING
+file
+
+
+
+
+2012-05-13T10:10:39.593543Z
+d32239bcb673463ab874e80d47fae504
+2012-05-12T17:37:41.335296Z
+6785
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+35147
+
+reader-nagra.c
+file
+
+
+
+
+2012-05-17T03:44:46.252965Z
+41ee32f0a7cad59d9ee2e2e7b2512cc5
+2012-05-16T17:17:50.646983Z
+6847
+theparasol
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+38249
+
+module-dvbapi.c
+file
+
+
+
+
+
+5b48ba59c16f6ed4b6b80eb03e7b96dd
+2012-05-16T07:17:56.474170Z
+6834
+gf
+
+module-dvbapi.h
+file
+
+
+
+
+
+b61b655ee240fcbe4fab6fc5e13f881c
+2012-04-05T18:36:42.072517Z
+6588
+depp0n
+
+config.sh
+file
+
+
+
+
+
+fa8efdfb8921f87036ddef28d1b0953e
+2012-05-16T09:29:33.379131Z
+6841
+gf
+has-props
+
+Distribution
+dir
+
+Maketype
+file
+
+
+
+
+
+722f17d35075f0991ad755c7d875a889
+2012-05-16T08:44:43.836976Z
+6839
+gf
+
+module-stat.c
+file
+
+
+
+
+2012-05-13T10:10:39.637543Z
+c758e2fedaaeacb4a7f9d277c506bf0d
+2012-05-09T06:47:49.117113Z
+6694
+corsair
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+37468
+
+module-cccshare.c
+file
+
+
+
+
+
+38a7c06a0da76a1d04a69d54f0c97083
+2012-05-16T07:26:51.578505Z
+6835
+gf
+
+openxcas
+dir
+
+oscam.c
+file
+
+
+
+
+
+05c24ee10c113bb8524e625054d5e29d
+2012-05-16T10:56:59.262086Z
+6844
+gf
+
+module-serial.c
+file
+
+
+
+
+2012-05-17T03:44:46.244965Z
+d7e744c91ec0b082ffd4572d4d810e92
+2012-05-16T07:26:51.578505Z
+6835
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+36113
+
+module-cccshare.h
+file
+
+
+
+
+2012-01-31T13:49:34.604292Z
+2153212b1e0433ade8bc4a2b1d726540
+2012-01-30T08:22:08.552538Z
+6323
+corsair
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1307
+
+cscrypt
+dir
 
 reader-cryptoworks.c
 file
@@ -544,6 +814,86 @@ depp0n
 
 11968
 
+oscam-types.h
+file
+
+
+
+
+2012-05-15T12:11:36.203755Z
+42d9d625d62ec6a67d4b90b421fa9c14
+2012-05-15T09:56:36.306061Z
+6827
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1074
+
+reader-seca.c
+file
+
+
+
+
+2012-03-19T06:08:20.127465Z
+94f0d0833bd8c26c02b4be26ba5eb2e1
+2012-03-17T15:05:09.384690Z
+6535
+theparasol
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+15196
+
+oscam-simples.c
+file
+
+
+
+
+
+4fabd0cc72aec017b49c028a5e488aa3
+2012-05-16T10:56:59.262086Z
+6844
+gf
+
 module-coolapi.h
 file
 
@@ -578,16 +928,87 @@ theparasol
 
 3801
 
-reader-videoguard-common.c
+utils
+dir
+
+oscam-ac.c
 file
 
 
 
 
-2012-05-13T10:10:39.593543Z
-a4bd0387a83f73e923d15f8c9af61067
-2012-05-10T12:00:51.410301Z
-6759
+2012-05-05T03:05:22.117271Z
+4eae740f2b9127e4232bee9133bccbd0
+2012-05-04T17:37:08.455947Z
+6667
+JrCs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4690
+
+reader-irdeto.c
+file
+
+
+
+
+2012-05-17T03:44:46.252965Z
+76bfa67c29678e746c38d06f200a558e
+2012-05-16T17:17:50.646983Z
+6847
+theparasol
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+31924
+
+module-datastruct-llist.c
+file
+
+
+
+
+2012-05-05T03:05:22.117271Z
+9b4dd8b0085516dc83b66050d625139e
+2012-05-03T09:53:29.788254Z
+6657
 gf
 
 
@@ -610,18 +1031,98 @@ gf
 
 
 
-35247
+10097
 
-oscam-log.c
+reader-common.c
 file
 
 
 
 
-2012-05-05T03:05:21.961348Z
-221c2a38d50d941c9e368182e79114b5
-2012-05-01T16:12:45.662108Z
-6646
+2012-05-17T03:44:46.252965Z
+182a90de483d774f4f9328d0742da84b
+2012-05-16T07:26:56.918599Z
+6836
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+12410
+
+oscam-garbage.c
+file
+
+
+
+
+2012-05-17T03:44:46.252965Z
+eceb512d601e7a440b38ac58a4316b0f
+2012-05-16T07:26:51.578505Z
+6835
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4060
+
+globals.h
+file
+
+
+
+
+
+8e36c0ada45329000514f87e9bfd3db7
+2012-05-16T08:44:43.836976Z
+6839
+gf
+
+module-datastruct-llist.h
+file
+
+
+
+
+2012-02-21T00:46:56.744283Z
+020b8d468f6b7c68bfb31dc39f43bbad
+2012-02-20T10:36:24.115765Z
+6429
 corsair
 
 
@@ -644,23 +1145,80 @@ corsair
 
 
 
-16168
+3026
 
-toolchains
+CMakeLists.txt
+file
+
+
+
+
+
+3054e67252666db8967621334c6ec84d
+2012-05-16T11:49:43.447349Z
+6846
+gf
+
+Makefile
+file
+
+
+
+
+
+99e424447ec9a7721bb75346a235ff19
+2012-05-16T11:49:43.447349Z
+6846
+gf
+
+reader-common.h
+file
+
+
+
+
+2011-12-21T04:23:49.229001Z
+7206c48d6eef3ba7f7826e0352b654d6
+2011-12-20T17:26:31.243745Z
+6101
+lattjo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+806
+
+cmake
 dir
 
-module-gbox.c
+reader-viaccess.c
 file
 
 
 
 
-2012-05-15T12:11:36.187755Z
-4ea63c466b31f65dc04559916fd105ec
-2012-05-15T09:56:32.075957Z
-6826
-gf
-has-props
+2012-04-24T04:42:42.205550Z
+7f9ecc85a9473a62170050d55eb1da08
+2012-04-23T20:05:58.810328Z
+6632
+theparasol
 
 
 
@@ -681,16 +1239,32 @@ has-props
 
 
 
-30422
+
+31862
 
-reader-videoguard-common.h
+oscam-reader.c
 file
 
 
 
 
-2012-05-13T10:10:39.593543Z
-e6a1ccfaadcf096d78bd49c70c4128aa
+
+6e577892d59da0546af05196e685c572
+2012-05-16T10:56:59.262086Z
+6844
+gf
+
+csctapi
+dir
+
+reader-videoguard1.c
+file
+
+
+
+
+2012-05-13T10:10:39.629543Z
+ae5159a7b80498e5eda15ffbb395443b
 2012-05-10T12:00:51.410301Z
 6759
 gf
@@ -715,122 +1289,172 @@ gf
 
 
 
-2365
+9638
 
-COPYING
+README
 file
 
 
 
 
-2012-05-13T10:10:39.593543Z
-d32239bcb673463ab874e80d47fae504
-2012-05-12T17:37:41.335296Z
-6785
+2012-05-15T12:11:36.203755Z
+e8181afbe9c480bcc39300bcd10d568e
+2012-05-14T20:04:36.441153Z
+6810
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3434
+
+oscam-http.c
+file
+
+
+
+
+
+8c3da47272aa7f63452372d3c78f5f7f
+2012-05-16T07:26:51.578505Z
+6835
 gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-35147
 
-module-dvbapi.c
+cygwin
+dir
+
+module-gbox.c
+file
+
+
+
+
+2012-05-17T03:44:46.216965Z
+3c4ea3d904e035cf21b4ceda500813c7
+2012-05-16T10:56:59.262086Z
+6844
+gf
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+30309
+
+oscam-http.h
 file
 
 
 
 
 
-2da90c4d05bb846089da0ca55bb73839
+279d91c7dc56dbbdcedd5be9596c139c
+2012-05-16T22:58:07.631680Z
+6853
+Deas
+
+.gitignore
+file
+
+
+
+
+2011-07-12T10:32:04.690201Z
+d7d108f85ab07f05ba9ed501adcc94c5
+2011-07-11T13:14:44.135820Z
+5604
+JrCs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+182
+
+module-cccam.c
+file
+
+
+
+
+
+407e269fffe27c98184a74ce64d82a20
+2012-05-16T08:44:43.836976Z
+6839
+gf
+has-props
+
+module-cccam.h
+file
+
+
+
+
+
+75707374bcff0a5960d3e39242d124c0
+2012-05-09T06:59:29.332732Z
+6705
+gf
+
+module-newcamd.c
+file
+
+
+
+
+
+eb78b5b36c3b59a3d6023169490d8ffa
 2012-05-15T01:44:11.595611Z
 6818
-gf
-
-Makefile
-file
-
-
-
-
-
-e327f7d57b878d58590f67edf4f0eabe
-2012-05-15T09:56:41.166019Z
-6828
-gf
-
-module-dvbapi.h
-file
-
-
-
-
-
-b61b655ee240fcbe4fab6fc5e13f881c
-2012-04-05T18:36:42.072517Z
-6588
-depp0n
-
-module-serial.c
-file
-
-
-
-
-2012-05-15T12:11:36.191755Z
-4cd5aa5b1415d2b931bffce21dbea483
-2012-05-15T01:44:11.595611Z
-6818
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-36135
-
-oscam.c
-file
-
-
-
-
-
-d0b08c6503952fd7e759987443327cf4
-2012-05-15T09:56:32.075957Z
-6826
 gf
 
 reader-tongfang.c
@@ -867,32 +1491,86 @@ Admin
 
 5343
 
-oscam-config.c
+oscam-chk.c
 file
 
 
 
 
+2012-05-07T13:00:16.705971Z
+b9772681ae9d0f01918655e687d78282
+2012-05-06T17:27:46.818365Z
+6679
+corsair
 
-0e28b7168b9363dedb9ed999daf42ae0
-2012-05-15T09:56:36.306061Z
-6827
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+16930
+
+module-pandora.c
+file
+
+
+
+
+2012-05-17T03:44:46.252965Z
+453d4f4135fcb755b16a527be1db09b4
+2012-05-16T10:56:59.262086Z
+6844
 gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+7147
 
-cscrypt
-dir
-
-reader-conax.c
+reader-dre.c
 file
 
 
 
 
-2012-01-30T02:17:53.446337Z
-3ae678cc07b06fa19dab8a68959517ea
+2012-01-30T02:17:53.454337Z
+e1d5148649bf7a53b619e991f53bdc6e
 2012-01-29T04:57:42.922307Z
 6309
 Admin
+has-props
 
 
 
@@ -913,78 +1591,7 @@ Admin
 
 
 
-
-10708
-
-reader-videoguard1.c
-file
-
-
-
-
-2012-05-13T10:10:39.629543Z
-ae5159a7b80498e5eda15ffbb395443b
-2012-05-10T12:00:51.410301Z
-6759
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-9638
-
-oscam-config.h
-file
-
-
-
-
-
-ca19804a24a0bc70493092fb61633c75
-2012-05-15T01:28:16.557705Z
-6811
-gf
-
-global-functions.h
-file
-
-
-
-
-
-6fc2194cdb980902d43b86f55d4ff4f6
-2012-05-12T10:51:39.735481Z
-6781
-gf
-
-oscam-simples.c
-file
-
-
-
-
-
-3e597a30a9c5991e278d934503886bd1
-2012-05-10T20:51:52.271353Z
-6769
-corsair
+17291
 
 module-radegast.c
 file
@@ -1020,350 +1627,8 @@ gf
 
 6403
 
-oscam-http.c
-file
-
-
-
-
-
-d499f1312b7429e640da54e017b2439e
-2012-05-15T01:44:20.555716Z
-6820
-gf
-
-oscam-http.h
-file
-
-
-
-
-
-40a2758bf59474eff30f5b45d7c29433
-2012-05-13T21:45:52.154901Z
-6800
-alno
-
-reader-irdeto.c
-file
-
-
-
-
-2012-05-15T12:11:36.195755Z
-08f009fc1e97219fdcfcf34e30d7b4c2
-2012-05-13T15:36:17.508618Z
-6795
-theparasol
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-31934
-
-oscam-garbage.c
-file
-
-
-
-
-2012-04-14T10:25:07.354923Z
-d7b176008a9e799542e9237848b4f893
-2012-04-02T06:19:02.407024Z
-6584
-corsair
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-4082
-
-reader-common.c
-file
-
-
-
-
-2012-05-15T12:11:36.195755Z
-348ee0c08a62e875da0e4aa731e780f3
-2012-05-15T01:44:20.555716Z
-6820
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-12525
-
-reader-nagra.c
-file
-
-
-
-
-2012-05-15T12:11:36.195755Z
-ad66645dd600d98c9055e71fe711071c
-2012-05-13T23:31:39.256048Z
-6801
-theparasol
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-38265
-
-reader-videoguard12.c
-file
-
-
-
-
-2012-05-13T10:10:39.633543Z
-935e85fa1d41a4246e18c364c2599e75
-2012-05-10T12:00:51.410301Z
-6759
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-11946
-
-reader-common.h
-file
-
-
-
-
-2011-12-21T04:23:49.229001Z
-7206c48d6eef3ba7f7826e0352b654d6
-2011-12-20T17:26:31.243745Z
-6101
-lattjo
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-806
-
-module-newcamd.c
-file
-
-
-
-
-
-eb78b5b36c3b59a3d6023169490d8ffa
-2012-05-15T01:44:11.595611Z
-6818
-gf
-
-reader-bulcrypt.c
-file
-
-
-
-
-2012-04-25T06:05:41.199039Z
-6546df4865352457a14f3c25b6046730
-2012-04-24T17:08:47.982759Z
-6635
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-21548
-
-csctapi
+OSCam.xcodeproj
 dir
-
-module-pandora.c
-file
-
-
-
-
-2012-05-15T12:11:36.199755Z
-6809b8976ea56938e7e98062b3eef337
-2012-05-15T01:44:11.595611Z
-6818
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-7230
-
-reader-dre.c
-file
-
-
-
-
-2012-01-30T02:17:53.454337Z
-e1d5148649bf7a53b619e991f53bdc6e
-2012-01-29T04:57:42.922307Z
-6309
-Admin
-has-props
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-17291
 
 reader-streamguard.c
 file
@@ -1406,84 +1671,16 @@ JrCs
 
 30015
 
-oscam-ac.c
+reader-videoguard-common.c
 file
 
 
 
 
-2012-05-05T03:05:22.117271Z
-4eae740f2b9127e4232bee9133bccbd0
-2012-05-04T17:37:08.455947Z
-6667
-JrCs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-4690
-
-module-lcd.c
-file
-
-
-
-
-2011-08-19T13:29:31.576971Z
-e60bbd0859e08a7d0ff0b1b98cce8792
-2011-08-18T19:26:06.684831Z
-5887
-kpc
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-6353
-
-oscam-config-funcs.h
-file
-
-
-
-
-2012-05-15T12:11:36.199755Z
-91c1dec818d0596fdec593dd7590e03c
-2012-05-15T09:56:36.306061Z
-6827
+2012-05-13T10:10:39.593543Z
+a4bd0387a83f73e923d15f8c9af61067
+2012-05-10T12:00:51.410301Z
+6759
 gf
 
 
@@ -1506,104 +1703,21 @@ gf
 
 
 
-5667
+35247
 
-CMakeLists.txt
-file
-
-
-
-
-
-a6587791b5da339c0ea2665e60d945a0
-2012-05-15T09:56:45.776150Z
-6829
-gf
-
-config.sh
-file
-
-
-
-
-
-70230c5b782945ee06481807e61b76b9
-2012-05-15T01:44:34.665747Z
-6823
-gf
-has-props
-
-module-stat.c
-file
-
-
-
-
-2012-05-13T10:10:39.637543Z
-c758e2fedaaeacb4a7f9d277c506bf0d
-2012-05-09T06:47:49.117113Z
-6694
-corsair
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-37468
-
-module-cccshare.c
-file
-
-
-
-
-
-9cff25595929789ba347e24825dd3c06
-2012-05-09T06:47:49.117113Z
-6694
-corsair
-
-algo
+toolchains
 dir
 
-oscam-reader.c
+reader-videoguard-common.h
 file
 
 
 
 
-
-a624f87e53b651c3ba96614da6550ad1
-2012-05-15T09:56:32.075957Z
-6826
-gf
-
-module-constcw.c
-file
-
-
-
-
-2012-05-15T12:11:36.199755Z
-158246e0b5b6315d3bcbecf66a8ad9b8
-2012-05-15T01:44:11.595611Z
-6818
+2012-05-13T10:10:39.593543Z
+e6a1ccfaadcf096d78bd49c70c4128aa
+2012-05-10T12:00:51.410301Z
+6759
 gf
 
 
@@ -1626,141 +1740,5 @@ gf
 
 
 
-4236
-
-module-cccshare.h
-file
-
-
-
-
-2012-01-31T13:49:34.604292Z
-2153212b1e0433ade8bc4a2b1d726540
-2012-01-30T08:22:08.552538Z
-6323
-corsair
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1307
-
-oscam-chk.c
-file
-
-
-
-
-2012-05-07T13:00:16.705971Z
-b9772681ae9d0f01918655e687d78282
-2012-05-06T17:27:46.818365Z
-6679
-corsair
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-16930
-
-module-csp.c
-file
-
-
-
-
-2012-05-15T12:11:36.203755Z
-a05c1a022d286684d0ca0a9d15580db6
-2012-05-15T01:44:11.595611Z
-6818
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-4633
-
-oscam-types.h
-file
-
-
-
-
-2012-05-15T12:11:36.203755Z
-42d9d625d62ec6a67d4b90b421fa9c14
-2012-05-15T09:56:36.306061Z
-6827
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1074
+2365
 

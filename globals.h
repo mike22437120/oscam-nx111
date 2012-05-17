@@ -34,9 +34,6 @@
 
 #include "oscam-config.h"
 
-#ifndef USE_CMAKE
-#include "oscam-ostype.h"
-#endif
 #include "oscam-types.h"
 #include "cscrypt/cscrypt.h"
 
@@ -159,6 +156,9 @@
 #define CS_VERSION    "1.20-unstable_svn"
 #ifndef CS_SVN_VERSION
 #	define CS_SVN_VERSION "test"
+#endif
+#ifndef CS_TARGET
+#	define CS_TARGET "unknown"
 #endif
 #ifndef CS_CONFDIR
 #define CS_CONFDIR    "/usr/local/etc"
@@ -283,8 +283,7 @@ extern const char *boxdesc[];
 #ifdef HAVE_DVBAPI
 #define ECMINFO_MODE_OSCAM 	0
 #define ECMINFO_MODE_CCCAM 	1
-#define ECMINFO_MODE_OSCAM_NEW	2
-#define ECMINFO_MODE_NEWCAMD	3
+#define ECMINFO_MODE_NEWCAMD	2
 #endif
 
 #define EMM_UNIQUE 1

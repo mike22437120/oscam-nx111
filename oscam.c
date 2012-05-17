@@ -8,7 +8,6 @@
 #if defined(AZBOX) && defined(HAVE_DVBAPI)
 #include "openxcas/openxcas_api.h"
 #endif
-#define CS_VERSION_X  CS_VERSION
 #ifdef COOL
 void coolapi_close_all();
 void coolapi_open_all();
@@ -231,7 +230,7 @@ static void usage()
 "| | | \\___ \\| |  / _` | '_ ` _ \\\n"
 "| |_| |___) | |_| (_| | | | | | |\n"
 " \\___/|____/ \\___\\__,_|_| |_| |_|\n\n");
-	printf("OSCam cardserver v%s, build #%s (%s)\n", CS_VERSION_X, CS_SVN_VERSION, CS_OSTYPE);
+	printf("OSCam cardserver v%s, build #%s (%s)\n", CS_VERSION, CS_SVN_VERSION, CS_TARGET);
 	printf("Copyright (C) 2009-2012 OSCam developers.\n");
 	printf("This program is distributed under GPLv3.\n");
 	printf("OSCam is based on Streamboard mp-cardserver v0.9d written by dukat\n");
@@ -284,47 +283,51 @@ static void usage()
 	printf("\n");
 
 	printf("\n");
-	printf(" Usage: oscam [-a] [-b] [-s] [-c <config dir>] [-t <tmp dir>] [-d <level>] [-w <secs>] [-g <mode>] [-p <num>]");
+	printf(" Usage: oscam [-a] [-b] [-c <config dir>] [-d <level>] [-g <mode>] [-h] [-p <num>] ");
 	if (config_WEBIF())
-		printf(" [-r <level>] [-u]");
-	printf(" [-h]\n");
+		printf("[-r <level>] ");
+	printf("[-s] [-t <tmp dir>] ");
+	if (config_WEBIF())
+		printf("[-u] ");
+	printf("[-w <secs>]\n");
 	printf("\n");
-	printf("\t-a         : write oscam.crash on segfault (needs installed GDB and OSCam compiled with debug infos -ggdb)\n");
-	printf("\t-b         : start in background\n");
-	printf("\t-s         : capture segmentation faults\n");
+	printf("\t-a         : write oscam.crash on segfault (needs installed GDB and OSCam compiled with debug infos -ggdb)\n\n");
+	printf("\t-b         : start in background\n\n");
 	printf("\t-c <dir>   : read configuration from <dir>\n");
-	printf("\t             default = %s\n", CS_CONFDIR);
-	printf("\t-t <dir>   : tmp dir <dir>\n");
-#if defined(__CYGWIN__)
-	printf("\t             default = (OS-TMP)\n");
-#else
-	printf("\t             default = /tmp/.oscam\n");
-#endif
+	printf("\t             default = %s\n\n", CS_CONFDIR);
 	printf("\t-d <level> : debug level mask\n");
-	printf("\t               0 = no debugging (default)\n");
-	printf("\t               1 = detailed error messages\n");
-	printf("\t               2 = ATR parsing info, ECM, EMM and CW dumps\n");
-	printf("\t               4 = traffic from/to the reader\n");
-	printf("\t               8 = traffic from/to the clients\n");
-	printf("\t              16 = traffic to the reader-device on IFD layer\n");
-	printf("\t              32 = traffic to the reader-device on I/O layer\n");
-	printf("\t              64 = EMM logging\n");
-	printf("\t             128 = DVBAPI logging\n");
-	printf("\t             256 = Loadbalancer logging\n");
-	printf("\t             512 = CACHEEX logging\n");
-	printf("\t            1024 = Client ECM logging\n");
-	printf("\t           65535 = Debug all\n");
-	printf("\t-g <mode>  : garbage collector debug mode (1=immediate free, 2=check for double frees); these options are only intended for debug!\n");
-	printf("\t-w <secs>  : wait up to <secs> seconds for the system time to be set correctly (default 60)\n");
+	printf("\t                   0 = no debugging (default)\n");
+	printf("\t                   1 = detailed error messages\n");
+	printf("\t                   2 = ATR parsing info, ECM, EMM and CW dumps\n");
+	printf("\t                   4 = traffic from/to the reader\n");
+	printf("\t                   8 = traffic from/to the clients\n");
+	printf("\t                  16 = traffic to the reader-device on IFD layer\n");
+	printf("\t                  32 = traffic to the reader-device on I/O layer\n");
+	printf("\t                  64 = EMM logging\n");
+	printf("\t                 128 = DVBAPI logging\n");
+	printf("\t                 256 = Loadbalancer logging\n");
+	printf("\t                 512 = CACHEEX logging\n");
+	printf("\t                1024 = Client ECM logging\n");
+	printf("\t               65535 = Debug all\n\n");
+	printf("\t-g <mode>  : garbage collector debug mode (1=immediate free, 2=check for double frees), these options are intended for debug only!\n\n");
+	printf("\t-h         : show this help\n\n");
+	printf("\t-p <num>   : maximum number of pending ECM packets, default:32, maximum:255\n\n");
 	if (config_WEBIF()) {
 		printf("\t-r <level> : restart level\n");
 		printf("\t               0 = disabled, restart request sets exit status 99\n");
 		printf("\t               1 = restart activated, web interface can restart oscam (default)\n");
-		printf("\t               2 = like 1, but also restart on segmentation faults\n");
-		printf("\t-u         : enable output of web interface in UTF-8 charset\n");
+		printf("\t               2 = like 1, but also restart on segmentation faults\n\n");
 	}
-	printf("\t-p <num>   : how much pending packets to keep (default 32)\n");
-	printf("\t-h         : show this help\n");
+	printf("\t-s         : capture segmentation faults\n\n");
+	printf("\t-t <dir>   : tmp dir <dir>\n");
+#if defined(__CYGWIN__)
+	printf("\t             default = (OS-TMP)\n\n");
+#else
+	printf("\t             default = /tmp/.oscam\n\n");
+#endif
+	if (config_WEBIF())
+	    printf("\t-u         : enable output of web interface in UTF-8 charset\n\n");
+	printf("\t-w <secs>  : wait up to <secs> seconds for the system time to be set correctly, default:60\n\n");
 }
 #undef _check
 
@@ -1227,11 +1230,8 @@ static int32_t start_listener(struct s_module *ph, int32_t port_idx)
   setsockopt(ph->ptab->ports[port_idx].fd, SOL_SOCKET, SO_REUSEPORT, (void *)&ov, sizeof(ov));
 #endif
 
-#ifdef SO_PRIORITY
-  if (cfg.netprio)
-    if (!setsockopt(ph->ptab->ports[port_idx].fd, SOL_SOCKET, SO_PRIORITY, (void *)&cfg.netprio, sizeof(uint32_t)))
+  if (set_socket_priority(ph->ptab->ports[port_idx].fd, cfg.netprio) > -1)
       snprintf(ptxt[1], sizeof(ptxt[1]), ", prio=%d", cfg.netprio);
-#endif
 
   if( !is_udp )
   {
@@ -1309,9 +1309,7 @@ void start_thread(void * startroutine, char * nameroutine) {
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	cs_log("starting thread %s", nameroutine);
-#ifndef TUXBOX
 	pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE);
-#endif
 	cs_writelock(&system_lock);
 	int32_t ret = pthread_create(&temp, &attr, startroutine, NULL);
 	if (ret)
@@ -3990,12 +3988,10 @@ void add_job(struct s_client *cl, int8_t action, void *ptr, int32_t len) {
 
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-#if !defined(TUXBOX)
 	/* pcsc doesn't like this either; segfaults on x86, x86_64 */
 	struct s_reader *rdr = cl->reader;
 	if(cl->typ != 'r' || !rdr || rdr->typ != R_PCSC)
 		pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE);
-#endif
 
 	cs_debug_mask(D_TRACE, "start %s thread action %d", action > ACTION_CLIENT_FIRST ? "client" : "reader", action);
 
@@ -4967,9 +4963,7 @@ void arm_led_start_thread() {
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	cs_log("starting thread arm_led_thread");
-#ifndef TUXBOX
 	pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE);
-#endif
 	int32_t ret = pthread_create(&arm_led_thread, &attr, arm_led_thread_main, NULL);
 	if (ret)
 		cs_log("ERROR: can't create arm_led_thread thread (errno=%d %s)", ret, strerror(ret));

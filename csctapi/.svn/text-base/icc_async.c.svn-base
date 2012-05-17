@@ -127,7 +127,6 @@ int32_t ICC_Async_Device_Init (struct s_reader *reader)
 				return ERROR;
 			}
 			break;
-#if defined(TUXBOX) && defined(__powerpc__)
 		case R_DB2COM1:
 		case R_DB2COM2:
 			reader->handle = open (reader->device,  O_RDWR | O_NOCTTY| O_SYNC);
@@ -141,7 +140,6 @@ int32_t ICC_Async_Device_Init (struct s_reader *reader)
 				return ERROR;
 			}
 			break;
-#endif
 		case R_SMART:
 #if defined(LIBUSB)
 			call (SR_Init(reader));
@@ -156,7 +154,9 @@ int32_t ICC_Async_Device_Init (struct s_reader *reader)
 			return Cool_Init(reader);
 #elif defined(AZBOX)
 			return Azbox_Init(reader);
-#elif defined(SCI_DEV)
+#elif defined(WITH_STAPI)
+			return STReader_Open(reader->device, &reader->stsmart_handle);
+#else
 	#if defined(__SH4__) || defined(STB04SCI)
 			reader->handle = open (reader->device, O_RDWR|O_NONBLOCK|O_NOCTTY);
 	#else
@@ -166,13 +166,7 @@ int32_t ICC_Async_Device_Init (struct s_reader *reader)
 				cs_log("ERROR reader %s opening device %s (errno:%d %s)", reader->label, reader->device, errno, strerror(errno));
 				return ERROR;
 			}
-#elif defined(WITH_STAPI)
-			return STReader_Open(reader->device, &reader->stsmart_handle);
-#else//SCI_DEV
-			cs_log("ERROR, reader %s you have specified 'protocol = internal' in oscam.server,", reader->label);
-			cs_log("recompile with internal reader support.");
-			return ERROR;
-#endif//SCI_DEV
+#endif
 			break;
 #ifdef HAVE_PCSC
 		case R_PCSC:
@@ -244,7 +238,6 @@ int32_t ICC_Async_GetStatus (struct s_reader *reader, int32_t * card)
 	switch(reader->typ) {
 		case R_DB2COM1:
 		case R_DB2COM2:
-#if defined(TUXBOX) && defined(__powerpc__)
 			{
 			uint16_t msr=1;
 			IO_Serial_Ioctl_Lock(reader, 1);
@@ -256,7 +249,6 @@ int32_t ICC_Async_GetStatus (struct s_reader *reader, int32_t * card)
 			IO_Serial_Ioctl_Lock(reader, 0);
 			}
 			break;
-#endif
 		case R_SC8in1:
 			cs_writelock(&reader->sc8in1_config->sc8in1_lock);
 			int32_t ret = Sc8in1_GetStatus(reader, &in);
@@ -273,14 +265,14 @@ int32_t ICC_Async_GetStatus (struct s_reader *reader, int32_t * card)
 			break;
 #endif
 		case R_INTERNAL:
-#if defined(SCI_DEV)
-			call (Sci_GetStatus(reader, &in));
-#elif defined(COOL)
+#if defined(COOL)
 			call (Cool_GetStatus(reader, &in));
 #elif defined(WITH_STAPI)
 			call (STReader_GetStatus(reader->stsmart_handle, &in));
 #elif defined(AZBOX)
 			call(Azbox_GetStatus(reader, &in));
+#else
+			call(Sci_GetStatus(reader, &in));
 #endif
 			break;
 #ifdef HAVE_PCSC
@@ -342,10 +334,7 @@ int32_t ICC_Async_Activate (struct s_reader *reader, ATR * atr, uint16_t depreca
 				break;
 #endif
 			case R_INTERNAL:
-#if defined(SCI_DEV)
-					call (Sci_Activate(reader)!=0);
-					call (Sci_Reset(reader, atr)!=0);
-#elif defined(COOL)
+#if defined(COOL)
 				if ( ! reader->ins7e11_fast_reset) {
 					call (Cool_Reset(reader, atr));
 				}
@@ -359,6 +348,9 @@ int32_t ICC_Async_Activate (struct s_reader *reader, ATR * atr, uint16_t depreca
 				call (STReader_Reset(reader->stsmart_handle, atr));
 #elif defined(AZBOX)
 				call (Azbox_Reset(reader, atr));
+#else
+				call (Sci_Activate(reader));
+				call (Sci_Reset(reader, atr));
 #endif
 				break;
 #ifdef HAVE_PCSC
@@ -520,10 +512,10 @@ int32_t ICC_Async_Transmit (struct s_reader *reader, uint32_t size, BYTE * data)
 			call (Cool_Transmit(reader, sent, size));
 #elif defined(AZBOX)
 			call (Azbox_Transmit(reader, sent, size));
-#elif defined(SCI_DEV)
-			call (Phoenix_Transmit (reader, sent, size, 0, 0)); //the internal reader will provide the delay
 #elif defined(WITH_STAPI)
 			call (STReader_Transmit(reader->stsmart_handle, sent, size));
+#else
+			call (Phoenix_Transmit (reader, sent, size, 0, 0)); //the internal reader will provide the delay
 #endif
 			break;
 		default:
@@ -546,7 +538,7 @@ int32_t ICC_Async_Receive (struct s_reader *reader, uint32_t size, BYTE * data)
 		if (reader->convention == ATR_CONVENTION_INVERSE && reader->crdr.need_inverse==1)
 			ICC_Async_InvertBuffer (size, data);
 
-		//cs_ddump_mask(D_IFD, data, size, "IFD Received: ");
+		cs_ddump_mask(D_IFD, data, size, "IFD Received: ");
 		return OK;
 	}
 
@@ -568,10 +560,10 @@ int32_t ICC_Async_Receive (struct s_reader *reader, uint32_t size, BYTE * data)
 			call (Cool_Receive(reader, data, size));
 #elif defined(AZBOX)
 			call (Azbox_Receive(reader, data, size));
-#elif defined(SCI_DEV)
-			call (Phoenix_Receive (reader, data, size, reader->read_timeout));
 #elif defined(WITH_STAPI)
 			call (STReader_Receive(reader->stsmart_handle, data, size));
+#else
+			call (Phoenix_Receive (reader, data, size, reader->read_timeout));
 #endif
 			break;
 		default:
@@ -582,7 +574,7 @@ int32_t ICC_Async_Receive (struct s_reader *reader, uint32_t size, BYTE * data)
 	if (reader->convention == ATR_CONVENTION_INVERSE && reader->typ <= R_MOUSE)
 		ICC_Async_InvertBuffer (size, data);
 
-	//cs_ddump_mask(D_IFD, data, size, "IFD Received: ");
+	cs_ddump_mask(D_IFD, data, size, "IFD Received: ");
 	return OK;
 }
 
@@ -619,16 +611,16 @@ int32_t ICC_Async_Close (struct s_reader *reader)
 			break;
 #endif
 		case R_INTERNAL:
-#if defined(SCI_DEV)
-			/* Dectivate ICC */
-			Sci_Deactivate(reader);
-			call (Phoenix_Close(reader));
-#elif defined(WITH_STAPI)
-			call(STReader_Close(reader->stsmart_handle));
-#elif defined(COOL)
+#if defined(COOL)
 			call (Cool_Close(reader));
 #elif defined(AZBOX)
 			call (Azbox_Close(reader));
+#elif defined(WITH_STAPI)
+			call(STReader_Close(reader->stsmart_handle));
+#else
+			/* Dectivate ICC */
+			Sci_Deactivate(reader);
+			call (Phoenix_Close(reader));
 #endif
 			break;
 #ifdef HAVE_PCSC
@@ -645,16 +637,16 @@ int32_t ICC_Async_Close (struct s_reader *reader)
 	return OK;
 }
 
-static uint32_t ICC_Async_GetClockRate (int32_t mhz)
+static uint32_t ICC_Async_GetClockRate (int32_t cardmhz)
 {
-	switch (mhz) {
+	switch (cardmhz) {
 		case 357:
 		case 358:
 	  	return (372L * 9600L);
 		case 368:
 	  	return (384L * 9600L);
 		default:
- 	  	return mhz * 10000L;
+ 	  	return cardmhz * 10000L;
 	}
 }
 
@@ -825,7 +817,7 @@ static int32_t PPS_Exchange (struct s_reader * reader, BYTE * params, uint32_t *
 		return ret;
 	}
 	
-#if defined(WITH_STAPI) && !defined(SCI_DEV)
+#if defined(WITH_STAPI)
 	ret = STReader_SetProtocol(reader->stsmart_handle, params, length, len_request);
 	return ret;
 #endif
@@ -874,7 +866,7 @@ static uint32_t ETU_to_ms(struct s_reader * reader, uint32_t WWT)
 	else
 		WWT = 0;
 	double work_etu = 1000 / (double)reader->current_baudrate;//FIXME sometimes work_etu should be used, sometimes initial etu
-	return (uint32_t) WWT * work_etu * reader->mhz / reader->cardmhz;
+	return (uint32_t) WWT * work_etu * reader->cardmhz / reader->mhz;
 }
 
 static int32_t ICC_Async_SetParity (struct s_reader * reader, uint16_t parity)
@@ -946,11 +938,10 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 	if (ATR_GetParameter(atr, ATR_PARAMETER_I, &I) != ATR_OK)
 		I = 0;
 	
-	F = atr_fs_table[FI]; //get optimal cardmhz according to ATR (for warning users they should adapt their readersettings)
-		if (reader->cardmhz!=F/10000) {
-		cs_log("Reader %s: ******* Warning: fix your oscam reader config for correct mhz (interface speed) and cardmhz (cardspeed) *******", reader->label);
-		cs_log("Reader %s: ******* Your setting: %d, is not matching formal optimal cardspeed: %d *******", reader->label, reader->cardmhz, (uint32_t) F/10000);
-		}
+	//set clock speed to max if internal reader 
+	if((reader->typ > R_MOUSE && reader->crdr.active == 0) || (reader->crdr.active == 1 && reader->crdr.max_clock_speed==1))
+		if (reader->mhz == 357 || reader->mhz == 358) //no overclocking
+			reader->mhz = atr_fs_table[FI] / 10000; //we are going to clock the card to this nominal frequency
 
 	//set clock speed/baudrate must be done before timings
 	//because reader->current_baudrate is used in calculation of timings
@@ -960,7 +951,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 
 	if (deprecated == 0) {
 		if (reader->protocol_type != ATR_PROTOCOL_TYPE_T14) { //dont switch for T14
-			uint32_t baud_temp = d * ICC_Async_GetClockRate (reader->mhz) / F;
+			uint32_t baud_temp = d * ICC_Async_GetClockRate (reader->cardmhz) / F;
 			if (reader->crdr.active == 1) {
 				if (reader->crdr.set_baudrate)
 					call (reader->crdr.set_baudrate(reader, baud_temp));
@@ -1008,7 +999,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 			reader->block_delay = gt_ms;
 			reader->char_delay = gt_ms;
 			cs_debug_mask(D_ATR, "Setting timings reader %s: timeout=%u ms, block_delay=%u ms, char_delay=%u ms", reader->label, reader->read_timeout, reader->block_delay, reader->char_delay);
-			cs_debug_mask (D_IFD, "reader %s Protocol: T=%i, WWT=%d, Clockrate=%u\n", reader->label, reader->protocol_type, (int)(WWT), ICC_Async_GetClockRate(reader->mhz));
+			cs_debug_mask (D_IFD, "reader %s Protocol: T=%i, WWT=%d, Clockrate=%u\n", reader->label, reader->protocol_type, (int)(WWT), ICC_Async_GetClockRate(reader->cardmhz));
 			}
 			break;
 	 case ATR_PROTOCOL_TYPE_T1:
@@ -1051,7 +1042,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 				reader->CWT = (uint16_t) (((1<<cwi) + 11)); // in ETU
 
 				// Set BWT = (2^BWI * 960 + 11) work etu
-				reader->BWT = (uint16_t)((1<<bwi) * 960 * 372 * 9600 / ICC_Async_GetClockRate(reader->mhz))	+ 11 ;
+				reader->BWT = (uint16_t)((1<<bwi) * 960 * 372 * 9600 / ICC_Async_GetClockRate(reader->cardmhz))	+ 11 ;
 
 				// Set BGT = 22 * work etu
 				BGT = 22L; //in ETU
@@ -1097,24 +1088,24 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 
   //write settings to internal device
 	if(reader->typ == R_INTERNAL && reader->crdr.active==0) {
-#if defined(SCI_DEV)
+#if defined(COOL)
+		call (Cool_WriteSettings (reader, reader->BWT, reader->CWT, EGT, BGT));
+#elif defined(WITH_STAPI)
+		call (STReader_SetClockrate(reader->stsmart_handle));
+#else
 		double F =	(double) atr_f_table[FI];
 		uint32_t ETU = 0;
 		//for Irdeto T14 cards, do not set ETU
 		if (!(atr->hbn >= 6 && !memcmp(atr->hb, "IRDETO", 6) && reader->protocol_type == ATR_PROTOCOL_TYPE_T14))
 			ETU = F / d;
-		call (Sci_WriteSettings (reader, reader->protocol_type, reader->cardmhz / 100, ETU, WWT, reader->BWT, reader->CWT, EGT, 5, (unsigned char)I)); //P fixed at 5V since this is default class A card, and TB is deprecated
-#elif defined(COOL)
-		call (Cool_WriteSettings (reader, reader->BWT, reader->CWT, EGT, BGT));
-#elif defined(WITH_STAPI)
-		call (STReader_SetClockrate(reader->stsmart_handle));
+		call (Sci_WriteSettings (reader, reader->protocol_type, reader->mhz / 100, ETU, WWT, reader->BWT, reader->CWT, EGT, 5, (unsigned char)I)); //P fixed at 5V since this is default class A card, and TB is deprecated
 #endif //COOL
 	}
 #if defined(LIBUSB)
 	if (reader->typ == R_SMART)
 		SR_WriteSettings(reader, (uint16_t) atr_f_table[FI], (BYTE)d, (BYTE)EGT, (BYTE)reader->protocol_type, reader->convention);
 #endif
-	cs_log("Reader %s: Maximum frequency for this card is formally %i Mhz, clocking it to %.2f Mhz", reader->label, atr_fs_table[FI] / 1000000, (float) reader->cardmhz / 100);
+	cs_log("Reader %s: Maximum frequency for this card is formally %i Mhz, clocking it to %.2f Mhz", reader->label, atr_fs_table[FI] / 1000000, (float) reader->mhz / 100);
 
 	//IFS setting in case of T1
 	if ((reader->protocol_type == ATR_PROTOCOL_TYPE_T1) && (reader->ifsc != DEFAULT_IFSC)) {
