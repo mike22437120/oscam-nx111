@@ -109,7 +109,7 @@ status detect of card (NONE = no detection), default:CD
 
 <B>cardmhz</B> = <B>mhz</B>
 <DL COMPACT><DT><DD>
-set standard SC frequency in units of 10 kHz, for Irdeto SC set to 600, refer to OVERCLOCKING, default:500
+set standard SC frequency in units of 10 kHz, for Irdeto SC set to 600, refer to OVERCLOCKING, default:357
 </DL>
 
 <P>
@@ -160,6 +160,13 @@ set endpoint address for FTDI chips,default:0x82
 <B>sc8in1_dtrrts_patch</B> = <B>0</B>|<B>1</B>
 <DL COMPACT><DT><DD>
 1 = enable fix for SC8in1/MCR DTR/RTS kernel bug, default:0
+</DL>
+
+<P>
+
+<B>use_gpio</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+1 = use GPIO to init the reader. This needs to be set on WRT54G router, default:0
 </DL>
 
 <P>

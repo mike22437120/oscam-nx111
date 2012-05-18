@@ -503,7 +503,7 @@ cross-mipsel-router-linux-uclibc927:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="" \
 		OS_PTLI="" \
-		DS_OPTS="-DUSE_GPIO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
+		DS_OPTS="-DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=mipsel-linux-uclibc-gcc \
@@ -523,7 +523,7 @@ cross-mipsel-router-linux-uclibc928:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto" \
 		OS_PTLI="" \
-		DS_OPTS="-DWITH_LIBCRYPTO -DUSE_GPIO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=mipsel-linux-uclibc-gcc \
@@ -543,7 +543,7 @@ cross-mipsel-router-linux-uclibc929:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto" \
 		OS_PTLI="" \
-		DS_OPTS="-DWITH_LIBCRYPTO -DUSE_GPIO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=mipsel-linux-uclibc-gcc \
@@ -563,7 +563,7 @@ cross-mipsel-router-linux-uclibc929-static:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto" \
 		OS_PTLI="" \
-		DS_OPTS="-DWITH_LIBCRYPTO -DUSE_GPIO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="-static" \
 		DS_CC=mipsel-linux-uclibc-gcc \
@@ -583,7 +583,7 @@ cross-mips-router-linux-uclibc930:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto" \
 		OS_PTLI="" \
-		DS_OPTS="-DWITH_LIBCRYPTO -DUSE_GPIO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=mips-linux-uclibc-gcc \
@@ -603,7 +603,7 @@ cross-mips-router-linux-uclibc931:
 		-f Maketype TYP=$(subst cross-,,$@) \
 		OS_LIBS="-lcrypto" \
 		OS_PTLI="" \
-		DS_OPTS="-DWITH_LIBCRYPTO -DUSE_GPIO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
+		DS_OPTS="-DWITH_LIBCRYPTO -DCS_CONFDIR=${CS_CONFDIR} -static-libgcc" \
 		DS_CFLAGS="" \
 		DS_LDFLAGS="" \
 		DS_CC=mips-linux-uclibc-gcc \
