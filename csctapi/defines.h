@@ -29,6 +29,7 @@
  */
 
 #include "../oscam-config.h"
+#include "../oscam-config-funcs.h"
 
 /*
  * Boolean constants
@@ -90,5 +91,9 @@ typedef void *PVOID;
 				(((a) >> 5) & 0x02) | \
 				(((a) >> 7) & 0x01))
 #endif
+
+static inline int use_gpio(struct s_reader * reader) {
+	return reader->use_gpio && reader->detect > 4;
+}
 
 #endif /* DEFINES_H */

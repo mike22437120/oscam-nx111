@@ -2,7 +2,7 @@
 #include "reader-common.h"
 #include "csctapi/defines.h"
 #include "csctapi/atr.h" 
-#include "csctapi/icc_async_exports.h" 
+#include "csctapi/icc_async.h"
 #ifdef AZBOX
 #include "csctapi/ifd_azbox.h"
 #endif
@@ -91,7 +91,7 @@ int32_t check_sct_len(const uchar *data, int32_t off)
 #ifdef WITH_CARDREADER
 static int32_t reader_card_inserted(struct s_reader * reader)
 {
-	if (!reader->use_gpio && (reader->detect & 0x7f) > 3)
+	if (!use_gpio(reader) && (reader->detect & 0x7f) > 3)
 		return 1;
 
 	int32_t card;
@@ -162,8 +162,8 @@ static void do_emm_from_file(struct s_reader * reader)
       	return;
    }
 
-   fread(eptmp, sizeof(EMM_PACKET), 1, fp);
-   if (ferror(fp)) {
+   size_t ret = fread(eptmp, sizeof(EMM_PACKET), 1, fp);
+   if (ret < 1 && ferror(fp)) {
         cs_log("ERROR: Can't read EMM from file '%s' (errno=%d %s)", token, errno, strerror(errno));
         free(eptmp);
         fclose(fp);
@@ -223,7 +223,7 @@ void reader_card_info(struct s_reader * reader)
 }
 
 #ifdef WITH_CARDREADER
-static int32_t reader_get_cardsystem(struct s_reader * reader, ATR atr)
+static int32_t reader_get_cardsystem(struct s_reader * reader, ATR *atr)
 {
 	int32_t i;
 	for (i=0; i<CS_MAX_MOD; i++) {
@@ -268,12 +268,12 @@ int32_t reader_reset(struct s_reader * reader)
     if (reader->mode != -1) {
       Azbox_SetMode(reader->mode);
       if (!reader_activate_card(reader, &atr, 0)) return(0);
-      ret = reader_get_cardsystem(reader, atr);
+      ret = reader_get_cardsystem(reader, &atr);
     } else {
       for (i = 0; i < AZBOX_MODES; i++) {
         Azbox_SetMode(i);
         if (!reader_activate_card(reader, &atr, 0)) return(0);
-        ret = reader_get_cardsystem(reader, atr);
+        ret = reader_get_cardsystem(reader, &atr);
         if (ret)
           break;
       }
@@ -283,7 +283,7 @@ int32_t reader_reset(struct s_reader * reader)
   uint16_t deprecated;
 	for (deprecated = reader->deprecated; deprecated < 2; deprecated++) {
 		if (!reader_activate_card(reader, &atr, deprecated)) break;
-		ret = reader_get_cardsystem(reader, atr);
+		ret = reader_get_cardsystem(reader, &atr);
 		if (ret)
 			break;
 		if (!deprecated)

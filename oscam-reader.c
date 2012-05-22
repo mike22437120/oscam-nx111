@@ -4,8 +4,6 @@
 
 int32_t logfd = 0;
 
-void reader_do_idle(struct s_reader * reader);
-
 void cs_ri_brk(struct s_reader * reader, int32_t flag)
 {
   if (flag)
@@ -751,8 +749,16 @@ int32_t reader_init(struct s_reader *reader) {
 				++i;
 			} while (i < 30);
 		}
+		if (reader->mhz > 2000) {
+			
+			cs_log("Reader %s initialized (device=%s, detect=%s%s, pll max=%.2f Mhz, wanted cardmhz=%.2f Mhz", reader->label, reader->device,
+				reader->detect&0x80 ? "!" : "",RDR_CD_TXT[reader->detect&0x7f], (float) (reader->mhz /100), (float) (reader->cardmhz / 100));
+		}
+		else {
 		cs_log("reader %s initialized (device=%s, detect=%s%s, mhz=%d, cardmhz=%d)", reader->label, reader->device, reader->detect&0x80 ? "!" : "",RDR_CD_TXT[reader->detect&0x7f], reader->mhz,reader->cardmhz);
+		}
 	}
+
 #endif
 
 	cs_malloc(&client->emmcache,CS_EMMCACHESIZE*(sizeof(struct s_emm)), 1);

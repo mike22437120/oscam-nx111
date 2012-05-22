@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
-V 50
-/svn/oscam/!svn/ver/205/trunk/Distribution/monitor
+V 51
+/svn/oscam/!svn/ver/6894/trunk/Distribution/monitor
 END
 mpcsmon.sh
 K 25
@@ -9,9 +9,9 @@ svn:wc:ra_dav:version-url
 V 61
 /svn/oscam/!svn/ver/205/trunk/Distribution/monitor/mpcsmon.sh
 END
-mpcsmon-src-0.5b.tar
+mpcsmon-src-0.6.tar.bz2
 K 25
 svn:wc:ra_dav:version-url
-V 71
-/svn/oscam/!svn/ver/205/trunk/Distribution/monitor/mpcsmon-src-0.5b.tar
+V 75
+/svn/oscam/!svn/ver/6894/trunk/Distribution/monitor/mpcsmon-src-0.6.tar.bz2
 END

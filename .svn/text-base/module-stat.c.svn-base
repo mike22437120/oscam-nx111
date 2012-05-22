@@ -21,7 +21,7 @@ static int32_t stat_load_save;
 static struct timeb nulltime;
 static time_t last_housekeeping = 0;
 
-void init_stat()
+void init_stat(void)
 {
 	cs_ftime(&nulltime);
 	stat_load_save = -100;
@@ -86,6 +86,7 @@ static uint32_t get_subid(ECM_REQUEST *er)
 		case 0x01: id = b2i(2, er->ecm+7); break;
 		case 0x06: id = b2i(2, er->ecm+6); break;
 		case 0x09: id = b2i(2, er->ecm+11); break;
+		case 0x17: id = er->ecm[3]|er->ecm[4]<<8; break;
 		case 0x4A: // DRE-Crypt, Bulcrypt, others?
 			if (er->caid != 0x4AEE) // Bulcrypt
 				id = er->ecm[7];
@@ -106,7 +107,7 @@ void get_stat_query(ECM_REQUEST *er, STAT_QUERY *q)
 	q->ecmlen = er->l;
 }
 
-void load_stat_from_file()
+void load_stat_from_file(void)
 {
 	stat_load_save = 0;
 	char buf[256];
@@ -318,7 +319,7 @@ void calc_stat(READER_STAT *stat)
 /**
  * Saves statistik to /tmp/.oscam/stat.n where n is reader-index
  */
-void save_stat_to_file_thread()
+void save_stat_to_file_thread(void)
 {
 	stat_load_save = 0;
 	char buf[256];
@@ -429,6 +430,7 @@ READER_STAT *get_add_stat(struct s_reader *rdr, STAT_QUERY *q)
 			stat->chid = q->chid;
 			stat->ecmlen = q->ecmlen;
 			stat->time_avg = UNDEF_AVG_TIME; //dummy placeholder
+			stat->rc = E_NOTFOUND;
 			ll_append(rdr->lb_stat, stat);
 		}
 	}
@@ -1228,7 +1230,7 @@ void clear_reader_stat(struct s_reader *rdr)
 	ll_clear_data(rdr->lb_stat);
 }
 
-void clear_all_stat()
+void clear_all_stat(void)
 {
 	struct s_reader *rdr;
 	LL_ITER itr = ll_iter_create(configured_readers);
@@ -1237,7 +1239,7 @@ void clear_all_stat()
 	}
 }
 
-void housekeeping_stat_thread()
+void housekeeping_stat_thread(void)
 {	
 	time_t cleanup_time = time(NULL) - (cfg.lb_stat_cleanup*60*60);
 	int32_t cleaned = 0;

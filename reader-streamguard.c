@@ -14,7 +14,7 @@ static int32_t streamguard_read_data(struct s_reader *reader, uchar size, uchar 
   return(cta_lr - 2);
 }
 
-static int32_t streamguard_card_init(struct s_reader *reader, ATR newatr)
+static int32_t streamguard_card_init(struct s_reader *reader, ATR* newatr)
 {
   static const uchar begin_cmd1[] = {0x00,0xa4,0x04,0x00,0x02,0x3f,0x00};
   static const uchar begin_cmd2[] = {0x00,0xa4,0x04,0x00,0x02,0x4a,0x00};

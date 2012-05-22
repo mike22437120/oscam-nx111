@@ -3,12 +3,6 @@ project (csctapi)
 file (GLOB csctapi_srcs "*.c")
 file (GLOB csctapi_hdrs "*.h")
 
-
-check_include_file ("pthread.h" HAVE_PTHREAD)
-if (HAVE_PTHREAD)
-    add_definitions ("-DHAVE_PTHREAD_H")
-endif (HAVE_PTHREAD)
-
 if (NOT OSCamOperatingSystem MATCHES "Mac OS X")
    if (LIBRTDIR)
         check_include_file ("${LIBRTDIR}/include/sys/time.h" HAVE_LIBRT_STATIC)
@@ -38,7 +32,6 @@ else (NOT OSCamOperatingSystem MATCHES "Mac OS X")
     set (HAVE_LIBRT True)
 endif (NOT OSCamOperatingSystem MATCHES "Mac OS X")
 
-
 check_include_file ("${LIBUSBDIR}/include/libusb-1.0/libusb.h" HAVE_LIBUSB)
 if (HAVE_LIBUSB AND HAVE_PTHREAD AND HAVE_LIBRT_STATIC)
     message(STATUS "  static libusb 1.0 found (${LIBUSB_STATIC_LIBRARIES}). Adding smartreader support ")
@@ -46,18 +39,6 @@ if (HAVE_LIBUSB AND HAVE_PTHREAD AND HAVE_LIBRT_STATIC)
 else (HAVE_LIBUSB AND HAVE_PTHREAD AND HAVE_LIBRT_STATIC)
     message(STATUS "  static libusb 1.0 not found. No smartreader support ")
 endif (HAVE_LIBUSB AND HAVE_PTHREAD AND HAVE_LIBRT_STATIC)
-
-
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    add_definitions ("-Winline -Werror -s -m32")
-    set (CMAKE_C_FLAGS_DEBUG "-O0 -ggdb")
-    set (CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb")
-else (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    add_definitions ("-Winline -Werror")
-    set (CMAKE_C_FLAGS "-O2 -finline-functions -fomit-frame-pointer -s")
-    set (CMAKE_C_FLAGS_DEBUG "-O0 -g")
-    set (CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
-endif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 set (lib_name "csctapi")
 add_library (${lib_name} STATIC ${csctapi_srcs} ${csctapi_hdrs})

@@ -20,7 +20,7 @@
 
 int8_t running;
 
-void refresh_lcd_file() {
+void refresh_lcd_file(void) {
 
 	char targetfile[256];
 	char tmpfile[256];
@@ -238,12 +238,12 @@ void refresh_lcd_file() {
 
 }
 
-void start_lcd_thread() {
+void start_lcd_thread(void) {
 	running = 1;
 	start_thread((void *) &refresh_lcd_file, "LCD");
 }
 
-void end_lcd_thread() {
+void end_lcd_thread(void) {
 	running = 0;
 }
 

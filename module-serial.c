@@ -133,8 +133,6 @@ static int32_t chk_ser_srvid(struct s_client *cl, uint16_t caid, uint16_t sid, u
   return(rc);
 }
 
-static void oscam_ser_disconnect(void);
-
 static void oscam_wait_ser_fork(void)
 {
     pthread_mutex_lock(&mutex);
@@ -619,7 +617,7 @@ static int32_t oscam_ser_recv(struct s_client *client, uchar *xbuf, int32_t l)
  *	server functions
  */
 
-static void oscam_ser_disconnect_client()
+static void oscam_ser_disconnect_client(void)
 {
   uchar mbuf[1024];
   struct s_serial_client *serialdata=cur_client()->serialdata;
@@ -637,7 +635,7 @@ static void oscam_ser_disconnect_client()
   serialdata->serial_errors=0;
 }
 
-static void oscam_ser_init_client()
+static void oscam_ser_init_client(void)
 {
   uchar mbuf[4];
   switch(cur_client()->serialdata->oscam_ser_proto)		// sure, does not work in auto-mode
@@ -654,7 +652,7 @@ static void oscam_ser_init_client()
   }
 }
 
-static void oscam_ser_disconnect()
+static void oscam_ser_disconnect(void)
 {
   oscam_ser_disconnect_client();
   if (cur_client()->serialdata->connected)
@@ -916,7 +914,7 @@ static void oscam_ser_process_ecm(uchar *buf, int32_t l)
 }
 
 
-static void oscam_ser_server()
+static void oscam_ser_server(void)
 {
   int32_t n;
   uchar mbuf[1024];

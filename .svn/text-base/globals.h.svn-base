@@ -1,3 +1,6 @@
+#ifndef GLOBALS_H_
+#define GLOBALS_H_
+
 #define _GNU_SOURCE //needed for PTHREAD_MUTEX_RECURSIVE on some plattforms and maybe other things; do not remove
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,6 +36,7 @@
 #include "cscrypt/idea.h"
 
 #include "oscam-config.h"
+#include "oscam-config-funcs.h"
 
 #include "oscam-types.h"
 #include "cscrypt/cscrypt.h"
@@ -713,13 +717,13 @@ struct s_cardreader
 struct s_cardsystem {
 	int8_t			active;
 	char			*desc;
-	int32_t		(*card_init)();
-	int32_t		(*card_info)();
+	int32_t		(*card_init)(struct s_reader *reader, struct s_ATR *);
+	int32_t		(*card_info)(struct s_reader *);
 	int32_t		(*do_ecm)(struct s_reader *, const struct ecm_request_t *, struct s_ecm_answer *);
 	int32_t		(*do_emm)(struct s_reader *, struct emm_packet_t *);
-	void			(*post_process)();
-	int32_t		(*get_emm_type)();
-	void			(*get_emm_filter)();
+	void			(*post_process)(struct s_reader *);
+	int32_t		(*get_emm_type)(struct emm_packet_t *, struct s_reader *);
+	void			(*get_emm_filter)(struct s_reader * rdr, uchar *filter);
 	uint16_t		caids[2];
 };
 
@@ -1110,6 +1114,7 @@ struct s_reader  									//contains device info, reader info and card info
 	int32_t			detect;
 	int32_t			mhz;							// actual clock rate of reader in 10khz steps
 	int32_t			cardmhz;						// standard clock speed your card should have in 10khz steps; normally 357 but for Irdeto cards 600
+	int32_t			divider;						// PLL divider for internal readers
 	int32_t			r_port;
 	char			r_usr[64];
 	char			r_pwd[64];
@@ -1773,5 +1778,7 @@ extern LLIST *log_list;				// log list
  *      global functions
  * =========================== */
 #include "global-functions.h"
+
+#endif
 
 #endif

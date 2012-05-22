@@ -408,7 +408,7 @@ static int32_t tcp_connect(struct s_client *cl)
 
 uint8_t camd35_node_id[8];
 
-void cacheex_update_peer_id()
+void cacheex_update_peer_id(void)
 {
 	int8_t i;
 	for (i=0; i<8; i++)
@@ -710,7 +710,7 @@ static void * camd35_server(struct s_client *client __attribute__((unused)), uch
 			camd35_process_emm(mbuf);
 			break;
 		default:
-			cs_log("unknown camd35 command! (%d) n=%d", mbuf[0], n);
+			cs_log("unknown camd35 command from %s! (%d) n=%d", username(client), mbuf[0], n);
 	}
 
 	return NULL; //to prevent compiler message
@@ -734,7 +734,7 @@ int32_t camd35_client_init(struct s_client *client)
 	return(0);
 }
 
-int32_t camd35_client_init_log()
+int32_t camd35_client_init_log(void)
 {
   struct sockaddr_in loc_sa;
   struct s_client *cl = cur_client();

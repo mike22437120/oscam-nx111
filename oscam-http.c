@@ -98,7 +98,7 @@ char *get_ecm_historystring(struct s_client *cl){
 		char *value, *dot = "";
 		int32_t ptr = cl->cwlastresptimes_last;
 
-		needed = CS_ECM_RINGBUFFER_MAX * 5; //4 digits + delimiter
+		needed = CS_ECM_RINGBUFFER_MAX * 6; //5 digits + delimiter
 		if(!cs_malloc(&value, needed * sizeof(char), -1)) return "";
 
 		if(ptr == CS_ECM_RINGBUFFER_MAX - 1){
@@ -4929,7 +4929,7 @@ static void *serve_process(void *conn){
 	return NULL;
 }
 
-void http_srv() {
+void http_srv(void) {
 	pthread_t workthread;
 	pthread_attr_t attr;
 	struct s_client * cl = create_client(first_client->ip);
@@ -4945,6 +4945,8 @@ void http_srv() {
 	
 	/* Prepare base64 decoding array */
 	b64prepare();
+	
+	tpl_checkDiskRevisions();
 	
 	cs_lock_create(&http_lock, 10, "http_lock");
 

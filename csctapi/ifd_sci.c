@@ -41,7 +41,25 @@ int32_t Sci_Reset (struct s_reader * reader, ATR * atr)
 	params.EGT = 3; //initial guardtime should be 0 (in iso this is parameter N)
 	params.fs = 5; //initial cardmhz should be 1 (in iso this is parameter D)
 	params.T = 0;
-	
+	if (reader->mhz > 2000) { // PLL based reader
+		params.ETU = 372;
+		params.EGT = 0;
+		int32_t divider = 0; // calculate divider for 1 Mhz
+			double cardclock1, cardclock2;
+
+			while (divider != reader->mhz/100){
+				divider++;																		
+				cardclock1 = reader->mhz / divider;
+				divider++;
+				cardclock2 = reader->mhz / (divider);	
+				if ((cardclock1 > 100) && (cardclock2 > 100)) continue;
+				if ( abs(cardclock1 - 100) > abs(cardclock2 - 100) ) break;
+				divider--;
+				break;
+			}
+		params.fs = divider; 
+		params.T = 0;
+	}
 	call (ioctl(reader->handle, IOCTL_SET_PARAMETERS, &params)!=0);
 	call (ioctl(reader->handle, IOCTL_SET_RESET)<0);
 #if defined(__powerpc__)
@@ -92,7 +110,7 @@ int32_t Sci_WriteSettings (struct s_reader * reader, BYTE T, uint32_t fs, uint32
 	if (I)
 		params.I = I;
 
-	cs_debug_mask(D_IFD, "IFD: Setting reader %s: T=%d fs=%d mhz ETU=%d WWT=%d CWT=%d BWT=%d EGT=%d clock=%d check=%d P=%d I=%d U=%d", reader->label, (int)params.T, params.fs, (int)params.ETU, (int)params.WWT, (int)params.CWT, (int)params.BWT, (int)params.EGT, (int)params.clock_stop_polarity, (int)params.check, (int)params.P, (int)params.I, (int)params.U);
+	cs_debug_mask(D_IFD, "IFD: Setting reader %s: T=%d fs=%d ETU=%d WWT=%d CWT=%d BWT=%d EGT=%d clock=%d check=%d P=%d I=%d U=%d", reader->label, (int)params.T, params.fs, (int)params.ETU, (int)params.WWT, (int)params.CWT, (int)params.BWT, (int)params.EGT, (int)params.clock_stop_polarity, (int)params.check, (int)params.P, (int)params.I, (int)params.U);
 
 	call (ioctl(reader->handle, IOCTL_SET_PARAMETERS, &params)!=0);
 	return OK;

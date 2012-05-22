@@ -189,7 +189,7 @@ int32_t dvbapi_set_filter(int32_t demux_id, int32_t api, uint16_t pid, uint16_t 
 	return ret;
 }
 
-static int32_t dvbapi_detect_api() {
+static int32_t dvbapi_detect_api(void) {
 #ifdef COOL
 	selected_api=COOLAPI;
 	selected_box = 5;
@@ -216,7 +216,8 @@ static int32_t dvbapi_detect_api() {
 	if (dmx_fd < 0) return 0;
 	close(dmx_fd);
 	selected_box = devnum;
-	selected_api=devices[selected_box].api;
+	if (selected_box > -1)
+		selected_api=devices[selected_box].api;
 
 #ifdef WITH_STAPI
 	if (devnum==4) {
@@ -592,7 +593,7 @@ void dvbapi_parse_cat(int32_t demux_id, uchar *buf, int32_t len) {
 	return;
 }
 
-int32_t dvbapi_get_descindex() {
+int32_t dvbapi_get_descindex(void) {
 	int32_t i,j,idx=1,fail=1;
 	while (fail) {
 		fail=0;
@@ -798,7 +799,7 @@ void dvbapi_process_emm (int32_t demux_index, int32_t filter_num, unsigned char 
 	do_emm(dvbapi_client, &epg);
 }
 
-void dvbapi_read_priority() {
+void dvbapi_read_priority(void) {
 	FILE *fp;
 	char token[128], str1[128];
 	char type;
@@ -1703,7 +1704,7 @@ void dvbapi_handlesockmsg (unsigned char *buffer, uint32_t len, int32_t connfd) 
 	}
 }
 
-int32_t dvbapi_init_listenfd() {
+int32_t dvbapi_init_listenfd(void) {
 	int32_t clilen,listenfd;
 	struct sockaddr_un servaddr;
 
@@ -2561,7 +2562,7 @@ static void * dvbapi_handler(struct s_client * cl, uchar* UNUSED(mbuf), int32_t 
 
 
 #ifdef WITH_STAPI
-static void stapi_off() {
+static void stapi_off(void) {
 	int32_t i;
 
 	pthread_mutex_lock(&filter_lock);
@@ -2588,7 +2589,7 @@ static void stapi_off() {
 	return;
 }
 
-static int32_t stapi_open() {
+static int32_t stapi_open(void) {
 	uint32_t ErrorCode;
 
 	DIR *dirp;
