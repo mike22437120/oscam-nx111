@@ -179,6 +179,7 @@ CSCTAPI_DEP = $(GLOBAL_DEP) csctapi/defines.h csctapi/atr.h
 CSCTAPI_OBJ = \
 	$(CSCTAPI_LIB)(csctapi/atr.o) \
 	$(CSCTAPI_LIB)(csctapi/icc_async.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_azbox.o) \
 	$(CSCTAPI_LIB)(csctapi/ifd_cool.o) \
 	$(CSCTAPI_LIB)(csctapi/ifd_mp35.o) \
 	$(CSCTAPI_LIB)(csctapi/ifd_pcsc.o) \
@@ -187,6 +188,7 @@ CSCTAPI_OBJ = \
 	$(CSCTAPI_LIB)(csctapi/ifd_sci.o) \
 	$(CSCTAPI_LIB)(csctapi/ifd_smargo.o) \
 	$(CSCTAPI_LIB)(csctapi/ifd_smartreader.o) \
+	$(CSCTAPI_LIB)(csctapi/ifd_stapi.o) \
 	$(CSCTAPI_LIB)(csctapi/io_serial.o) \
 	$(CSCTAPI_LIB)(csctapi/protocol_t0.o) \
 	$(CSCTAPI_LIB)(csctapi/protocol_t1.o) \
@@ -203,6 +205,7 @@ OSCAM_OBJ = \
 	$(OSCAM_LIB)(module-coolapi.o)\
 	$(OSCAM_LIB)(module-csp.o) \
 	$(OSCAM_LIB)(module-datastruct-llist.o) \
+	$(OSCAM_LIB)(module-dvbapi-stapi.o) \
 	$(OSCAM_LIB)(module-dvbapi.o) \
 	$(OSCAM_LIB)(module-gbox.o) \
 	$(OSCAM_LIB)(module-lcd.o) \
@@ -453,6 +456,17 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
    make distclean - Executes clean target and also removes binary files\n\
                     located in Distribution/ directory.\n\
 \n\
+ Build system files:\n\
+   config.sh      - OSCam configuration. Run 'config.sh --help' to see\n\
+                    available parameters or 'make config' to start GUI\n\
+                    configuratior.\n\
+   Makefile       - Main build system file.\n\
+   Makefile.extra - Contains predefined targets.\n\
+   Makefile.local - This file is included in Makefile and allows creation\n\
+                    of local build system targets. See Makefile.extra for\n\
+                    examples.\n\
+   CMakeLists.txt - These files are used by 'cmake' build system.\n\
+\n\
  Examples:\n\
    Build OSCam for SH4 (the compilers are in the path):\n\
      make CROSS=sh4-linux-\n\n\
@@ -472,6 +486,8 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
      make V=1 CC_OPTS=-Os\n\n\
    Build and set oscam file name:\n\
      make OSCAM_BIN=oscam\n\n\
+   Build and set oscam file name depending on revision:\n\
+     make OSCAM_BIN=oscam-\`./config.sh -r\`\n\n\
 "
 
 simple: all
@@ -483,3 +499,4 @@ debug:
 		$(MAKEFLAGS)
 
 -include Makefile.extra
+-include Makefile.local

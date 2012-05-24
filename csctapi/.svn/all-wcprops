@@ -1,49 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 38
-/svn/oscam/!svn/ver/6914/trunk/csctapi
-END
-protocol_t0.h
-K 25
-svn:wc:ra_dav:version-url
-V 52
-/svn/oscam/!svn/ver/4998/trunk/csctapi/protocol_t0.h
-END
-ifd_pcsc.c
-K 25
-svn:wc:ra_dav:version-url
-V 49
-/svn/oscam/!svn/ver/6427/trunk/csctapi/ifd_pcsc.c
-END
-ifd_mp35.h
-K 25
-svn:wc:ra_dav:version-url
-V 49
-/svn/oscam/!svn/ver/4998/trunk/csctapi/ifd_mp35.h
-END
-io_serial.h
-K 25
-svn:wc:ra_dav:version-url
-V 50
-/svn/oscam/!svn/ver/6836/trunk/csctapi/io_serial.h
-END
-sci_ioctl.h
-K 25
-svn:wc:ra_dav:version-url
-V 50
-/svn/oscam/!svn/ver/6837/trunk/csctapi/sci_ioctl.h
-END
-ifd_pcsc.h
-K 25
-svn:wc:ra_dav:version-url
-V 49
-/svn/oscam/!svn/ver/6705/trunk/csctapi/ifd_pcsc.h
-END
-mc_global.h
-K 25
-svn:wc:ra_dav:version-url
-V 47
-/svn/oscam/!svn/ver/8/trunk/csctapi/mc_global.h
+/svn/oscam/!svn/ver/6919/trunk/csctapi
 END
 ifd_smartreader.c
 K 25
@@ -55,7 +13,7 @@ ifd_phoenix.c
 K 25
 svn:wc:ra_dav:version-url
 V 52
-/svn/oscam/!svn/ver/6908/trunk/csctapi/ifd_phoenix.c
+/svn/oscam/!svn/ver/6919/trunk/csctapi/ifd_phoenix.c
 END
 CMakeLists.txt
 K 25
@@ -105,17 +63,17 @@ svn:wc:ra_dav:version-url
 V 50
 /svn/oscam/!svn/ver/6330/trunk/csctapi/ifd_azbox.c
 END
-ifd_azbox.h
-K 25
-svn:wc:ra_dav:version-url
-V 50
-/svn/oscam/!svn/ver/4998/trunk/csctapi/ifd_azbox.h
-END
 ifd_smargo.c
 K 25
 svn:wc:ra_dav:version-url
 V 51
 /svn/oscam/!svn/ver/6819/trunk/csctapi/ifd_smargo.c
+END
+ifd_azbox.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/oscam/!svn/ver/4998/trunk/csctapi/ifd_azbox.h
 END
 ifd_cool.c
 K 25
@@ -147,17 +105,17 @@ svn:wc:ra_dav:version-url
 V 51
 /svn/oscam/!svn/ver/6835/trunk/csctapi/ifd_sc8in1.c
 END
-icc_async.c
-K 25
-svn:wc:ra_dav:version-url
-V 50
-/svn/oscam/!svn/ver/6914/trunk/csctapi/icc_async.c
-END
 atr.h
 K 25
 svn:wc:ra_dav:version-url
 V 44
 /svn/oscam/!svn/ver/6101/trunk/csctapi/atr.h
+END
+icc_async.c
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/oscam/!svn/ver/6914/trunk/csctapi/icc_async.c
 END
 ifd_sc8in1.h
 K 25
@@ -165,17 +123,23 @@ svn:wc:ra_dav:version-url
 V 51
 /svn/oscam/!svn/ver/6618/trunk/csctapi/ifd_sc8in1.h
 END
+ifd_sci.c
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/oscam/!svn/ver/6913/trunk/csctapi/ifd_sci.c
+END
 icc_async.h
 K 25
 svn:wc:ra_dav:version-url
 V 50
 /svn/oscam/!svn/ver/6900/trunk/csctapi/icc_async.h
 END
-ifd_sci.c
+ifd_stapi.c
 K 25
 svn:wc:ra_dav:version-url
-V 48
-/svn/oscam/!svn/ver/6913/trunk/csctapi/ifd_sci.c
+V 50
+/svn/oscam/!svn/ver/6919/trunk/csctapi/ifd_stapi.c
 END
 sci_global.h
 K 25
@@ -212,4 +176,52 @@ K 25
 svn:wc:ra_dav:version-url
 V 50
 /svn/oscam/!svn/ver/6879/trunk/csctapi/io_serial.c
+END
+ifd_stapi.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/oscam/!svn/ver/6919/trunk/csctapi/ifd_stapi.h
+END
+protocol_t0.h
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/oscam/!svn/ver/4998/trunk/csctapi/protocol_t0.h
+END
+ifd_pcsc.c
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/oscam/!svn/ver/6427/trunk/csctapi/ifd_pcsc.c
+END
+ifd_mp35.h
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/oscam/!svn/ver/4998/trunk/csctapi/ifd_mp35.h
+END
+io_serial.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/oscam/!svn/ver/6836/trunk/csctapi/io_serial.h
+END
+sci_ioctl.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/oscam/!svn/ver/6837/trunk/csctapi/sci_ioctl.h
+END
+ifd_pcsc.h
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/oscam/!svn/ver/6705/trunk/csctapi/ifd_pcsc.h
+END
+mc_global.h
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/oscam/!svn/ver/8/trunk/csctapi/mc_global.h
 END

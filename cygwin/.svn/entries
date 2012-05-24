@@ -1,7 +1,7 @@
 10
 
 dir
-6915
+6927
 http://streamboard.gmc.to/svn/oscam/trunk/cygwin
 http://streamboard.gmc.to/svn/oscam
 
@@ -25,6 +25,40 @@ lareq78
 
 
 4b0bc96b-bc66-0410-9d44-ebda105a78c1
+
+WinSCard.h
+file
+
+
+
+
+2011-07-22T09:50:40.570070Z
+6ecd10b0037e4424a20cef94743ae879
+2011-07-21T10:38:17.734217Z
+5692
+lareq78
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+42120
 
 SCardErr.h
 file
@@ -93,38 +127,4 @@ has-props
 
 
 13142
-
-WinSCard.h
-file
-
-
-
-
-2011-07-22T09:50:40.570070Z
-6ecd10b0037e4424a20cef94743ae879
-2011-07-21T10:38:17.734217Z
-5692
-lareq78
-has-props
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-42120
 

@@ -1,7 +1,7 @@
 10
 
 dir
-6915
+6927
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt
 http://streamboard.gmc.to/svn/oscam
 
@@ -60,40 +60,6 @@ docman
 
 1627
 
-oscam.user.txt
-file
-
-
-
-
-2012-05-13T10:08:36.408932Z
-499fd0cabb3c10f57a148de4842b7400
-2012-05-07T21:14:21.718647Z
-6691
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-6241
-
 oscam.ird.txt
 file
 
@@ -127,6 +93,40 @@ docman
 
 
 574
+
+oscam.user.txt
+file
+
+
+
+
+2012-05-13T10:08:36.408932Z
+499fd0cabb3c10f57a148de4842b7400
+2012-05-07T21:14:21.718647Z
+6691
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6241
 
 list_smargo.txt
 file
@@ -162,40 +162,6 @@ docman
 
 646
 
-oscam.ac.txt
-file
-
-
-
-
-2012-01-29T04:06:30.939663Z
-5bea6e7e9c62fe00956f9cc2ca389de0
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-678
-
 oscam.services.txt
 file
 
@@ -230,26 +196,14 @@ docman
 
 919
 
-oscam.conf.txt
+oscam.ac.txt
 file
 
 
 
 
-
-0c37da0f176615e1798dc594841fb585
-2012-05-22T09:55:46.105057Z
-6915
-docman
-
-oscam.tiers.txt
-file
-
-
-
-
-2012-01-29T04:06:30.943663Z
-4ecd0df5ade62da449bb6ac4d9662cbb
+2012-01-29T04:06:30.939663Z
+5bea6e7e9c62fe00956f9cc2ca389de0
 2012-01-17T09:10:43.842642Z
 6252
 docman
@@ -274,7 +228,19 @@ docman
 
 
 
-702
+678
+
+oscam.conf.txt
+file
+
+
+
+
+
+0c37da0f176615e1798dc594841fb585
+2012-05-22T09:55:46.105057Z
+6915
+docman
 
 oscam.guess.txt
 file
@@ -309,6 +275,40 @@ docman
 
 
 671
+
+oscam.tiers.txt
+file
+
+
+
+
+2012-01-29T04:06:30.943663Z
+4ecd0df5ade62da449bb6ac4d9662cbb
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+702
 
 oscam.srvid.txt
 file

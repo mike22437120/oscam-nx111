@@ -198,3 +198,31 @@ cross-armLE-unknown-linux:
 		$(MAKEFLAGS)
 
 cross-armLE-unkown-linux: cross-armLE-unknown-linux
+
+azbox:
+	$(MAKE) --no-print-directory \
+		CROSS=mipsel-linux-uclibc- \
+		CONF_DIR=/PLUGINS/OpenXCAS/oscamCAS \
+		EXTRA_LIBS="-Lopenxcas -lOpenXCASAPI" \
+		EXTRA_FLAGS=-DAZBOX \
+		EXTRA_TARGET=-azbox \
+		$(MAKEFLAGS)
+
+cool:
+	$(MAKE) --no-print-directory \
+		CROSS=arm-cx2450x-linux-gnueabi- \
+		EXTRA_LIBS="-lnxp -lrt" \
+		EXTRA_FLAGS=-DCOOL \
+		EXTRA_TARGET=-coolstream \
+		$(MAKEFLAGS)
+
+neutrinohd: cool
+coolstream: cool
+
+dockstar:
+	$(MAKE) --no-print-directory \
+		CROSS=arm-openwrt-linux-uclibcgnueabi- \
+		EXTRA_FLAGS=-DDOCKSTAR \
+		EXTRA_TARGET=-dockstar \
+		CONF_DIR=/jffs/etc/config/oscam \
+		$(MAKEFLAGS)
