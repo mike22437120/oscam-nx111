@@ -1,13 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 35
-/svn/oscam/!svn/ver/6907/trunk/algo
-END
-minilzo.h
-K 25
-svn:wc:ra_dav:version-url
-V 45
-/svn/oscam/!svn/ver/4607/trunk/algo/minilzo.h
+/svn/oscam/!svn/ver/6976/trunk/algo
 END
 CMakeLists.txt
 K 25
@@ -31,5 +25,11 @@ minilzo.c
 K 25
 svn:wc:ra_dav:version-url
 V 45
-/svn/oscam/!svn/ver/4176/trunk/algo/minilzo.c
+/svn/oscam/!svn/ver/6976/trunk/algo/minilzo.c
+END
+minilzo.h
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/oscam/!svn/ver/4607/trunk/algo/minilzo.h
 END

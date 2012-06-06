@@ -3,17 +3,13 @@
 #include "csctapi/defines.h"
 #include "csctapi/atr.h" 
 #include "csctapi/icc_async.h"
-#ifdef AZBOX
 #include "csctapi/ifd_azbox.h"
-#endif
-#ifdef COOL
 #include "csctapi/ifd_cool.h"
-#endif
 
 #include "csctapi/ifd_sc8in1.h"
 
 #include "csctapi/mc_global.h"
-static int32_t reader_device_type(struct s_reader * reader)
+int32_t reader_device_type(struct s_reader * reader)
 {
   int32_t rc=reader->typ;
   struct stat sb;
@@ -262,7 +258,7 @@ int32_t reader_reset(struct s_reader * reader)
   reader_nullcard(reader);
   ATR atr;
   uint16_t ret = 0;
-#ifdef AZBOX
+#ifdef WITH_AZBOX
   int32_t i;
   if (reader->typ == R_INTERNAL) {
     if (reader->mode != -1) {
@@ -289,7 +285,7 @@ int32_t reader_reset(struct s_reader * reader)
 		if (!deprecated)
 			cs_log("Normal mode failed, reverting to Deprecated Mode");
 	}
-#ifdef AZBOX
+#ifdef WITH_AZBOX
   }
 #endif
 
@@ -315,7 +311,7 @@ int32_t reader_reset(struct s_reader * reader)
 			MCR_DisplayText(reader, text, 5, 400, 0);
 		}
 
-#ifdef COOL
+#ifdef WITH_COOLAPI
 	if (reader->typ == R_INTERNAL) {
 		cs_debug_mask(D_DEVICE,"%s init done - modifying timeout for coolstream internal device %s", reader->label, reader->device);
 		call(Cool_Set_Transmit_Timeout(reader, 1));

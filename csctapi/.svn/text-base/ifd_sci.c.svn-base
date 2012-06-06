@@ -67,9 +67,12 @@ int32_t Sci_Reset (struct s_reader * reader, ATR * atr)
     cs_debug_mask(D_IFD,"IFD: Extra delay for PPC box between reset and IO_Serial_Read for the ATR");
     cs_sleepms(150);
 #endif
+	uint32_t timeout = ATR_TIMEOUT;
+	if (reader->mhz > 2000)           // pll readers use timings in us
+		timeout = timeout * 1000;
 	while(n<SCI_MAX_ATR_SIZE)
 	{
-		if (IO_Serial_Read(reader, ATR_TIMEOUT, 1, buf+n)) break;   // read atr response to end
+		if (IO_Serial_Read(reader, timeout, 1, buf+n)) break;   // read atr response to end
 		n++;
 	}
 
@@ -119,13 +122,15 @@ int32_t Sci_WriteSettings (struct s_reader * reader, BYTE T, uint32_t fs, uint32
 int32_t Sci_Activate (struct s_reader * reader)
 {
 		cs_debug_mask(D_IFD, "IFD: Activating card");
-		int32_t in;
+		uint32_t in = 1;
 
 	cs_debug_mask(D_IFD, "IFD: Is card activated?");
 	if (ioctl(reader->handle, IOCTL_GET_IS_CARD_ACTIVATED, &in) < 0) {
+		cs_debug_mask(D_IFD, "IFD: ioctl returned: %u", in);
 		cs_debug_mask(D_IFD, "IFD: Is card present?");
 		call(ioctl(reader->handle, IOCTL_GET_IS_CARD_PRESENT, &in) < 0);
 	}
+	cs_debug_mask(D_IFD, "IFD: ioctl returned: %u", in);
 
 		if(in)
 			cs_sleepms(50);
@@ -157,6 +162,9 @@ int32_t Sci_FastReset (struct s_reader *reader)
 
     cs_sleepms(50);
     // flush atr from buffer
+	uint32_t timeout = ATR_TIMEOUT;
+	if (reader->mhz > 2000)           // pll readers use timings in us
+		timeout = timeout * 1000;
 	while(n<SCI_MAX_ATR_SIZE && !IO_Serial_Read(reader, ATR_TIMEOUT, 1, buf+n))
 	{
 		n++;

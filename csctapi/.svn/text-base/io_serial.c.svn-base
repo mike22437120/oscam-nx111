@@ -628,9 +628,12 @@ bool IO_Serial_WaitToRead (struct s_reader * reader, uint32_t delay_ms, uint32_t
    int32_t select_ret;
    int32_t in_fd;
    
-   if (delay_ms > 0)
-      cs_sleepms (delay_ms);
-   
+   if (delay_ms > 0){
+      if (reader->mhz > 2000)
+		cs_sleepus (delay_ms); // for pll readers do wait in us
+	  else
+	    cs_sleepms (delay_ms); // all other reader do wait in ms
+   }
    in_fd=reader->handle;
    
    FD_ZERO(&rfds);
@@ -638,9 +641,14 @@ bool IO_Serial_WaitToRead (struct s_reader * reader, uint32_t delay_ms, uint32_t
    
    FD_ZERO(&erfds);
    FD_SET(in_fd, &erfds);
-   
-   tv.tv_sec = timeout_ms/1000;
-   tv.tv_usec = (timeout_ms % 1000) * 1000L;
+   if (reader->mhz > 2000){ // calculate timeout in us for pll readers
+		tv.tv_sec = timeout_ms/1000000L;
+		tv.tv_usec = (timeout_ms % 1000000);
+   }
+   else {
+		tv.tv_sec = timeout_ms/1000;
+		tv.tv_usec = (timeout_ms % 1000) * 1000L;
+   }
 
 	while (1) {
 		select_ret = select(in_fd+1, &rfds, NULL,  &erfds, &tv);
@@ -675,15 +683,12 @@ static bool IO_Serial_WaitToWrite (struct s_reader * reader, uint32_t delay_ms, 
    struct timeval tv;
    int32_t select_ret;
    int32_t out_fd;
-   
-#if !defined(COOL) && !defined(AZBOX)
-   if(reader->typ == R_INTERNAL)
-      return OK;
-#endif
-		
-   if (delay_ms > 0)
-      cs_sleepms(delay_ms);
 
+#if !defined(WITH_COOLAPI) && !defined(WITH_AZBOX)
+   if(reader->typ == R_INTERNAL) // needed for ppc, otherwise error!
+	return OK;
+#endif
+   cs_sleepms (delay_ms); // all not pll readers do wait in ms
    out_fd=reader->handle;
     
    FD_ZERO(&wfds);
@@ -692,7 +697,7 @@ static bool IO_Serial_WaitToWrite (struct s_reader * reader, uint32_t delay_ms, 
    FD_ZERO(&ewfds);
    FD_SET(out_fd, &ewfds);
    
-   tv.tv_sec = timeout_ms/1000L;
+   tv.tv_sec = timeout_ms/1000;
    tv.tv_usec = (timeout_ms % 1000) * 1000L;
 
    select_ret = select(out_fd+1, NULL, &wfds, &ewfds, &tv);

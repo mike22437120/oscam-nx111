@@ -286,7 +286,7 @@ static void chk_services(char *labels, SIDTABBITS *sidok, SIDTABBITS *sidno)
 	*sidno = newsidno;
 }
 
-static void chk_ftab(char *zFilterAsc, FTAB *ftab, const char *D_USE(zType), const char *D_USE(zName), const char *zFiltName)
+static void chk_ftab(char *zFilterAsc, FTAB *ftab, const char *zType, const char *zName, const char *zFiltName)
 {
 	int32_t i, j;
 	char *ptr1, *ptr2, *ptr3, *saveptr1 = NULL;
@@ -2882,7 +2882,7 @@ int32_t write_server(void)
 				fprintf(f, ",%d", rdr->l_port);
 			fprintf(f, "\n");
 
-#ifdef LIBUSB
+#ifdef WITH_LIBUSB
 			if (!(rdr->typ & R_IS_NETWORK))
 				if (rdr->device_endpoint || cfg.http_full_cfg)
 					fprintf_conf(f, "device_out_endpoint", "0x%2X\n", rdr->device_endpoint);
@@ -2944,7 +2944,7 @@ int32_t write_server(void)
 				fprintf_conf(f, "cacheex_maxhop", "%d\n", rdr->cacheex_maxhop);
 #endif
 
-#ifdef COOL
+#ifdef WITH_COOLAPI
 			if (rdr->cool_timeout_init || cfg.http_full_cfg)
 				fprintf_conf(f, "cool_timeout_init", "%d\n", rdr->cool_timeout_init);
 			if (rdr->cool_timeout_after_init || cfg.http_full_cfg)
@@ -3029,7 +3029,7 @@ int32_t write_server(void)
 			if ((rdr->cardmhz || cfg.http_full_cfg) && isphysical)
 				fprintf_conf(f, "cardmhz", "%d\n", rdr->cardmhz);
 
-#ifdef AZBOX
+#ifdef WITH_AZBOX
 			if ((rdr->mode != -1 || cfg.http_full_cfg) && isphysical)
 				fprintf_conf(f, "mode", "%d\n", rdr->mode);
 #endif
@@ -3851,7 +3851,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 		return;
 	}
 
-#ifdef LIBUSB
+#ifdef WITH_LIBUSB
 	if (!strcmp(token, "device_out_endpoint")) {
 		if (strlen(value) > 0) {
 			sscanf(value, "0x%2X", &i);
@@ -4386,7 +4386,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 			return;
 		}
 
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 		if (!strcmp(value, "pcsc")) {
 			rdr->typ = R_PCSC;
 			return;
@@ -4452,7 +4452,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 		rdr->typ = R_MOUSE;
 		return;
 	}
-#ifdef COOL
+#ifdef WITH_COOLAPI
 	if (!strcmp(token, "cool_timeout_init")) {
 		rdr->cool_timeout_init  = strToIntVal(value, 0);
 		return;
@@ -4778,7 +4778,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 	}
 
 
-#ifdef AZBOX
+#ifdef WITH_AZBOX
 	if (!strcmp(token, "mode")) {
 		rdr->mode = strToIntVal(value, -1);
 		return;
@@ -4984,7 +4984,7 @@ int32_t init_readerdb(void)
 			rdr->nagra_read = 0;
 			rdr->mhz = 357;
 			rdr->cardmhz = 357;
-#ifdef AZBOX
+#ifdef WITH_AZBOX
 			rdr->mode = -1;
 #endif
 			rdr->deprecated = 0;

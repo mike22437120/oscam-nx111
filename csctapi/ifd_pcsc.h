@@ -1,7 +1,7 @@
+#ifndef _CSCTAPI_IFD_PCSC_H_
+#define _CSCTAPI_IFD_PCSC_H_
 
-#include "../globals.h"
-
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
   #if defined(__CYGWIN__)
     #define __reserved
     #define __nullnullterminated
@@ -16,6 +16,7 @@
         #include <PCSC/reader.h> 
     #endif 
   #endif
+#endif
 
 #ifndef ERR_INVALID
 #define ERR_INVALID -1

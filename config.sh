@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 
 WD=$(dirname $0)
 
 addons="WEBIF HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX LCDSUPPORT IPV6SUPPORT"
 protocols="MODULE_CAMD33 MODULE_CAMD35 MODULE_CAMD35_TCP MODULE_NEWCAMD MODULE_CCCAM MODULE_GBOX MODULE_RADEGAST MODULE_SERIAL MODULE_CONSTCW MODULE_PANDORA"
-readers="WITH_CARDREADER READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_BULCRYPT"
+readers="WITH_CARDREADER READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_STREAMGUARD READER_BULCRYPT"
 
 list_options() {
 	PREFIX="$1"
@@ -12,98 +12,10 @@ list_options() {
 	for OPT in $@
 	do
 		grep "^\#define $OPT$" oscam-config.h >/dev/null 2>/dev/null
-		[ $? = 0 ] && echo -n "${OPT//$PREFIX/} "
+		[ $? = 0 ] && echo "${OPT#$PREFIX}"
 	done
-	echo
 }
 
-case "$1" in
-	'-s'|'--show')
-		shift
-		case "$1" in
-			'all')
-				list_options "" $addons $protocols $readers
-			;;
-			'addons')
-				list_options "" $addons
-			;;
-			'protocols')
-				list_options "MODULE_" $protocols
-			;;
-			'readers')
-				list_options "READER_" $readers
-			;;
-			*)
-				echo "Unknown parameter: $1"
-				exit 1
-			;;
-		esac
-		exit 0
-		;;
-	'-e'|'--enabled')
-		grep "^\#define $2$" oscam-config.h >/dev/null 2>/dev/null
-		if [ $? = 0 ]; then
-			echo "Y" && exit 0
-		else
-			echo "N" && exit 1
-		fi
-	;;
-	'-d'|'--disabled')
-		grep "^\#define $2$" oscam-config.h >/dev/null 2>/dev/null
-		if [ $? = 1 ]; then
-			echo "Y" && exit 0
-		else
-			echo "N" && exit 1
-		fi
-	;;
-	'-v'|'--oscam-version')
-		grep CS_VERSION $WD/globals.h | cut -d\" -f2
-		exit 0
-	;;
-	'-r'|'--oscam-revision')
-		(svnversion -n $WD 2>/dev/null || echo -n 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'
-		exit 0
-	;;
-	'-h'|'--help')
-		echo \
-"OSCam config
-Usage: `basename $0` [parameters]
-
- -s, --show [param]        Show enabled configuration options.
-                           Possible params: all, addons, protocols, readers
- -e, --enabled [option]    Check if certain option is enabled.
- -d, --disabled [option]   Check if certain option is disabled.
- -v, --oscam-version       Display OSCam version.
- -r, --oscam-revision      Display OSCam SVN revision.
- -h, --help                Display this help text.
-"
-		exit 1
-	;;
-esac
-
-tempfile=/tmp/test$$
-tempfileconfig=/tmp/oscam-config.h
-configfile=oscam-config.h
-DIALOG=${DIALOG:-`which dialog`}
-
-height=30
-width=65
-listheight=16
-
-if [ -z "${DIALOG}" ]; then
-	echo "Please install dialog package." 1>&2
-	exit 1
-fi
-
-cp -f $configfile $tempfileconfig
-
-<<<<<<< .mine
-addons="WEBIF HAVE_DVBAPI WITH_STAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX LCDSUPPORT IPV6SUPPORT"
-protocols="MODULE_CAMD33 MODULE_CAMD35 MODULE_CAMD35_TCP MODULE_NEWCAMD MODULE_CCCAM MODULE_GBOX MODULE_RADEGAST MODULE_SERIAL MODULE_CONSTCW MODULE_PANDORA"
-readers="WITH_CARDREADER READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_STREAMGUARD READER_BULCRYPT"
-
-=======
->>>>>>> .r6829
 check_test() {
 	if [ "$(cat $tempfileconfig | grep "^#define $1$")" != "" ]; then
 		echo "on"
@@ -114,14 +26,14 @@ check_test() {
 
 disable_all() {
 	for i in $1; do
-		sed -i -e "s/^#define ${i}$/\/\/#define ${i}/g" $tempfileconfig
+		sed -i.bak -e "s/^#define ${i}$/\/\/#define ${i}/g" $tempfileconfig
 	done
 }
 
 enable_package() {
 	for i in $(cat $tempfile); do
 		strip=$(echo $i | sed "s/\"//g")
-		sed -i -e "s/\/\/#define ${strip}$/#define ${strip}/g" $tempfileconfig
+		sed -i.bak -e "s/\/\/#define ${strip}$/#define ${strip}/g" $tempfileconfig
 	done
 }
 
@@ -214,22 +126,142 @@ menu_reader() {
 	enable_package
 }
 
-while true; do
-	${DIALOG} --menu "\nSelect category:\n " $height $width $listheight \
-		Add-ons		"Add-ons" \
-		Protocols	"Network protocols" \
-		Reader		"Reader" \
-		Save		"Save" \
-		2> ${tempfile}
+config_dialog() {
+	tempfile=/tmp/test$$
+	tempfileconfig=/tmp/oscam-config.h
+	configfile=oscam-config.h
+	DIALOG=${DIALOG:-`which dialog`}
 
-	opt=${?}
-	if [ $opt != 0 ]; then clear; rm $tempfile; rm $tempfileconfig; exit; fi
+	height=30
+	width=65
+	listheight=16
 
-	menuitem=`cat $tempfile`
-	case $menuitem in
-		Add-ons) menu_addons;;
-		Protocols) menu_protocols;;
-		Reader) menu_reader;;
-		Save) print_components; rm $tempfile; rm $tempfileconfig; exit;;
-	esac
-done
+	if [ -z "${DIALOG}" ]; then
+		echo "Please install dialog package." 1>&2
+		exit 1
+	fi
+
+	cp -f $configfile $tempfileconfig
+
+	while true; do
+		${DIALOG} --menu "\nSelect category:\n " $height $width $listheight \
+			Add-ons		"Add-ons" \
+			Protocols	"Network protocols" \
+			Reader		"Reader" \
+			Save		"Save" \
+			2> ${tempfile}
+
+		opt=${?}
+		if [ $opt != 0 ]; then clear; rm $tempfile; rm $tempfileconfig; exit; fi
+
+		menuitem=`cat $tempfile`
+		case $menuitem in
+			Add-ons) menu_addons ;;
+			Protocols) menu_protocols ;;
+			Reader) menu_reader ;;
+			Save)
+				print_components
+				rm $tempfile
+				rm $tempfileconfig
+				$0 --make-config.mak
+				exit
+			;;
+		esac
+	done
+}
+
+case "$1" in
+	'-g'|'--gui'|'--config'|'--menuconfig')
+		config_dialog
+	;;
+	'-s'|'--show')
+		shift
+		case "$1" in
+			'addons')
+				list_options "" $addons
+			;;
+			'protocols')
+				list_options "MODULE_" $protocols
+			;;
+			'readers')
+				list_options "READER_" $readers
+			;;
+			*)
+				list_options "" $addons $protocols $readers
+			;;
+		esac
+		;;
+	'-e'|'--enabled')
+		grep "^\#define $2$" oscam-config.h >/dev/null 2>/dev/null
+		if [ $? = 0 ]; then
+			echo "Y" && exit 0
+		else
+			echo "N" && exit 1
+		fi
+	;;
+	'-d'|'--disabled')
+		grep "^\#define $2$" oscam-config.h >/dev/null 2>/dev/null
+		if [ $? = 1 ]; then
+			echo "Y" && exit 0
+		else
+			echo "N" && exit 1
+		fi
+	;;
+	'-v'|'--oscam-version')
+		grep CS_VERSION $WD/globals.h | cut -d\" -f2
+	;;
+	'-r'|'--oscam-revision')
+		(svnversion -n $WD 2>/dev/null || echo -n 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'
+	;;
+	'--detect-osx-sdk-version')
+		shift
+		OSX_VER=${1:-10.8}
+		for DIR in /Developer/SDKs/MacOSX{$OSX_VER,10.7,10.6,10.5}.sdk
+		do
+			if test -d $DIR
+			then
+				echo $DIR
+				exit 0
+			fi
+		done
+		echo /Developer/SDKs/MacOSX$(OSX_VER).sdk
+	;;
+	'-l'|'--list-config')
+		for OPT in $addons $protocols $readers
+		do
+			grep "^\#define $OPT$" oscam-config.h >/dev/null 2>/dev/null
+			[ $? = 0 ] && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
+		done
+		echo "CONFIG_INCLUDED=Yes"
+		exit 0
+	;;
+	'-m'|'--make-config.mak')
+		$0 --list-config > config.mak.tmp
+		cmp config.mak.tmp config.mak >/dev/null 2>/dev/null
+		if [ $? != 0 ]
+		then
+			mv config.mak.tmp config.mak
+		else
+			rm config.mak.tmp
+		fi
+		exit 0
+	;;
+	*)
+		echo \
+"OSCam config
+Usage: `basename $0` [parameters]
+
+ -g, --gui                 Start interactive configuration
+ -s, --show [param]        Show enabled configuration options.
+                           Possible params: all, addons, protocols, readers
+ -e, --enabled [option]    Check if certain option is enabled.
+ -d, --disabled [option]   Check if certain option is disabled.
+ -v, --oscam-version       Display OSCam version.
+ -r, --oscam-revision      Display OSCam SVN revision.
+ -l, --list-config         List active configuration variables.
+ -m, --make-config.mak     Create or update config.mak
+ -h, --help                Display this help text.
+"
+		exit 1
+	;;
+esac

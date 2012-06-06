@@ -41,7 +41,7 @@
 #include "oscam-types.h"
 #include "cscrypt/cscrypt.h"
 
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
   #if defined(__CYGWIN__)
     #define __reserved
     #define __nullnullterminated
@@ -55,15 +55,6 @@
         #include <PCSC/reader.h>
     #endif
   #endif
-#endif
-
-#if defined(LIBUSB)
-#if defined(__FreeBSD__)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-#include "csctapi/smartreader_types.h"
 #endif
 
 /* ===========================
@@ -129,19 +120,11 @@
 		cs_debug_mask(D_TRACE, "ERROR, function call %s returns error.",#arg); \
 		return ERROR; \
 	}
-# define D_USE(x) x
 #else
 # define call(arg) \
 	if (arg) { \
 		return ERROR; \
 	}
-# if  __GNUC__ >= 3 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 7)
-#  define D_USE(x) D_USE_ ## x __attribute__((unused))
-# elif defined(__LCLINT__)
-#  define D_USE(x) /*@debug use only@*/ x
-# else
-#  define D_USE(x) x
-# endif
 #endif
 
 //checking if (X) free(X) unneccessary since freeing a null pointer doesnt do anything
@@ -268,7 +251,7 @@
 #define MOD_CARDSYSTEM  16
 #define MOD_ADDON       32
 
-#ifdef HAVE_DVBAPI
+// Box types
 #define BOXTYPE_DREAMBOX	1
 #define BOXTYPE_DUCKBOX	2
 #define BOXTYPE_UFS910	3
@@ -282,7 +265,6 @@
 #define BOXTYPE_PC		11
 #define BOXTYPES		11
 extern const char *boxdesc[];
-#endif
 
 #ifdef HAVE_DVBAPI
 #define ECMINFO_MODE_OSCAM 	0
@@ -317,16 +299,6 @@ extern const char *boxdesc[];
 //Lock types
 #define WRITELOCK 1
 #define READLOCK 2
-
-#ifdef CS_CORE
-char *PIP_ID_TXT[] = { "ECM", "EMM", "CIN", "KCL", "UDP", NULL  };
-char *RDR_CD_TXT[] = { "cd", "dsr", "cts", "ring", "none",
-                       "gpio1", "gpio2", "gpio3", "gpio4", "gpio5", "gpio6", "gpio7",
-                       NULL };
-#else
-extern char *PIP_ID_TXT[];
-extern char *RDR_CD_TXT[];
-#endif
 
 #define PIP_ID_ECM    0
 #define PIP_ID_EMM    1
@@ -379,7 +351,6 @@ enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_
 
 #define CTA_RES_LEN 512
 
-#if defined(__arm__)
 #define  LED1A 		0
 #define  LED1B 		1
 #define  LED2 		2
@@ -391,14 +362,13 @@ enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_
 #define  LED_DEFAULT 	10
 #define  LED_STOP_THREAD 100
 #define  ARM_LED_TIMEOUT 3 //Dont blink for actions which are < ARM_LED_TIMEOUT seconds ago
+
 struct s_arm_led {
 	int32_t led;
 	int32_t action;
 	time_t start_time;
 };
-#endif
 
-#ifdef QBOXHD
 #define QBOXHD_LED_DEVICE               "/dev/sw0"
 #define QBOXHD_SET_LED_ALL_PANEL_COLOR	_IO(0xBC, 13)    // payload = 3byte [H][S][V]
 #define QBOXHD_LED_COLOR_RED        359  // only H value, S and V values are always == 99
@@ -420,8 +390,6 @@ struct s_arm_led {
 #define QBOXHD_LED_BLINK_FAST       100  // blink milliseconds
 #define QBOXHD_LED_BLINK_MEDIUM     200
 #define QBOXHD_LED_BLINK_SLOW       400
-
-#endif
 
 #define MAX_ATR_LEN		33			// max. ATR length
 #define MAX_HIST		15			// max. number of historical characters
@@ -769,8 +737,9 @@ typedef struct ecm_request_t {
 	struct timeb	tps;				// incoming time stamp
 	uchar			locals_done;
 	int32_t			btun; 				// mark er as betatunneled
-	int32_t			reader_avail; 		// count of available readers
-	int32_t			reader_count; 		// count of contacted readers
+	uint16_t			reader_avail; 		// count of available readers
+	uint16_t			reader_count; 		// count of contacted readers
+	uint16_t        	reader_requested;   // count of real requested readers
 	int32_t			checked;				//for doublecheck
 	uchar			cw_checked[16];		//for doublecheck
 	struct s_reader 	*origin_reader;
@@ -1100,7 +1069,7 @@ struct s_reader  									//contains device info, reader info and card info
 	int8_t			cacheex_maxhop;
 #endif
 	int32_t			typ;
-#ifdef COOL
+#ifdef WITH_COOLAPI
 	int32_t			cool_timeout_init; // read/transmit timeout while init for coolstream internal reader
 	int32_t			cool_timeout_after_init; // read/transmit timeout after init for coolstream internal reader
 #endif
@@ -1204,16 +1173,16 @@ struct s_reader  									//contains device info, reader info and card info
 	int32_t			emmblocked[4];					// count blocked EMM
 	int32_t			lbvalue;						// loadbalance Value
 #endif
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 	SCARDCONTEXT	hContext;
 	SCARDHANDLE		hCard;
 	DWORD			dwActiveProtocol;
 #endif
-#ifdef LIBUSB
+#ifdef WITH_LIBUSB
 	uint8_t			device_endpoint; 				// usb endpoint for Infinity USB Smart in smartreader mode.
 	struct s_sr_config *sr_config;
 #endif
-#ifdef AZBOX
+#ifdef WITH_AZBOX
 	int32_t			mode;
 #endif
 	int32_t			use_gpio;						// Should this reader use GPIO functions
@@ -1232,7 +1201,7 @@ struct s_reader  									//contains device info, reader info and card info
 	////variables from io_serial.h
 	int32_t			written;						// keep score of how much bytes are written to serial port, since they are echoed back they have to be read
 #endif
-	uint16_t		BWT,CWT;						// (for overclocking uncorrected) block waiting time, character waiting time, in ETU
+	uint32_t		BWT,CWT;						// (for overclocking uncorrected) block waiting time, character waiting time, in ETU
 	////variables from protocol_t1.h
 	uint16_t		ifsc;							// Information field size for the ICC
 	unsigned char	ns;								// Send sequence number
@@ -1437,7 +1406,7 @@ struct s_global_whitelist
 	uint16_t mapcaid;
 	uint16_t mapprovid;
 	struct s_global_whitelist *next;
-} GLOBAL_WHITELIST;
+};
 
 #ifdef CS_CACHEEX
 struct s_cacheex_matcher
@@ -1462,7 +1431,7 @@ struct s_cacheex_matcher
 	int32_t valid_to;
 
 	struct s_cacheex_matcher *next;
-} CACHEEX_MATCHER;
+};
 #endif
 
 struct s_config
@@ -1740,23 +1709,24 @@ typedef struct emm_packet_t
 	struct s_client *client;
 } EMM_PACKET;
 
-#ifdef QBOXHD
+// QBOX led structures
 typedef struct {
 	uint16_t H;										// range 0-359
 	unsigned char S;								// range 0-99
 	unsigned char V;								// range 0-99
 } qboxhd_led_color_struct;
+
 typedef struct {
 	unsigned char red;								// first 5 bit used (&0x1F)
 	unsigned char green;							// first 5 bit used (&0x1F)
 	unsigned char blue;								// first 5 bit used (&0x1F)
 } qboxhdmini_led_color_struct;
-#endif
 
 
 /* ===========================
  *      global variables
  * =========================== */
+extern char *RDR_CD_TXT[];
 extern char cs_tmpdir[200];
 extern uint32_t cfg_sidtab_generation;
 extern uint8_t cs_http_use_utf8;
@@ -1779,7 +1749,7 @@ extern struct s_cardsystem cardsystem[CS_MAX_MOD];
 extern struct s_cardreader cardreader[CS_MAX_MOD];
 extern CS_MUTEX_LOCK gethostbyname_lock;
 extern CS_MUTEX_LOCK readdir_lock;
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 extern CS_MUTEX_LOCK sr_lock;
 #endif
 

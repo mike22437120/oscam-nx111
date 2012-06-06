@@ -36,9 +36,7 @@
 #include "ifd_sci.h"
 #include "ifd_smartreader.h"
 #include "ifd_azbox.h"
-#ifdef HAVE_PCSC
 #include "ifd_pcsc.h"
-#endif
 
 // Default T0/T14 settings
 #define DEFAULT_WI		10
@@ -141,7 +139,7 @@ int32_t ICC_Async_Device_Init (struct s_reader *reader)
 			}
 			break;
 		case R_SMART:
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 			call (SR_Init(reader));
 			break;
 #else
@@ -150,9 +148,9 @@ int32_t ICC_Async_Device_Init (struct s_reader *reader)
 			return ERROR;
 #endif
 		case R_INTERNAL:
-#if defined(COOL)
+#if defined(WITH_COOLAPI)
 			return Cool_Init(reader);
-#elif defined(AZBOX)
+#elif defined(WITH_AZBOX)
 			return Azbox_Init(reader);
 #else
 	#if defined(__SH4__) || defined(STB04SCI)
@@ -166,7 +164,7 @@ int32_t ICC_Async_Device_Init (struct s_reader *reader)
 			}
 #endif
 			break;
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 		case R_PCSC:
 			return (pcsc_reader_init(reader, reader->device));
 			break;
@@ -257,21 +255,21 @@ int32_t ICC_Async_GetStatus (struct s_reader *reader, int32_t * card)
 		case R_MOUSE:
 			call (Phoenix_GetStatus(reader, &in));
 			break;
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 		case R_SMART:
 			call (SR_GetStatus(reader, &in));
 			break;
 #endif
 		case R_INTERNAL:
-#if defined(COOL)
+#if defined(WITH_COOLAPI)
 			call (Cool_GetStatus(reader, &in));
-#elif defined(AZBOX)
+#elif defined(WITH_AZBOX)
 			call(Azbox_GetStatus(reader, &in));
 #else
 			call(Sci_GetStatus(reader, &in));
 #endif
 			break;
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 		case R_PCSC:
 			in =  pcsc_check_card_inserted(reader);
 			break;
@@ -318,7 +316,7 @@ int32_t ICC_Async_Activate (struct s_reader *reader, ATR * atr, uint16_t depreca
 					return ERROR;
 				}
 				break;
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 			case R_SMART:
 				if ( ! reader->ins7e11_fast_reset) {
 					call (SR_Reset(reader, atr));
@@ -330,7 +328,7 @@ int32_t ICC_Async_Activate (struct s_reader *reader, ATR * atr, uint16_t depreca
 				break;
 #endif
 			case R_INTERNAL:
-#if defined(COOL)
+#if defined(WITH_COOLAPI)
 				if ( ! reader->ins7e11_fast_reset) {
 					call (Cool_Reset(reader, atr));
 				}
@@ -340,14 +338,14 @@ int32_t ICC_Async_Activate (struct s_reader *reader, ATR * atr, uint16_t depreca
 					cs_log("reader %s doing fast reset", reader->label);
 					call (Cool_FastReset_With_ATR(reader, atr));
 				}					
-#elif defined(AZBOX)
+#elif defined(WITH_AZBOX)
 				call (Azbox_Reset(reader, atr));
 #else
 				call (Sci_Activate(reader));
 				call (Sci_Reset(reader, atr));
 #endif
 				break;
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 			case R_PCSC:
 				 {
 					unsigned char atrarr[ATR_MAX_SIZE];
@@ -403,7 +401,7 @@ int32_t ICC_Async_Activate (struct s_reader *reader, ATR * atr, uint16_t depreca
 
 int32_t ICC_Async_CardWrite (struct s_reader *reader, unsigned char *command, uint16_t command_len, unsigned char *rsp, uint16_t *lr)
 {
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 	if (reader->typ == R_PCSC)
  	  return (pcsc_reader_do_api(reader, command, rsp, lr, command_len));
 #endif
@@ -454,7 +452,7 @@ int32_t ICC_Async_CardWrite (struct s_reader *reader, unsigned char *command, ui
 int32_t ICC_Async_SetTimings (struct s_reader * reader, uint32_t wait_etu)
 {
 	reader->read_timeout = ETU_to_ms(reader, wait_etu);
-	cs_debug_mask(D_IFD, "Setting reader %s timeout to %i", reader->label, wait_etu);
+	cs_debug_mask(D_IFD, "Setting reader %s timeout to %i ETU (%d ms)", reader->label, wait_etu, reader->read_timeout);
 	return OK;
 }
 
@@ -496,15 +494,15 @@ int32_t ICC_Async_Transmit (struct s_reader *reader, uint32_t size, BYTE * data)
 		case R_MOUSE:
 			call (Phoenix_Transmit (reader, sent, size, reader->block_delay, reader->char_delay));
 			break;
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 		case R_SMART:
 			call (SR_Transmit(reader, sent, size));
 			break;
 #endif
 		case R_INTERNAL:
-#if defined(COOL)
+#if defined(WITH_COOLAPI)
 			call (Cool_Transmit(reader, sent, size));
-#elif defined(AZBOX)
+#elif defined(WITH_AZBOX)
 			call (Azbox_Transmit(reader, sent, size));
 #else
 			call (Phoenix_Transmit (reader, sent, size, 0, 0)); //the internal reader will provide the delay
@@ -542,15 +540,15 @@ int32_t ICC_Async_Receive (struct s_reader *reader, uint32_t size, BYTE * data)
 		case R_MOUSE:
 			call (Phoenix_Receive (reader, data, size, reader->read_timeout));
 			break;
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 		case R_SMART:
 			call (SR_Receive(reader, data, size));
 			break;
 #endif
 		case R_INTERNAL:
-#if defined(COOL)
+#if defined(WITH_COOLAPI)
 			call (Cool_Receive(reader, data, size));
-#elif defined(AZBOX)
+#elif defined(WITH_AZBOX)
 			call (Azbox_Receive(reader, data, size));
 #else
 			call (Phoenix_Receive (reader, data, size, reader->read_timeout));
@@ -595,15 +593,15 @@ int32_t ICC_Async_Close (struct s_reader *reader)
 		case R_MOUSE:
 			call (Phoenix_Close(reader));
 			break;
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 		case R_SMART:
 			call (SR_Close(reader));
 			break;
 #endif
 		case R_INTERNAL:
-#if defined(COOL)
+#if defined(WITH_COOLAPI)
 			call (Cool_Close(reader));
-#elif defined(AZBOX)
+#elif defined(WITH_AZBOX)
 			call (Azbox_Close(reader));
 #else
 			/* Dectivate ICC */
@@ -611,7 +609,7 @@ int32_t ICC_Async_Close (struct s_reader *reader)
 			call (Phoenix_Close(reader));
 #endif
 			break;
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 		case R_PCSC:
 			pcsc_close(reader);
 			break;
@@ -867,16 +865,16 @@ static uint32_t ETU_to_ms(struct s_reader * reader, uint32_t WWT)
 {
 #define CHAR_LEN 10L //character length in ETU, perhaps should be 9 when parity = none?
 	if (reader->mhz>2000){
-		double work_etu = 1 / (double)reader->current_baudrate * 1000*1000;//22-05-2012: Timings checked according to iso-> OK!
-		return (uint32_t) (WWT * work_etu);
+		double work_etu = 1000*1000 / (double) reader->current_baudrate;
+		return (uint32_t) (WWT * work_etu); // in us
 	}
 	
 	if (WWT > CHAR_LEN)
 		WWT -= CHAR_LEN;
 	else
 		WWT = 0;
-	double work_etu = 1000 / (double)reader->current_baudrate;//FIXME sometimes work_etu should be used, sometimes initial etu
-	return (uint32_t) WWT * work_etu * reader->cardmhz / reader->mhz;
+	double work_etu = 1000 / (double)reader->current_baudrate;
+	return (uint32_t) (WWT * work_etu * reader->cardmhz / reader->mhz);
 }
 
 static int32_t ICC_Async_SetParity (struct s_reader * reader, uint16_t parity)
@@ -895,7 +893,7 @@ static int32_t ICC_Async_SetParity (struct s_reader * reader, uint16_t parity)
 		case R_MOUSE:
 			call (IO_Serial_SetParity (reader, parity));
 		break;
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 		case R_SMART:
 			call (SR_SetParity(reader, parity));
 			break;
@@ -926,10 +924,10 @@ static int32_t SetRightParity (struct s_reader * reader)
 		return OK;
 	}
 
-#if defined(COOL) || defined(AZBOX)
+#if defined(WITH_COOLAPI) || defined(WITH_AZBOX)
 	if (reader->typ != R_INTERNAL)
 #endif
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
   if (reader->typ != R_SMART)
 #endif
             IO_Serial_Flush(reader);
@@ -940,9 +938,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 {
 	double I;
 	double F;
-	uint32_t BGT, edc, EGT, CGT, WWT = 0;
-	uint32_t GT;
-	uint32_t gt_ms;
+	uint32_t BGT, edc, EGT = 0, CGT = 0, WWT = 0, GT = 0, gt_ms = 0;
 
 	//set the amps and the volts according to ATR
 	if (ATR_GetParameter(atr, ATR_PARAMETER_I, &I) != ATR_OK)
@@ -971,7 +967,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 		uint32_t baud_temp;
 		if (reader->protocol_type != ATR_PROTOCOL_TYPE_T14) { //dont switch for T14
 			if (reader->mhz >2000) 
-				baud_temp = d * (reader->mhz / reader->divider *10000) / F;
+				baud_temp = (uint32_t) (d * (double) reader->mhz / reader->divider *10000L / F);
 			else 
 				baud_temp = d * ICC_Async_GetClockRate (reader->cardmhz) / F;
 			if (reader->crdr.active == 1) {
@@ -984,8 +980,8 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 				else if (reader->typ <= R_MOUSE)
 					call (Phoenix_SetBaudrate(reader, baud_temp));
 			}
-			cs_debug_mask(D_IFD, "Reader %s setting baudrate to %u", reader->label, baud_temp);
 			reader->current_baudrate = baud_temp; //this is needed for all readers to calculate work_etu for timings
+			cs_debug_mask(D_IFD, "Reader %s setting baudrate to %u", reader->label, reader->current_baudrate);
 		}
 	}
 
@@ -993,14 +989,14 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 	reader->read_timeout = 0;
 	reader->block_delay = 0;
 	reader->char_delay = 0;
-
-	if (n == 255) //Extra Guard Time
-		EGT = 0;
-	else
-		EGT = n;
-	GT = EGT + 12; //Guard Time in ETU
-	gt_ms = ETU_to_ms(reader, GT);
-
+	if ( reader->mhz < 2000){
+		if (n == 255) //Extra Guard Time
+			EGT = 0;
+		else
+			EGT = n;
+		GT = EGT + 12; //Guard Time in ETU
+		gt_ms = ETU_to_ms(reader, GT);
+	}
 	switch (reader->protocol_type) {
 		case ATR_PROTOCOL_TYPE_T0:
 		case ATR_PROTOCOL_TYPE_T14:
@@ -1012,28 +1008,31 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 #endif
 			wi = DEFAULT_WI;
 
-			// WWT = 960 * WI * (Fi / f) * 1000 milliseconds
-			if (reader->mhz > 2000){
-				WWT= (uint32_t) 960 * wi *(F / (reader->mhz / reader->divider *10000));
-				reader->CWT = GT;
-				reader->BWT = GT;
-			}
-			else {
-			WWT = (uint32_t) 960 * wi; //in ETU
-			}
+			// WWT = 960 * d * WI  work etu
+			
+			WWT = (uint32_t) 960 * d * wi; //in work ETU
+			
 			if (reader->protocol_type == ATR_PROTOCOL_TYPE_T14)
-				WWT >>= 1; //is this correct?
-
+				WWT >>= 1; //is this correct?			
+			
+			if( reader->mhz > 2000){
+				EGT = 2;
+				if (n != 255) //Extra Guard Time
+					EGT =+ n;  // T0 protocol, if TC1 = 255 then dont add extra guardtime
+				gt_ms = 0; // T0 protocol doesnt have char_delay and block_delay.
+				reader->CWT = 0;
+				reader->BWT = 0;
+				cs_debug_mask (D_IFD, "reader %s Protocol: T=%i, WWT=%u, Clockrate=%u\n", reader->label, reader->protocol_type, WWT, (reader->mhz / reader->divider * 10000));
+			}
+			else
+				cs_debug_mask (D_IFD, "reader %s Protocol: T=%i, WWT=%u, Clockrate=%u\n", reader->label, reader->protocol_type, WWT, ICC_Async_GetClockRate(reader->cardmhz));
+			
 			reader->read_timeout = ETU_to_ms(reader, WWT);
 			reader->block_delay = gt_ms;
 			reader->char_delay = gt_ms;
 			cs_debug_mask(D_ATR, "Setting timings reader %s: timeout=%u ms, block_delay=%u ms, char_delay=%u ms", reader->label, reader->read_timeout, reader->block_delay, reader->char_delay);
-			if( reader->mhz > 2000)
-				cs_debug_mask (D_IFD, "reader %s Protocol: T=%i, WWT=%d, Clockrate=%u\n", reader->label, reader->protocol_type, (int)(WWT), (reader->mhz / reader->divider * 10000));
-			else
-				cs_debug_mask (D_IFD, "reader %s Protocol: T=%i, WWT=%d, Clockrate=%u\n", reader->label, reader->protocol_type, (int)(WWT), ICC_Async_GetClockRate(reader->cardmhz));
-			}
 			break;
+		}
 	 case ATR_PROTOCOL_TYPE_T1:
 			{
 				BYTE ta, tb, tc, cwi, bwi;
@@ -1049,11 +1048,11 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 				//FIXME workaround for Smargo until native mode works
 				if (reader->smargopatch == 1)
 					reader->ifsc = MIN (reader->ifsc, 28);
-				else
+				//else
 					// Towitoko does not allow IFSC > 251
 					//FIXME not sure whether this limitation still exists
-					reader->ifsc = MIN (reader->ifsc, MAX_IFSC);
-
+					//reader->ifsc = MIN (reader->ifsc, MAX_IFSC);
+				
 			#ifndef PROTOCOL_T1_USE_DEFAULT_TIMINGS
 				// Calculate CWI and BWI
 				if (ATR_GetInterfaceByte (atr, 3, ATR_INTERFACE_BYTE_TB, &tb) == ATR_NOT_FOUND)
@@ -1073,12 +1072,13 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 				// Set CWT = (2^CWI + 11) work etu
 				reader->CWT = (uint16_t) (((1<<cwi) + 11)); // in ETU
 
-				// Set BWT = (2^BWI * 960 + 11) work etu
-				if (reader->mhz > 2000) {
-					reader->BWT = (uint16_t)(11+(1<<bwi) * 960 * 372 / (reader->mhz / reader->divider / 100) );
-				}
-				else {reader->BWT = (uint16_t)((1<<bwi) * 960 * 372 * 9600 / ICC_Async_GetClockRate(reader->cardmhz))	+ 11 ;
-				}
+				// Set BWT = (2^BWI * 960 * 372 / clockspeed) seconds + 11 work etu  (in seconds) 
+				// 1 worketu = 1 / baudrate *1000*1000 us
+				if (reader->mhz > 2000)
+					reader->BWT = (uint32_t) ((((1<<bwi) * 960L * 372L / ((double)reader->mhz / (double) reader->divider / 100L)) * (double) reader->current_baudrate / 1000L / 1000L)+ 11L); // BWT in ETU
+				else
+					reader->BWT = (uint32_t)((1<<bwi) * 960 * 372 * 9600 / ICC_Async_GetClockRate(reader->cardmhz))	+ 11 ;
+				
 				// Set BGT = 22 * work etu
 				BGT = 22L; //in ETU
 
@@ -1097,7 +1097,15 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 				reader->ns = 1;
 
 				cs_debug_mask(D_ATR, "Reader %s protocol: T=%i: IFSC=%d, CWT=%d etu, BWT=%d etu, BGT=%d etu, EDC=%s\n", reader->label, reader->protocol_type, reader->ifsc, reader->CWT, reader->BWT, BGT, (edc == EDC_LRC) ? "LRC" : "CRC");
-
+				
+				if( reader->mhz > 2000){
+					EGT = 2;
+					if (n == 255) //Extra Guard Time T1
+						EGT--;  // T1 protocol, if TC1 = 255 then substract 1 ETU from guardtime
+					else
+						EGT =+n;
+				CGT = 0;
+				}
 				reader->read_timeout = ETU_to_ms(reader, reader->BWT);
 				reader->block_delay = ETU_to_ms(reader, BGT);
 				reader->char_delay = ETU_to_ms(reader, CGT);
@@ -1123,7 +1131,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 
   //write settings to internal device
 	if(reader->typ == R_INTERNAL && reader->crdr.active==0) {
-#if defined(COOL)
+#if defined(WITH_COOLAPI)
 		call (Cool_WriteSettings (reader, reader->BWT, reader->CWT, EGT, BGT));
 #else
 		double F =	(double) atr_f_table[FI];
@@ -1137,14 +1145,14 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 		else {
 			call (Sci_WriteSettings (reader, reader->protocol_type, reader->mhz / 100, ETU, WWT, reader->BWT, reader->CWT, EGT, 5, (unsigned char)I)); //P fixed at 5V since this is default class A card, and TB is deprecated
 		}
-#endif //COOL
+#endif //WITH_COOLAPI
 	}
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 	if (reader->typ == R_SMART)
 		SR_WriteSettings(reader, (uint16_t) atr_f_table[FI], (BYTE)d, (BYTE)EGT, (BYTE)reader->protocol_type, reader->convention);
 #endif
 	if (reader->mhz > 2000) 
-		cs_log("Reader %s: Maximum frequency for this card is formally %i Mhz, clocking it to %.2f Mhz", reader->label, atr_fs_table[FI] / 1000000, (float) (reader->mhz / reader->divider / 100));
+		cs_log("Reader %s: Maximum frequency for this card is formally %i Mhz, clocking it to %.2f Mhz", reader->label, atr_fs_table[FI] / 1000000, (float) reader->mhz / reader->divider / 100);
 	else
 		cs_log("Reader %s: Maximum frequency for this card is formally %i Mhz, clocking it to %.2f Mhz", reader->label, atr_fs_table[FI] / 1000000, (float) reader->mhz / 100);
 

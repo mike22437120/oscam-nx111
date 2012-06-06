@@ -1101,7 +1101,7 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 	}
 
 	if(!apicall) {
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 		tpl_addVar(vars, TPLAPPEND, "ADDPROTOCOL", "<option>pcsc</option>\n");
 #endif
 #ifdef MODULE_CAMD33
@@ -1273,7 +1273,7 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	tpl_printf(vars, TPLADD, "CACHEEX_MAXHOP", "%d", rdr->cacheex_maxhop);
 #endif
 
-#ifdef COOL
+#ifdef WITH_COOLAPI
 	tpl_printf(vars, TPLADD, "COOLTIMEOUTINIT", "%d", rdr->cool_timeout_init);
 	tpl_printf(vars, TPLADD, "COOLTIMEOUTAFTERINIT", "%d", rdr->cool_timeout_after_init);
 #endif
@@ -1535,7 +1535,7 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	}
 #endif
 
-#ifdef LIBUSB
+#ifdef WITH_LIBUSB
 	if(!rdr->device_endpoint) {
 		tpl_addVar(vars, TPLADD, "DEVICEOUTEP0", "selected");
 	} else if (rdr->device_endpoint == 0x82) {
@@ -1626,7 +1626,7 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 			tpl_addVar(vars, TPLAPPEND, "READERDEPENDINGCONFIG", tpl_getTpl(vars, "READERCONFIGCCCAMBIT"));
 			break;
 #endif
-#ifdef HAVE_PCSC
+#ifdef WITH_PCSC
 		case R_PCSC :
 			tpl_addVar(vars, TPLADD, "PROTOCOL", "pcsc");
 			tpl_addVar(vars, TPLAPPEND, "READERDEPENDINGCONFIG", tpl_getTpl(vars, "READERCONFIGSTDHWREADERBIT"));

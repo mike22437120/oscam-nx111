@@ -211,10 +211,10 @@ A:hover SPAN {display: block;position: absolute;top: 2em; right: 1em; margin: 0p
 IMG {border:0px solid;}\n\
 IMG.icon {border: 0px solid;width:22px;height:22px;background-color:#AA0000;border-radius:3px;-webkit-border-radius:3px;}\n\
 IMG.clientpicon {height:40px;width:80px;}\n\
-RECT.graph_bg {fill:white;}\n\
-TEXT.graph_error {text-anchor:middle;fill:red}\n\
-TEXT.graph_grid_txt {fill:gray;text-anchor:end;style:font-size:12px}\n\
-PATH.graph_grid {stroke:gray;stroke-opacity:0.5}\n\
+rect.graph_bg {fill:white;}\n\
+text.graph_error {text-anchor:middle;fill:red}\n\
+text.graph_grid_txt {fill:gray;text-anchor:end;style:font-size:12px}\n\
+path.graph_grid {stroke:gray;stroke-opacity:0.5}\n\
 SPAN.e_valid {background-color:#E6FEBF;}\n\
 SPAN.e_expired {background-color:#fff3e7;}\n\
 SPAN.div_notifier {background-color:red;color: white;font-family:Arial;font-size:10px;font-weight:bold;}\n\
@@ -1397,7 +1397,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 				<TR><TD>##TPLHELPPREFIX##server#device_out_endpoint##TPLHELPSUFFIX##Device Out Endpoint:</A></TD><TD>##DEVICEEP##</TD></TR>\n\
 				##TPLREADERCOOLSTREAMBIT##"
 
-#ifdef LIBUSB
+#ifdef WITH_LIBUSB
 #define TPLREADERCONFIGDEVICEEPBIT "\
 				<SELECT name=\"device_out_endpoint\">\n\
 					<OPTION value=\"\" ##DEVICEOUTEP0##>default</OPTION>\n\
@@ -1406,7 +1406,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 				</SELECT>\n"
 #endif
 
-#ifdef COOL
+#ifdef WITH_COOLAPI
 #define TPLREADERCOOLSTREAMBIT "\
 		<TR><TH>&nbsp;</TH><TH>Reader specific settings for Coolstream STB</TH></TR>\n\
 		<TR><TD>##TPLHELPPREFIX##server#cool_timeout_init##TPLHELPSUFFIX##Cool Timeout Init:</A></TD><TD><input name=\"cool_timeout_init\" type=\"text\" size=\"20\" maxlength=\"16\" value=\"##COOLTIMEOUTINIT##\"></TD></TR>\n\
@@ -2493,10 +2493,10 @@ char *tpl[]={
 #if defined(QBOXHD_LED) || defined(CS_LED) 
 	,"ENABLELEDBIT"
 #endif
-#ifdef LIBUSB
+#ifdef WITH_LIBUSB
 	,"READERCONFIGDEVICEEPBIT"
 #endif
-#ifdef COOL
+#ifdef WITH_COOLAPI
 	,"READERCOOLSTREAMBIT"
 #endif
 #ifdef WITH_DEBUG
@@ -2670,10 +2670,10 @@ char *tplmap[]={
 #if defined(QBOXHD_LED) || defined(CS_LED) 
 	,TPLENABLELEDBIT
 #endif
-#ifdef LIBUSB
+#ifdef WITH_LIBUSB
 	,TPLREADERCONFIGDEVICEEPBIT
 #endif
-#ifdef COOL
+#ifdef WITH_COOLAPI
 	,TPLREADERCOOLSTREAMBIT
 #endif
 #ifdef WITH_DEBUG

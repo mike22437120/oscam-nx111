@@ -11,18 +11,25 @@ win: cross-i386-pc-cygwin
 cygwin: i386-pc-cygwin
 macosx: macosx-native
 linux-pcsc: i386-pc-linux-pcsc
+dm500: cross-powerpc-tuxbox-linux
+sh4: cross-sh4-linux
+sh4-stapi: cross-sh4-linux-stapi
+i386-pc-linux-libusb: libusb
+i386-pc-linux-pcsc: pcsc
+i386-pc-linux-pcsc-libusb: pcsc-libusb
+libusb-pcsc: pcsc-libusb
 
-i386-pc-linux-libusb:
+libusb:
 	$(MAKE) --no-print-directory \
 		USE_LIBUSB=1 \
 		$(MAKEFLAGS)
 
-i386-pc-linux-pcsc:
+pcsc:
 	$(MAKE) --no-print-directory \
 		USE_PCSC=1 \
 		$(MAKEFLAGS)
 
-i386-pc-linux-pcsc-libusb:
+pcsc-libusb:
 	$(MAKE) --no-print-directory \
 		USE_LIBUSB=1 \
 		USE_PCSC=1 \
@@ -31,16 +38,12 @@ i386-pc-linux-pcsc-libusb:
 macosx-native:
 	$(MAKE) --no-print-directory \
 		USE_PCSC=1 \
-		PCSC_LIB="-framework PCSC" \
-		EXTRA_FLAGS="-m32 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk" \
 		$(MAKEFLAGS)
 
 macosx-libusb:
 	$(MAKE) --no-print-directory \
 		USE_LIBUSB=1 \
 		USE_PCSC=1 \
-		PCSC_LIB="-framework PCSC" \
-		EXTRA_FLAGS="-m32 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk" \
 		$(MAKEFLAGS)
 
 cross-i386-pc-freebsd:
@@ -203,17 +206,14 @@ azbox:
 	$(MAKE) --no-print-directory \
 		CROSS=mipsel-linux-uclibc- \
 		CONF_DIR=/PLUGINS/OpenXCAS/oscamCAS \
-		EXTRA_LIBS="-Lopenxcas -lOpenXCASAPI" \
-		EXTRA_FLAGS=-DAZBOX \
-		EXTRA_TARGET=-azbox \
+		USE_AZBOX=1 \
 		$(MAKEFLAGS)
 
 cool:
 	$(MAKE) --no-print-directory \
 		CROSS=arm-cx2450x-linux-gnueabi- \
-		EXTRA_LIBS="-lnxp -lrt" \
-		EXTRA_FLAGS=-DCOOL \
-		EXTRA_TARGET=-coolstream \
+		CONF_DIR=/var/tuxbox/config \
+		USE_COOLAPI=1 \
 		$(MAKEFLAGS)
 
 neutrinohd: cool
@@ -223,6 +223,6 @@ dockstar:
 	$(MAKE) --no-print-directory \
 		CROSS=arm-openwrt-linux-uclibcgnueabi- \
 		EXTRA_FLAGS=-DDOCKSTAR \
-		EXTRA_TARGET=-dockstar \
+		PLUS_TARGET=-dockstar \
 		CONF_DIR=/jffs/etc/config/oscam \
 		$(MAKEFLAGS)

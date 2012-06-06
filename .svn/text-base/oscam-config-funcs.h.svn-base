@@ -65,16 +65,16 @@ static inline int config_WITH_LIBCRYPTO(void) {
 	#endif
 }
 
-static inline int config_HAVE_PCSC(void) {
-	#ifdef HAVE_PCSC
+static inline int config_WITH_PCSC(void) {
+	#ifdef WITH_PCSC
 	return 1;
 	#else
 	return 0;
 	#endif
 }
 
-static inline int config_LIBUSB(void) {
-	#ifdef LIBUSB
+static inline int config_WITH_LIBUSB(void) {
+	#ifdef WITH_LIBUSB
 	return 1;
 	#else
 	return 0;

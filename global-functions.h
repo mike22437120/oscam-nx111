@@ -224,8 +224,13 @@ extern void http_srv(void);
 /* ===========================
  *         oscam-lcd
  * =========================== */
+#ifdef LCDSUPPORT
 extern void start_lcd_thread(void);
 extern void end_lcd_thread(void);
+#else
+static inline void start_lcd_thread(void) { }
+static inline void end_lcd_thread(void) { }
+#endif
 
 /* ===========================
  *         arm-led
@@ -254,6 +259,13 @@ extern void cs_log_int(uint16_t mask, int8_t lock, const uchar *buf, int32_t n, 
 #define cs_debug_mask_nolock(mask, args...)	cs_log_int(mask, 0, NULL, 0, ##args)
 #define cs_ddump_mask(mask, buf, n, args...)	cs_log_int(mask, 1, buf, n, ##args)
 #else
+#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 2)
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 #define nop() asm volatile("nop")
 #define cs_debug(...) nop()
 #define cs_debug_mask(...) nop()
@@ -437,5 +449,13 @@ extern int32_t reader_get_emm_type(EMM_PACKET *ep, struct s_reader * reader);
 extern struct s_cardsystem *get_cardsystem_by_caid(uint16_t caid);
 extern void reader_device_close(struct s_reader * reader);
 extern int8_t cs_emmlen_is_blocked(struct s_reader *rdr, int16_t len);
+
+#ifdef WITH_COOLAPI
+extern void coolapi_open_all(void);
+extern void coolapi_close_all(void);
+#else
+static inline void coolapi_open_all(void) { };
+static inline void coolapi_close_all(void) { };
+#endif
 
 #endif

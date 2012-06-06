@@ -1,16 +1,11 @@
   //FIXME Not checked on threadsafety yet; after checking please remove this line
-#define CS_CORE
 #include "globals.h"
 #include "csctapi/icc_async.h"
 #ifdef MODULE_CCCAM
 #include "module-cccam.h"
 #endif
-#if defined(AZBOX) && defined(HAVE_DVBAPI)
+#if defined(WITH_AZBOX) && defined(HAVE_DVBAPI)
 #include "openxcas/openxcas_api.h"
-#endif
-#ifdef COOL
-void coolapi_close_all();
-void coolapi_open_all();
 #endif
 
 static void cs_fake_client(struct s_client *client, char *usr, int32_t uniq, in_addr_t ip);
@@ -19,6 +14,12 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea);
 /*****************************************************************************
         Globals
 *****************************************************************************/
+char *RDR_CD_TXT[] = {
+	"cd", "dsr", "cts", "ring", "none",
+	"gpio1", "gpio2", "gpio3", "gpio4", "gpio5", "gpio6", "gpio7",
+	NULL
+};
+
 int32_t exit_oscam=0;
 struct s_module 	ph[CS_MAX_MOD]; // Protocols
 struct s_cardsystem	cardsystem[CS_MAX_MOD];
@@ -41,7 +42,7 @@ int8_t cs_dump_stack=0;
 uint16_t cs_waittime = 60;
 char  cs_tmpdir[200]={0x00};
 pid_t server_pid=0;
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
 CS_MUTEX_LOCK sr_lock;
 #endif
 #if defined(__arm__)
@@ -231,7 +232,7 @@ void cs_add_lastresponsetime(struct s_client *cl, int32_t ltime, time_t timestam
 	} while(0)
 
 /* Prints usage information and information about the built-in modules. */
-static void usage()
+static void usage(void)
 {
 	printf("%s",
 "  ___  ____   ___\n"
@@ -256,8 +257,8 @@ static void usage()
 	_check(IRDETO_GUESSING, "irdeto-guessing");
 	_check(CS_ANTICASC, "anticascading");
 	_check(WITH_DEBUG, "debug");
-	_check(LIBUSB, "smartreader");
-	_check(HAVE_PCSC, "pcsc");
+	_check(WITH_LIBUSB, "smartreader");
+	_check(WITH_PCSC, "pcsc");
 	_check(WITH_LB, "loadbalancing");
 	_check(LCDSUPPORT, "lcd");
 	printf("\n");
@@ -469,7 +470,7 @@ void clear_account_stats(struct s_auth *account)
 #endif
 }
 
-void clear_all_account_stats()
+void clear_all_account_stats(void)
 {
   struct s_auth *account = cfg.account;
   while (account) {
@@ -478,7 +479,7 @@ void clear_all_account_stats()
   }
 }
 
-void clear_system_stats()
+void clear_system_stats(void)
 {
   first_client->cwfound = 0;
   first_client->cwcache = 0;
@@ -496,7 +497,7 @@ void clear_system_stats()
 }
 #endif
 
-void cs_accounts_chk()
+void cs_accounts_chk(void)
 {
   struct s_auth *old_accounts = cfg.account;
   struct s_auth *new_accounts = init_userdb();
@@ -532,7 +533,30 @@ void cs_accounts_chk()
 
 static void free_ecm(ECM_REQUEST *ecm) {
 	struct s_ecm_answer *ea, *nxt;
+	ECM_REQUEST *er;
+	int i;
+	struct s_reader *rdr;
 	
+	//remove this ecm from reader queue to avoid segfault on very late answers (when ecm is already disposed)
+	//first check for outstanding answers:
+	ea = ecm->matching_rdr;
+	while (ea) {
+	    if (!(ea->status & REQUEST_ANSWERED)) {
+	        //we found a outstanding reader, clean it:
+                rdr = ea->reader;
+                if (rdr->client && rdr->client->ecmtask) {
+	            for (i = 0; i < cfg.max_pending; i++) {
+                        er = &rdr->client->ecmtask[i];
+                        if (er->parent == ecm) {
+                            er->parent = NULL;
+                        }
+                    }	        
+                }
+	    }
+	    ea = ea->next;
+	}
+
+        //free matching_rdr list:	
 	ea = ecm->matching_rdr;
 	ecm->matching_rdr = NULL;
 	while (ea) {
@@ -601,8 +625,10 @@ static void cleanup_ecmtasks(struct s_client *cl)
 			int i;
 			for (i = 0; i < cfg.max_pending; i++) {
 				ecm = &rdr->client->ecmtask[i];
-				if (ecm->client == cl)
+				if (ecm->client == cl) {
 					ecm->client = NULL;
+					ecm->parent = NULL;
+                                }
 			}
 		}
 		rdr=rdr->next;
@@ -678,7 +704,7 @@ void cleanup_thread(void *var)
 	add_garbage(cl);
 }
 
-static void cs_cleanup()
+static void cs_cleanup(void)
 {
 #ifdef WITH_LB
 	if (cfg.lb_mode && cfg.lb_save) {
@@ -750,25 +776,25 @@ void set_signal_handler(int32_t sig, int32_t flags, void (*sighandler))
 #endif
 }
 
-static void cs_master_alarm()
+static void cs_master_alarm(void)
 {
   cs_log("PANIC: master deadlock!");
   fprintf(stderr, "PANIC: master deadlock!");
   fflush(stderr);
 }
 
-static void cs_sigpipe()
+static void cs_sigpipe(void)
 {
 	if (cs_dblevel & D_ALL_DUMP)
 		cs_log("Got sigpipe signal -> captured");
 }
 
-static void cs_dummy() {
+static void cs_dummy(void) {
 	return;
 }
 
 /* Switch debuglevel forward one step (called when receiving SIGUSR1). */
-void cs_debug_level(){	
+void cs_debug_level(void) {
 	switch (cs_dblevel) {
 		case 0:
 			cs_dblevel = 1;
@@ -786,7 +812,7 @@ void cs_debug_level(){
 	cs_log("debug_level=%d", cs_dblevel);
 }
 
-void cs_card_info()
+void cs_card_info(void)
 {
 	struct s_client *cl;
 	for (cl=first_client->next; cl ; cl=cl->next)
@@ -811,9 +837,10 @@ void cs_dumpstack(int32_t sig)
 	time(&timep);
 	cs_ctime_r(&timep, buf);
 
-	fprintf(stderr, "oscam crashed with signal %d on %swriting oscam.crash\n", sig, buf);
+	fprintf(stderr, "crashed with signal %d on %swriting oscam.crash\n", sig, buf);
 
-	fprintf(fp, "%sFATAL: Signal %d: %s Fault. Logged StackTrace:\n\n", buf, sig, (sig == SIGSEGV) ? "Segmentation" : ((sig == SIGBUS) ? "Bus" : "Unknown"));
+	fprintf(fp, "%sOSCam cardserver v%s, build #%s (%s)\n", buf, CS_VERSION, CS_SVN_VERSION, CS_TARGET);
+	fprintf(fp, "FATAL: Signal %d: %s Fault. Logged StackTrace:\n\n", sig, (sig == SIGSEGV) ? "Segmentation" : ((sig == SIGBUS) ? "Bus" : "Unknown"));
 	fclose(fp);
 
 	FILE *cmd = fopen("/tmp/gdbcmd", "w");
@@ -838,7 +865,7 @@ void cs_dumpstack(int32_t sig)
  *  - tier ids     (oscam.tiers)
  *  Also clears anticascading stats.
  **/
-void cs_reload_config()
+void cs_reload_config(void)
 {
 		cs_accounts_chk();
 		init_srvid();
@@ -850,7 +877,7 @@ void cs_reload_config()
 
 /* Sets signal handlers to ignore for early startup of OSCam because for example log 
    could cause SIGPIPE errors and the normal signal handlers can't be used at this point. */
-static void init_signal_pre()
+static void init_signal_pre(void)
 {
 		set_signal_handler(SIGPIPE , 1, SIG_IGN);
 		set_signal_handler(SIGWINCH, 1, SIG_IGN);
@@ -859,7 +886,7 @@ static void init_signal_pre()
 }
 
 /* Sets the signal handlers.*/
-static void init_signal()
+static void init_signal(void)
 {
 		set_signal_handler(SIGINT, 3, cs_exit);
 		//set_signal_handler(SIGKILL, 3, cs_exit);
@@ -944,9 +971,8 @@ void cs_exit(int32_t sig)
 	    qboxhd_led_blink(QBOXHD_LED_COLOR_MAGENTA,QBOXHD_LED_BLINK_FAST);
 	  }
 #endif
-#ifdef LCDSUPPORT
-    end_lcd_thread();
-#endif
+
+	end_lcd_thread();
 
 #if !defined(__CYGWIN__)
 	char targetfile[256];
@@ -954,9 +980,7 @@ void cs_exit(int32_t sig)
 		if (unlink(targetfile) < 0)
 			cs_log("cannot remove oscam version file %s (errno=%d %s)", targetfile, errno, strerror(errno));
 #endif
-#ifdef COOL
 		coolapi_close_all();
-#endif
   }
 
 	// this is very important - do not remove
@@ -1102,7 +1126,7 @@ struct s_client * create_client(in_addr_t ip) {
 
 
 /* Creates the master client of OSCam and inits some global variables/mutexes. */
-static void init_first_client()
+static void init_first_client(void)
 {
 	// get username OScam is running under
 	struct passwd pwd;
@@ -1136,7 +1160,7 @@ static void init_first_client()
     exit(1);
   }
 
-#if defined(LIBUSB)
+#if defined(WITH_LIBUSB)
   cs_lock_create(&sr_lock, 10, "sr_lock");
 #endif
   cs_lock_create(&system_lock, 5, "system_lock");
@@ -1147,13 +1171,11 @@ static void init_first_client()
   cs_lock_create(&ecmcache_lock, 5, "ecmcache_lock");
   cs_lock_create(&readdir_lock, 5, "readdir_lock");
 
-#ifdef COOL
   coolapi_open_all();
-#endif
 }
 
 /* Checks if the date of the system is correct and waits if necessary. */
-static void init_check(){
+static void init_check(void){
 	char *ptr = __DATE__;
 	int32_t month, year = atoi(ptr + strlen(ptr) - 4), day = atoi(ptr + 4);
 	if(day > 0 && day < 32 && year > 2010 && year < 9999){
@@ -1494,7 +1516,7 @@ int32_t restart_cardreader(struct s_reader *rdr, int32_t restart) {
 	return result;
 }
 
-static void init_cardreader() {
+static void init_cardreader(void) {
 
 	cs_debug_mask(D_TRACE, "cardreader: Initializing");
 	cs_writelock(&system_lock);
@@ -2087,7 +2109,7 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 		er->idx = 0;
 		er = er->parent; //Now er is "original" ecm, before it was the reader-copy
 
-    	if (er->rc < E_99) {
+        	if (er->rc < E_99) {
 #ifdef WITH_LB
 			send_reader_stat(reader, er, NULL, rc);
 #endif
@@ -2178,7 +2200,7 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 	return res;
 }
 
-ECM_REQUEST *get_ecmtask()
+ECM_REQUEST *get_ecmtask(void)
 {
 	ECM_REQUEST *er = NULL;
 	struct s_client *cl = cur_client();
@@ -2267,6 +2289,7 @@ int32_t send_dcw(struct s_client * client, ECM_REQUEST *er)
 	if (!client || client->kill || client->typ != 'c')
 		return 0;
 
+	static const char stageTxt[]={'0','C','L','P','F','X'};
 	static const char *stxt[]={"found", "cache1", "cache2", "cache3",
 			"not found", "timeout", "sleeping",
 			"fake", "invalid", "corrupt", "no card", "expdate", "disabled", "stopped"};
@@ -2437,9 +2460,11 @@ int32_t send_dcw(struct s_client * client, ECM_REQUEST *er)
 	} else {
 		char buf[ECM_FMT_LEN];
 		format_ecm(er, buf, ECM_FMT_LEN);
-		cs_log("%s (%s): %s (%d ms)%s (%d of %d)%s%s",
+		cs_log("%s (%s): %s (%d ms)%s (%c/%d/%d/%d)%s%s",
 			uname, buf,
-			er->rcEx?erEx:stxt[er->rc], client->cwlastresptime, sby, er->reader_count, er->reader_avail, schaninfo, sreason);
+			er->rcEx?erEx:stxt[er->rc], client->cwlastresptime, sby,
+					stageTxt[er->stage], er->reader_requested, er->reader_count, er->reader_avail,
+					schaninfo, sreason);
 	}
 
 	cs_ddump_mask (D_ATR, er->cw, 16, "cw:");
@@ -2526,6 +2551,7 @@ static void request_cw(ECM_REQUEST *er)
 			cs_debug_mask(D_TRACE, "request_cw stage=%d to reader %s ecm=%04X", er->stage, rdr?rdr->label:"", htons(er->checksum));
 			write_ecm_request(ea->reader, er);
 			ea->status |= REQUEST_SENT;
+			er->reader_requested++;
 
 			//set sent=1 only if reader is active/connected. If not, switch to next stage!			
 			if (!sent && rdr) {
@@ -3573,7 +3599,7 @@ int32_t process_input(uchar *buf, int32_t l, int32_t timeout)
 	return(rc);
 }
 
-void cs_waitforcardinit()
+void cs_waitforcardinit(void)
 {
 	if (cfg.waitforcards)
 	{
@@ -4429,7 +4455,7 @@ int32_t accept_connection(int32_t i, int32_t j) {
 }
 
 #ifdef WEBIF
-static void restart_daemon()
+static void restart_daemon(void)
 {
   while (1) {
 
@@ -4718,7 +4744,7 @@ int32_t main (int32_t argc, char *argv[])
   arm_led_start_thread();
 #endif
 
-#if defined(AZBOX) && defined(HAVE_DVBAPI)
+#if defined(WITH_AZBOX) && defined(HAVE_DVBAPI)
   openxcas_debug_message_onoff(1);  // debug
 
 #ifdef WITH_CARDREADER
@@ -4753,10 +4779,8 @@ int32_t main (int32_t argc, char *argv[])
 #endif
 	start_thread((void *) &reader_check, "reader check"); 
 	start_thread((void *) &check_thread, "check"); 
-#ifdef LCDSUPPORT
-	if(cfg.enablelcd)
-		start_lcd_thread();
-#endif
+
+	start_lcd_thread();
 
 	init_cardreader();
 
@@ -4798,7 +4822,7 @@ int32_t main (int32_t argc, char *argv[])
 	client_check();
 
 
-#if defined(AZBOX) && defined(HAVE_DVBAPI)
+#if defined(WITH_AZBOX) && defined(HAVE_DVBAPI)
   if (openxcas_close() < 0) {
     cs_log("openxcas: could not close");
   }
@@ -4812,20 +4836,20 @@ int32_t main (int32_t argc, char *argv[])
 	return exit_oscam;
 }
 
-void cs_exit_oscam()
+void cs_exit_oscam(void)
 {
   exit_oscam=1;
   cs_log("exit oscam requested");
 }
 
 #ifdef WEBIF
-void cs_restart_oscam()
+void cs_restart_oscam(void)
 {
   exit_oscam=99;
   cs_log("restart oscam requested");
 }
 
-int32_t cs_get_restartmode() {
+int32_t cs_get_restartmode(void) {
 	return cs_restart_mode;
 }
 
@@ -4902,7 +4926,7 @@ static void cs_switch_led_from_thread(int32_t led, int32_t action) {
 	}
 }
 
-static void* arm_led_thread_main() {
+static void* arm_led_thread_main(void *UNUSED(thread_data)) {
 	uint8_t running = 1;
 	while (running) {
 		LL_ITER iter = ll_iter_create(arm_led_actions);
@@ -4932,7 +4956,7 @@ static void* arm_led_thread_main() {
 	return NULL;
 }
 
-void arm_led_start_thread() {
+void arm_led_start_thread(void) {
 	// call this after signal handling is done
 	if ( ! arm_led_actions ) {
 		arm_led_actions = ll_create("arm_led_actions");
@@ -4951,7 +4975,7 @@ void arm_led_start_thread() {
 	pthread_attr_destroy(&attr);
 }
 
-void arm_led_stop_thread() {
+void arm_led_stop_thread(void) {
 	cs_switch_led(0, LED_STOP_THREAD);
 }
 
