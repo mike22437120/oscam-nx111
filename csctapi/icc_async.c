@@ -748,7 +748,11 @@ static int32_t Parse_ATR (struct s_reader * reader, ATR * atr, uint16_t deprecat
 			cs_debug_mask(D_ATR, "Reader %s specific mode: T%i, F=%.0f, D=%.6f, N=%.0f\n", reader->label, reader->protocol_type, (double) atr_f_table[FI], d, n);
 		}
 		else { //negotiable mode
-
+		
+			if (reader->mhz > 2000)  // Initial timeout for pll readers to 10000000 us
+					reader->read_timeout = 1000000;
+			else
+					reader->read_timeout = 1000; // for all other readers set initial timeout to 1000 ms
 			bool PPS_success = FALSE;
 			bool NeedsPTS = ((reader->protocol_type != ATR_PROTOCOL_TYPE_T14) && (numprottype > 1 || (atr->ib[0][ATR_INTERFACE_BYTE_TA].present == TRUE && atr->ib[0][ATR_INTERFACE_BYTE_TA].value != 0x11) || n == 255)); //needs PTS according to old ISO 7816
 			if (NeedsPTS && deprecated == 0) {
@@ -949,7 +953,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 		if (reader->mhz == 357 || reader->mhz == 358) //no overclocking
 			reader->mhz = atr_fs_table[FI] / 10000; //we are going to clock the card to this nominal frequency
 		
-		if (reader->mhz > 2000 && reader->cardmhz == 100) // pll internal reader set cardmhz according to optimal atr speed
+		if (reader->mhz > 2000 && reader->cardmhz == -1) // -1 is magic number pll internal reader set cardmhz according to optimal atr speed
 			reader->cardmhz = atr_fs_table[FI] / 10000 ;
 		
 		if (reader->mhz > 2000) {
@@ -1104,7 +1108,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 						EGT--;  // T1 protocol, if TC1 = 255 then substract 1 ETU from guardtime
 					else
 						EGT =+n;
-				CGT = 0;
+				CGT = reader->CWT; // otherwise break T1 timings on MIPS, PPC ok
 				}
 				reader->read_timeout = ETU_to_ms(reader, reader->BWT);
 				reader->block_delay = ETU_to_ms(reader, BGT);
