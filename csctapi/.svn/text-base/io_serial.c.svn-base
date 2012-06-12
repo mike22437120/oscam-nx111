@@ -395,7 +395,8 @@ void IO_Serial_Flush (struct s_reader * reader)
 	BYTE b;
 
   tcflush(reader->handle, TCIOFLUSH);
-	while(!IO_Serial_Read(reader, 1000, 1, &b));
+	if (reader->mhz > 2000) while(!IO_Serial_Read(reader, 1000*1000, 1, &b));
+	else while(!IO_Serial_Read(reader, 1000, 1, &b));
 }
 
 void IO_Serial_Sendbreak(struct s_reader * reader, int32_t duration)
@@ -480,29 +481,36 @@ bool IO_Serial_Write (struct s_reader * reader, uint32_t delay, uint32_t size, c
 	uint32_t count, to_send, i_w;
 	BYTE data_w[512];
 	
-	/* Discard input data from previous commands */
-	//tcflush (reader->handle, TCIFLUSH);
-	
-	to_send = (delay? 1: size);
-	uint16_t errorcount=0, to_do=to_send;
 	uint32_t timeout = 1000;
 	if (reader->mhz > 2000)
 		timeout = timeout*1000; // pll readers timings in us
+		
+	/* Discard input data from previous commands */
+	//tcflush (reader->handle, TCIFLUSH);
+	
+	
+	to_send = (delay? 1: size);
 	
 	for (count = 0; count < size; count += to_send)
 	{
+		if (count + to_send > size)
+			to_send = size - count;
+		uint16_t errorcount=0, to_do=to_send;
+		
+		for (i_w=0; i_w < to_send; i_w++)
+				data_w [i_w] = data [count + i_w];
+				
 		if (!IO_Serial_WaitToWrite (reader, delay, timeout))
 		{
-			for (i_w=0; i_w < to_send; i_w++)
-				data_w [i_w] = data [count + i_w];
-
 			while (to_do !=0){
-				cs_ddump_mask(D_DEVICE, data_w, to_send, "IO: Sending: ");
-				int32_t u = write (reader->handle, data_w, to_send);
+				cs_ddump_mask(D_DEVICE, data_w+(to_send-to_do), to_do, "IO: Sending: ");
+				int32_t u = write (reader->handle, data_w+(to_send-to_do), to_do);
 				if (u < 1) {
+					if (errno==EINTR) continue; //try again in case of Interrupted system call
 					errorcount++;
 					//tcflush (reader->handle, TCIFLUSH);
-					if (u != 0) cs_log("Reader %s: ERROR in IO_Serial_Write actual written=%d of %d (errno=%d %s)", reader->label, (size - to_do), size, errno, strerror(errno));
+					int16_t written = count + to_send - to_do;
+					if (u != 0) cs_log("Reader %s: ERROR in IO_Serial_Write actual written=%d of %d (errno=%d %s)", reader->label, written , size, errno, strerror(errno));
 					if (errorcount > 10) return ERROR; //exit if more than 10 errors
 					}
 				else {

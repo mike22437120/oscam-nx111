@@ -1,15 +1,15 @@
 10
 
 dir
-7033
+7042
 http://streamboard.gmc.to/svn/oscam/trunk
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-06-07T15:33:14.535938Z
-7033
-theparasol
+2012-06-11T19:46:43.292488Z
+7042
+Sulge
 has-props
 
 
@@ -34,6 +34,530 @@ has-props
 
 
 ((conflict datastruct-llist.c file update deleted edited (version http://streamboard.gmc.to/svn/oscam 4 3599 trunk/datastruct-llist.c file) (version http://streamboard.gmc.to/svn/oscam 4 3640 trunk/datastruct-llist.c none)) (conflict Maketype file update deleted edited (version http://streamboard.gmc.to/svn/oscam 4 6864 trunk/Maketype file) (version http://streamboard.gmc.to/svn/oscam 4 6915 trunk/Maketype none)))
+
+oscam-config.h
+file
+
+
+
+
+
+fa64ca7cacbfd79eaa612210b6a22f92
+2012-05-21T12:55:40.628806Z
+6910
+gf
+
+reader-videoguard1.c
+file
+
+
+
+
+2012-05-22T10:15:54.891766Z
+50d1bdc6d5270d28e504166f09bc7476
+2012-05-21T11:29:43.278563Z
+6902
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+9639
+
+global-functions.h
+file
+
+
+
+
+
+02784c1c762e5b1f6fc9784ecc305bbc
+2012-06-05T21:34:15.459796Z
+7020
+gf
+
+oscam-simples.c
+file
+
+
+
+
+
+d0572a7ba735d70dd8ac774d2c6ad72e
+2012-05-21T11:29:36.416204Z
+6901
+gf
+
+module-radegast.c
+file
+
+
+
+
+2012-05-15T12:11:36.191755Z
+316cab97f0d37989eb7070b23a398581
+2012-05-15T01:44:11.595611Z
+6818
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6403
+
+module-dvbapi-azbox.h
+file
+
+
+
+
+2012-06-06T02:20:14.456718Z
+faaad0521e8c577c035c1d986be06cf8
+2012-05-31T21:09:09.513225Z
+6974
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+524
+
+oscam-http.c
+file
+
+
+
+
+
+4bc01bfa1cec53acbb20284f87a5916d
+2012-06-11T11:15:04.705921Z
+7040
+corsair
+
+oscam-http.h
+file
+
+
+
+
+
+18293ddc3fec6a33cb062da93e113949
+2012-06-05T21:34:35.039972Z
+7024
+gf
+
+reader-irdeto.c
+file
+
+
+
+
+2012-05-22T10:15:54.899766Z
+c932261433c01df7f084cc6937e1eb32
+2012-05-21T11:29:43.278563Z
+6902
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+31925
+
+reader-nagra.c
+file
+
+
+
+
+2012-05-22T10:15:54.899766Z
+061e2ab12e414540894d387235635f74
+2012-05-21T11:29:43.278563Z
+6902
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+38250
+
+reader-common.c
+file
+
+
+
+
+2012-06-06T02:20:14.460718Z
+da4a320b900b31994f0381fd58ffb5e3
+2012-06-05T21:34:10.839719Z
+7019
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+12401
+
+oscam-garbage.c
+file
+
+
+
+
+2012-05-22T10:15:54.899766Z
+f5d1b1b9ada30d3193b99c8246fd26eb
+2012-05-21T11:29:36.416204Z
+6901
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4068
+
+reader-videoguard12.c
+file
+
+
+
+
+2012-05-22T10:15:54.899766Z
+e352be28a2becb86e6034d9b25956ef6
+2012-05-21T11:29:43.278563Z
+6902
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+11947
+
+reader-common.h
+file
+
+
+
+
+2012-05-22T10:15:54.899766Z
+29e14e96f82ca8ec2385388cf7302972
+2012-05-21T11:29:43.278563Z
+6902
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+804
+
+module-newcamd.c
+file
+
+
+
+
+
+0d1b45bd3c9de4f0805ff3ef5d26af58
+2012-05-21T11:29:27.838568Z
+6900
+gf
+
+reader-bulcrypt.c
+file
+
+
+
+
+2012-05-22T10:15:54.903766Z
+c84c8156767e4fbb8908778eafe32059
+2012-05-21T11:29:43.278563Z
+6902
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+21549
+
+csctapi
+dir
+
+module-pandora.c
+file
+
+
+
+
+2012-05-17T03:44:46.252965Z
+453d4f4135fcb755b16a527be1db09b4
+2012-05-16T10:56:59.262086Z
+6844
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+7147
+
+reader-dre.c
+file
+
+
+
+
+2012-05-22T10:15:54.903766Z
+6250510c95b67d9d98dc253bf98aaa4b
+2012-05-21T11:29:43.278563Z
+6902
+gf
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+17316
+
+reader-streamguard.c
+file
+0
+
+
+add
+
+oscam-http-helpers.c
+file
+
+
+
+
+2012-06-06T02:20:14.460718Z
+9281b669c55ce02298fb50b3e6d5e1ed
+2012-05-28T09:01:17.764131Z
+6931
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+32143
 
 oscam-ac.c
 file
@@ -174,18 +698,6 @@ ac548bfd65fddcba78bd85b3108261ec
 gf
 has-props
 
-module-cccshare.c
-file
-
-
-
-
-
-60beab62d24e6fd5e4b44aafaca94583
-2012-05-21T11:29:36.416204Z
-6901
-gf
-
 module-stat.c
 file
 
@@ -220,6 +732,18 @@ corsair
 
 37564
 
+module-cccshare.c
+file
+
+
+
+
+
+60beab62d24e6fd5e4b44aafaca94583
+2012-05-21T11:29:36.416204Z
+6901
+gf
+
 algo
 dir
 
@@ -234,40 +758,6 @@ file
 2012-06-04T22:07:19.823793Z
 7012
 gf
-
-module-constcw.c
-file
-
-
-
-
-2012-05-15T12:11:36.199755Z
-158246e0b5b6315d3bcbecf66a8ad9b8
-2012-05-15T01:44:11.595611Z
-6818
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-4236
 
 module-cccshare.h
 file
@@ -302,6 +792,40 @@ gf
 
 
 1281
+
+module-constcw.c
+file
+
+
+
+
+2012-05-15T12:11:36.199755Z
+158246e0b5b6315d3bcbecf66a8ad9b8
+2012-05-15T01:44:11.595611Z
+6818
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4236
 
 oscam-chk.c
 file
@@ -813,8 +1337,17 @@ gf
 
 4269
 
-Distribution
-dir
+module-cccam.h
+file
+
+
+
+
+
+96399f9e86b80fe26b66fb2a72f44631
+2012-05-31T21:09:14.025712Z
+6975
+gf
 
 Maketype
 file
@@ -839,17 +1372,14 @@ copied
 http://streamboard.gmc.to/svn/oscam/trunk/Maketype
 6864
 
-module-cccam.h
-file
-
-
-
-
-
-96399f9e86b80fe26b66fb2a72f44631
-2012-05-31T21:09:14.025712Z
-6975
-gf
+Distribution
+dir
+
+cmake
+dir
+
+openxcas
+dir
 
 module-camd35.c
 file
@@ -885,12 +1415,6 @@ gf
 
 28001
 
-openxcas
-dir
-
-cmake
-dir
-
 reader-viaccess.c
 file
 
@@ -925,40 +1449,6 @@ gf
 
 31887
 
-reader-cryptoworks.c
-file
-
-
-
-
-2012-05-22T10:15:54.883765Z
-0e1a684f95d992e0cc58cb637bb0f855
-2012-05-21T11:29:43.278563Z
-6902
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-22244
-
 module-dvbapi-stapi.c
 file
 
@@ -992,6 +1482,40 @@ gf
 
 
 14739
+
+reader-cryptoworks.c
+file
+
+
+
+
+2012-05-22T10:15:54.883765Z
+0e1a684f95d992e0cc58cb637bb0f855
+2012-05-21T11:29:43.278563Z
+6902
+gf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+22244
 
 module-dvbapi-stapi.h
 file
@@ -1095,6 +1619,9 @@ gf
 
 16153
 
+toolchains
+dir
+
 module-gbox.c
 file
 
@@ -1128,9 +1655,6 @@ has-props
 
 
 30309
-
-toolchains
-dir
 
 reader-videoguard-common.h
 file
@@ -1236,6 +1760,18 @@ file
 6954
 gf
 
+oscam.c
+file
+
+
+
+
+
+8abd90474b9fb48061402aace547d888
+2012-06-08T07:57:52.981523Z
+7034
+corsair
+
 module-serial.c
 file
 
@@ -1269,18 +1805,6 @@ gf
 
 
 36088
-
-oscam.c
-file
-
-
-
-
-
-ef1c15c2cd1467e9a9dcc803934f6a75
-2012-06-07T06:31:10.078261Z
-7031
-gf
 
 reader-tongfang.c
 file
@@ -1337,11 +1861,11 @@ file
 
 
 
-2012-05-22T10:15:54.891766Z
-a96cebe897c1f1af33aae2d2d6e01ae6
-2012-05-21T11:29:43.278563Z
-6902
-gf
+2012-06-12T05:57:09.601042Z
+2c514fafc772de642093a5174277e295
+2012-06-11T19:46:43.292488Z
+7042
+Sulge
 
 
 
@@ -1363,7 +1887,7 @@ gf
 
 
 
-10709
+13259
 
 module-dvbapi-azbox.c
 file
@@ -1398,528 +1922,4 @@ gf
 
 
 9970
-
-reader-videoguard1.c
-file
-
-
-
-
-2012-05-22T10:15:54.891766Z
-50d1bdc6d5270d28e504166f09bc7476
-2012-05-21T11:29:43.278563Z
-6902
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-9639
-
-oscam-config.h
-file
-
-
-
-
-
-fa64ca7cacbfd79eaa612210b6a22f92
-2012-05-21T12:55:40.628806Z
-6910
-gf
-
-global-functions.h
-file
-
-
-
-
-
-02784c1c762e5b1f6fc9784ecc305bbc
-2012-06-05T21:34:15.459796Z
-7020
-gf
-
-oscam-simples.c
-file
-
-
-
-
-
-d0572a7ba735d70dd8ac774d2c6ad72e
-2012-05-21T11:29:36.416204Z
-6901
-gf
-
-module-radegast.c
-file
-
-
-
-
-2012-05-15T12:11:36.191755Z
-316cab97f0d37989eb7070b23a398581
-2012-05-15T01:44:11.595611Z
-6818
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-6403
-
-module-dvbapi-azbox.h
-file
-
-
-
-
-2012-06-06T02:20:14.456718Z
-faaad0521e8c577c035c1d986be06cf8
-2012-05-31T21:09:09.513225Z
-6974
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-524
-
-oscam-http.c
-file
-
-
-
-
-
-e84fef9803a25f332c6c571b5447ec12
-2012-06-05T21:34:43.219969Z
-7025
-gf
-
-oscam-http.h
-file
-
-
-
-
-
-18293ddc3fec6a33cb062da93e113949
-2012-06-05T21:34:35.039972Z
-7024
-gf
-
-reader-irdeto.c
-file
-
-
-
-
-2012-05-22T10:15:54.899766Z
-c932261433c01df7f084cc6937e1eb32
-2012-05-21T11:29:43.278563Z
-6902
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-31925
-
-reader-nagra.c
-file
-
-
-
-
-2012-05-22T10:15:54.899766Z
-061e2ab12e414540894d387235635f74
-2012-05-21T11:29:43.278563Z
-6902
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-38250
-
-reader-common.c
-file
-
-
-
-
-2012-06-06T02:20:14.460718Z
-da4a320b900b31994f0381fd58ffb5e3
-2012-06-05T21:34:10.839719Z
-7019
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-12401
-
-oscam-garbage.c
-file
-
-
-
-
-2012-05-22T10:15:54.899766Z
-f5d1b1b9ada30d3193b99c8246fd26eb
-2012-05-21T11:29:36.416204Z
-6901
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-4068
-
-reader-videoguard12.c
-file
-
-
-
-
-2012-05-22T10:15:54.899766Z
-e352be28a2becb86e6034d9b25956ef6
-2012-05-21T11:29:43.278563Z
-6902
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-11947
-
-reader-common.h
-file
-
-
-
-
-2012-05-22T10:15:54.899766Z
-29e14e96f82ca8ec2385388cf7302972
-2012-05-21T11:29:43.278563Z
-6902
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-804
-
-module-newcamd.c
-file
-
-
-
-
-
-0d1b45bd3c9de4f0805ff3ef5d26af58
-2012-05-21T11:29:27.838568Z
-6900
-gf
-
-reader-bulcrypt.c
-file
-
-
-
-
-2012-05-22T10:15:54.903766Z
-c84c8156767e4fbb8908778eafe32059
-2012-05-21T11:29:43.278563Z
-6902
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-21549
-
-csctapi
-dir
-
-module-pandora.c
-file
-
-
-
-
-2012-05-17T03:44:46.252965Z
-453d4f4135fcb755b16a527be1db09b4
-2012-05-16T10:56:59.262086Z
-6844
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-7147
-
-reader-dre.c
-file
-
-
-
-
-2012-05-22T10:15:54.903766Z
-6250510c95b67d9d98dc253bf98aaa4b
-2012-05-21T11:29:43.278563Z
-6902
-gf
-has-props
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-17316
-
-reader-streamguard.c
-file
-0
-
-
-add
-
-oscam-http-helpers.c
-file
-
-
-
-
-2012-06-06T02:20:14.460718Z
-9281b669c55ce02298fb50b3e6d5e1ed
-2012-05-28T09:01:17.764131Z
-6931
-gf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-32143
 
