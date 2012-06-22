@@ -544,9 +544,9 @@ static int32_t videoguard2_card_init(struct s_reader * reader, ATR *newatr)
           cs_log("classD0 ins7E11: Scheduling card reset for TA1 change from %02X to %02X", TA1, reader->ins7E11[0x00]);
           reader->ins7e11_fast_reset = 1;
 #ifdef WITH_COOLAPI
-          if (reader->typ == R_MOUSE || reader->typ == R_SC8in1 || reader->typ == R_SMART || reader->typ == R_INTERNAL) {
+          if (reader->typ == R_MOUSE || reader->typ == R_SC8in1 || reader->typ == R_SMART || reader->typ == R_PCSC || reader->typ == R_INTERNAL) {
 #else
-          if (reader->typ == R_MOUSE || reader->typ == R_SC8in1 || reader->typ == R_SMART ) {
+          if (reader->typ == R_MOUSE || reader->typ == R_SC8in1 || reader->typ == R_SMART || reader->typ == R_PCSC ) {
 #endif
             add_job(reader->client, ACTION_READER_RESET_FAST, NULL, 0);
           }
@@ -666,11 +666,15 @@ static int32_t videoguard2_do_ecm(struct s_reader * reader, const ECM_REQUEST *e
   l = do_cmd(reader,ins40,tbuff,NULL,cta_res);
   if(l<0 || !status_ok(cta_res)) {
     cs_log ("classD0 ins40: (%d) status not ok %02x %02x",l,cta_res[0],cta_res[1]);
+    cs_log ("The card is not answering correctly! Restarting reader for safety");
+    add_job(reader->client, ACTION_READER_RESTART, NULL, 0);
     return ERROR;
   } else {
     l = do_cmd(reader,ins54,NULL,rbuff,cta_res);
     if(l<0 || !status_ok(cta_res+l)) {
       cs_log("classD3 ins54: (%d) status not ok %02x %02x",l,cta_res[0],cta_res[1]);
+      cs_log ("The card is not answering correctly! Restarting reader for safety");
+      add_job(reader->client, ACTION_READER_RESTART, NULL, 0);
       return ERROR;
     } else {
 

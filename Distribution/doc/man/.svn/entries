@@ -1,14 +1,14 @@
 10
 
 dir
-7042
+7068
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/man
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-05-27T19:21:34.286275Z
-6930
+2012-06-18T19:13:42.343059Z
+7056
 docman
 
 
@@ -60,14 +60,14 @@ docman
 
 1985
 
-oscam.ird.5
+list_smargo.1
 file
 
 
 
 
-2012-01-29T04:09:50.152651Z
-640b34dd54ca9cb8b599be216e62bc6b
+2012-01-29T04:09:50.148651Z
+79711fece3c2d636b5cd38e783623388
 2012-01-17T09:10:43.842642Z
 6252
 docman
@@ -92,7 +92,7 @@ docman
 
 
 
-612
+643
 
 oscam.user.5
 file
@@ -128,48 +128,14 @@ docman
 
 7155
 
-list_smargo.1
-file
-
-
-
-
-2012-01-29T04:09:50.148651Z
-79711fece3c2d636b5cd38e783623388
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-643
-
-oscam.ac.5
+oscam.ird.5
 file
 
 
 
 
 2012-01-29T04:09:50.152651Z
-c7d0f8822d798193ce808714fb49013f
+640b34dd54ca9cb8b599be216e62bc6b
 2012-01-17T09:10:43.842642Z
 6252
 docman
@@ -194,7 +160,7 @@ docman
 
 
 
-732
+612
 
 oscam.services.5
 file
@@ -230,26 +196,14 @@ docman
 
 988
 
-oscam.conf.5
-file
-
-
-
-
-
-34a70694d82cc6d29362ed1ddfe8dad7
-2012-05-27T19:21:34.286275Z
-6930
-docman
-
-oscam.guess.5
+oscam.ac.5
 file
 
 
 
 
 2012-01-29T04:09:50.152651Z
-bf860be55459e874d102af5506bed21e
+c7d0f8822d798193ce808714fb49013f
 2012-01-17T09:10:43.842642Z
 6252
 docman
@@ -274,7 +228,19 @@ docman
 
 
 
-684
+732
+
+oscam.conf.5
+file
+
+
+
+
+
+34a70694d82cc6d29362ed1ddfe8dad7
+2012-05-27T19:21:34.286275Z
+6930
+docman
 
 oscam.tiers.5
 file
@@ -310,6 +276,40 @@ docman
 
 716
 
+oscam.guess.5
+file
+
+
+
+
+2012-01-29T04:09:50.152651Z
+bf860be55459e874d102af5506bed21e
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+684
+
 oscam.srvid.5
 file
 
@@ -344,40 +344,6 @@ docman
 
 1191
 
-oscam.cert.5
-file
-
-
-
-
-2012-01-29T04:09:50.156651Z
-11eb66f2367d3425f63abc00a462fa7b
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-673
-
 oscam.1
 file
 
@@ -411,6 +377,40 @@ docman
 
 
 3542
+
+oscam.cert.5
+file
+
+
+
+
+2012-01-29T04:09:50.156651Z
+11eb66f2367d3425f63abc00a462fa7b
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+673
 
 oscam.cacheex.5
 file
@@ -521,8 +521,8 @@ file
 
 
 
-146c833d9f5f9d86fecd8b442947b570
-2012-05-17T19:22:53.230945Z
-6863
+3afae320c3ee6b4b24756ae404cdeb2a
+2012-06-18T19:13:42.343059Z
+7056
 docman
 

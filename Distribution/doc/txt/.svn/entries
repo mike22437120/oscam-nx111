@@ -1,14 +1,14 @@
 10
 
 dir
-7042
+7068
 http://streamboard.gmc.to/svn/oscam/trunk/Distribution/doc/txt
 http://streamboard.gmc.to/svn/oscam
 
 
 
-2012-05-27T19:21:34.286275Z
-6930
+2012-06-18T19:13:42.343059Z
+7056
 docman
 
 
@@ -25,74 +25,6 @@ docman
 
 
 4b0bc96b-bc66-0410-9d44-ebda105a78c1
-
-oscam.whitelist.txt
-file
-
-
-
-
-2012-04-14T10:24:54.094857Z
-c54811004983c39e798778cd31169012
-2012-04-14T10:08:22.552379Z
-6608
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1627
-
-oscam.ird.txt
-file
-
-
-
-
-2012-01-29T04:06:30.939663Z
-0bf2f664b6b7c549f9faec947f514f65
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-574
 
 oscam.user.txt
 file
@@ -128,6 +60,40 @@ docman
 
 6241
 
+oscam.ird.txt
+file
+
+
+
+
+2012-01-29T04:06:30.939663Z
+0bf2f664b6b7c549f9faec947f514f65
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+574
+
 list_smargo.txt
 file
 
@@ -161,40 +127,6 @@ docman
 
 
 646
-
-oscam.ac.txt
-file
-
-
-
-
-2012-01-29T04:06:30.939663Z
-5bea6e7e9c62fe00956f9cc2ca389de0
-2012-01-17T09:10:43.842642Z
-6252
-docman
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-678
 
 oscam.services.txt
 file
@@ -230,26 +162,14 @@ docman
 
 919
 
-oscam.conf.txt
+oscam.ac.txt
 file
 
 
 
 
-
-8780609fafe0b3e6271859d289c72b71
-2012-05-27T19:21:34.286275Z
-6930
-docman
-
-oscam.tiers.txt
-file
-
-
-
-
-2012-01-29T04:06:30.943663Z
-4ecd0df5ade62da449bb6ac4d9662cbb
+2012-01-29T04:06:30.939663Z
+5bea6e7e9c62fe00956f9cc2ca389de0
 2012-01-17T09:10:43.842642Z
 6252
 docman
@@ -274,7 +194,19 @@ docman
 
 
 
-702
+678
+
+oscam.conf.txt
+file
+
+
+
+
+
+8780609fafe0b3e6271859d289c72b71
+2012-05-27T19:21:34.286275Z
+6930
+docman
 
 oscam.guess.txt
 file
@@ -309,6 +241,40 @@ docman
 
 
 671
+
+oscam.tiers.txt
+file
+
+
+
+
+2012-01-29T04:06:30.943663Z
+4ecd0df5ade62da449bb6ac4d9662cbb
+2012-01-17T09:10:43.842642Z
+6252
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+702
 
 oscam.srvid.txt
 file
@@ -521,8 +487,42 @@ file
 
 
 
-1d8e574206e04b34f7867b4465c20540
-2012-05-17T19:22:53.230945Z
-6863
+d83914139ded83e01c14acba674148ab
+2012-06-18T19:13:42.343059Z
+7056
 docman
+
+oscam.whitelist.txt
+file
+
+
+
+
+2012-04-14T10:24:54.094857Z
+c54811004983c39e798778cd31169012
+2012-04-14T10:08:22.552379Z
+6608
+docman
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1627
 

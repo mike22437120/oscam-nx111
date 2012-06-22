@@ -130,11 +130,6 @@
 //checking if (X) free(X) unneccessary since freeing a null pointer doesnt do anything
 #define NULLFREE(X) {if (X) {void *tmpX=X; X=NULL; free(tmpX); }}
 
-#ifdef WITH_DEBUG
-#define tmp_dbg(X) char tmp_dbg[X]
-#else
-#define tmp_dbg(X)
-#endif
 /* ===========================
  *         constants
  * =========================== */
@@ -1396,7 +1391,7 @@ struct s_global_whitelist
 	uint16_t pid;
 	uint16_t ecmlen;
 	uint16_t mapcaid;
-	uint16_t mapprovid;
+	uint32_t mapprovid;
 	struct s_global_whitelist *next;
 };
 
@@ -1722,6 +1717,7 @@ extern uint8_t cs_http_use_utf8;
 extern pthread_key_t getclient;
 extern struct s_client *first_client;
 extern CS_MUTEX_LOCK clientlist_lock;
+extern CS_MUTEX_LOCK readerlist_lock;
 extern uint32_t ecmcwcache_size;
 extern struct s_reader *first_active_reader;		//points to list of _active_ readers (enable = 1, deleted = 0)
 extern LLIST *configured_readers;
