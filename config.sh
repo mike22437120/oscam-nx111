@@ -6,6 +6,41 @@ addons="WEBIF HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR 
 protocols="MODULE_CAMD33 MODULE_CAMD35 MODULE_CAMD35_TCP MODULE_NEWCAMD MODULE_CCCAM MODULE_GBOX MODULE_RADEGAST MODULE_SERIAL MODULE_CONSTCW MODULE_PANDORA"
 readers="WITH_CARDREADER READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_STREAMGUARD READER_BULCRYPT"
 
+defconfig="
+CONFIG_WEBIF=y
+CONFIG_HAVE_DVBAPI=y
+CONFIG_IRDETO_GUESSING=y
+CONFIG_CS_ANTICASC=y
+CONFIG_WITH_DEBUG=y
+CONFIG_MODULE_MONITOR=y
+# CONFIG_WITH_SSL=n
+CONFIG_WITH_LB=y
+CONFIG_CS_CACHEEX=y
+# CONFIG_LCDSUPPORT=n
+# CONFIG_IPV6SUPPORT=n
+# CONFIG_MODULE_CAMD33=n
+CONFIG_MODULE_CAMD35=y
+CONFIG_MODULE_CAMD35_TCP=y
+CONFIG_MODULE_NEWCAMD=y
+CONFIG_MODULE_CCCAM=y
+CONFIG_MODULE_GBOX=y
+CONFIG_MODULE_RADEGAST=y
+CONFIG_MODULE_SERIAL=y
+CONFIG_MODULE_CONSTCW=y
+CONFIG_MODULE_PANDORA=y
+CONFIG_WITH_CARDREADER=y
+CONFIG_READER_NAGRA=y
+CONFIG_READER_IRDETO=y
+CONFIG_READER_CONAX=y
+CONFIG_READER_CRYPTOWORKS=y
+CONFIG_READER_SECA=y
+CONFIG_READER_VIACCESS=y
+CONFIG_READER_VIDEOGUARD=y
+CONFIG_READER_DRE=y
+CONFIG_READER_TONGFANG=y
+CONFIG_READER_BULCRYPT=y
+"
+
 list_options() {
 	PREFIX="$1"
 	shift
@@ -14,6 +49,41 @@ list_options() {
 		grep "^\#define $OPT$" oscam-config.h >/dev/null 2>/dev/null
 		[ $? = 0 ] && echo "${OPT#$PREFIX}"
 	done
+}
+
+valid_opt() {
+	[ "$1" = "" ] && return 0
+	echo $addons $protocols $readers | grep -w "$1" >/dev/null
+	[ $? = 0 ] && return 1
+	return 0
+}
+
+enable_opt() {
+	OPT="$1"
+	valid_opt $OPT
+	if [ $? ]
+	then
+		grep "^\//#define $OPT$" oscam-config.h >/dev/null 2>/dev/null
+		if [ $? = 0 ]
+		then
+			sed -i.bak -e "s|//#define $OPT$|#define $OPT|g" oscam-config.h && rm oscam-config.h.bak
+			echo "Enable $OPT"
+		fi
+	fi
+}
+
+disable_opt() {
+	OPT="$1"
+	valid_opt "$OPT"
+	if [ $? ]
+	then
+		grep "^\#define $OPT$" oscam-config.h >/dev/null 2>/dev/null
+		if [ $? = 0 ]
+		then
+			sed -i.bak -e "s|#define $OPT$|//#define $OPT|g" oscam-config.h && rm oscam-config.h.bak
+			echo "Disable $OPT"
+		fi
+	fi
 }
 
 check_test() {
@@ -40,17 +110,20 @@ enable_package() {
 print_components() {
 	clear
 	echo "You have selected the following components:"
-	echo -e "\nAdd-ons:"
+	echo
+	echo "Add-ons:"
 	for i in $addons; do
 		printf "\t%-20s: %s\n" $i $(check_test "$i")
 	done
 
-	echo -e "\nProtocols:"
+	echo
+	echo "Protocols:"
 	for i in $protocols; do
 		printf "\t%-20s: %s\n" $i $(check_test "$i")
 	done
 
-	echo -e "\nReaders:"
+	echo
+	echo "Readers:"
 	for i in $readers; do
 		printf "\t%-20s: %s\n" $i $(check_test "$i")
 	done
@@ -191,6 +264,37 @@ case "$1" in
 			;;
 		esac
 		;;
+	'-E'|'--enable')
+		shift
+		while [ "$1" != "" ]
+		do
+			enable_opt "$1"
+			shift
+		done
+		$0 --make-config.mak
+		;;
+	'-D'|'--disable')
+		shift
+		while [ "$1" != "" ]
+		do
+			disable_opt "$1"
+			shift
+		done
+		$0 --make-config.mak
+		;;
+	'-R'|'--restore')
+		echo $defconfig | sed -e 's|# ||g' | xargs printf "%s\n" | grep "=y$" | sed -e 's|^CONFIG_||g;s|=.*||g' |
+		while read OPT
+		do
+			enable_opt "$OPT"
+		done
+		echo $defconfig | sed -e 's|# ||g' | xargs printf "%s\n" | grep "=n$" | sed -e 's|^CONFIG_||g;s|=.*||g' |
+		while read OPT
+		do
+			disable_opt "$OPT"
+		done
+		$0 --make-config.mak
+		;;
 	'-e'|'--enabled')
 		grep "^\#define $2$" oscam-config.h >/dev/null 2>/dev/null
 		if [ $? = 0 ]; then
@@ -252,15 +356,40 @@ case "$1" in
 Usage: `basename $0` [parameters]
 
  -g, --gui                 Start interactive configuration
+
  -s, --show [param]        Show enabled configuration options.
                            Possible params: all, addons, protocols, readers
+
+ -l, --list-config         List active configuration variables.
  -e, --enabled [option]    Check if certain option is enabled.
  -d, --disabled [option]   Check if certain option is disabled.
+
+ -E, --enable [option]     Enable config option.
+ -D, --disable [option]    Disable config option.
+
+ -R, --restore             Restore default config.
+
  -v, --oscam-version       Display OSCam version.
  -r, --oscam-revision      Display OSCam SVN revision.
- -l, --list-config         List active configuration variables.
+
  -m, --make-config.mak     Create or update config.mak
+
  -h, --help                Display this help text.
+
+Examples:
+  # Enable WEBIF and SSL
+  ./config.sh --enable WEBIF WITH_SSL
+
+  # Disable SSL
+  ./config.sh --disable WITH_SSL
+
+  # Disable some readers
+  ./config.sh --disable MODULE_GBOX MODULE_RADEGAST
+
+Available options:
+    addons: $addons
+ protocols: $protocols
+   readers: $readers
 "
 		exit 1
 	;;

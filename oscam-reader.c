@@ -15,12 +15,23 @@ void cs_ri_brk(struct s_reader * reader, int32_t flag)
 void cs_ri_log(struct s_reader * reader, char *fmt,...)
 {
 	char txt[256];
+	char *desc;
 
 	va_list params;
 	va_start(params, fmt);
 	vsnprintf(txt, sizeof(txt), fmt, params);
 	va_end(params);
-	cs_log("%s", txt);
+
+	if (reader->csystem.desc)
+		desc = reader->csystem.desc;
+	else if (reader->crdr.desc)
+		desc = reader->crdr.desc;
+	else if (reader->ph.desc)
+		desc = reader->ph.desc;
+	else
+		desc = reader_get_type_desc(reader, 1);
+
+	cs_log("%s [%s] %s", reader->label, desc, txt);
 
 	if (cfg.saveinithistory) {
 		int32_t size = reader->init_history_pos+strlen(txt)+2;
@@ -32,6 +43,34 @@ void cs_ri_log(struct s_reader * reader, char *fmt,...)
 
 		snprintf(reader->init_history+reader->init_history_pos, strlen(txt)+2, "%s\n", txt);
 		reader->init_history_pos+=strlen(txt)+1;
+	}
+}
+
+void cs_ri_debug_mask(struct s_reader * reader, uint16_t mask, char *fmt, ...)
+{
+	if (config_WITH_DEBUG()) {
+		char txt[2048], *desc, *dbg_prefix;
+
+		va_list params;
+		va_start(params, fmt);
+		vsnprintf(txt, sizeof(txt), fmt, params);
+		va_end(params);
+
+		if (mask == D_EMM)
+			dbg_prefix = "EMM: ";
+		else
+			dbg_prefix = "";
+
+		if (reader->csystem.desc)
+			desc = reader->csystem.desc;
+		else if (reader->crdr.desc)
+			desc = reader->crdr.desc;
+		else if (reader->ph.desc)
+			desc = reader->ph.desc;
+		else
+			desc = reader_get_type_desc(reader, 1);
+
+		cs_debug_mask(mask, "%s [%s] %s%s", reader->label, desc, dbg_prefix, txt);
 	}
 }
 
