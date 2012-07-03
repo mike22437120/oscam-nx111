@@ -1,4 +1,5 @@
 #include "globals.h"
+
 #ifdef WEBIF
 //
 // OSCam HTTP server module
@@ -9,11 +10,72 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include "oscam-http-helpers.c"
+
 #include "module-cccam.h"
 #include "module-cccshare.h"
+#include "module-webif.h"
 
-#ifdef IPV6SUPPORT 
+extern char *tplmap[];
+extern char *tpl[];
+extern char *CSS;
+extern char *entitlement_type[];
+
+int32_t ssl_active = 0;
+char noncekey[33];
+pthread_key_t getkeepalive;
+pthread_key_t getip;
+pthread_key_t getssl;
+CS_MUTEX_LOCK http_lock;
+CS_MUTEX_LOCK *lock_cs;
+
+static int8_t running = 1;
+static pthread_t httpthread;
+
+/* constants for menuactivating */
+#define MNU_STATUS 0
+#define MNU_CONFIG 1
+#define MNU_READERS 2
+#define MNU_USERS 3
+#define MNU_SERVICES 4
+#define MNU_FILES 5
+#define MNU_FAILBAN 6
+#define MNU_CACHEEX 7
+#define MNU_SCRIPT 8
+#define MNU_SHUTDOWN 9
+#define MNU_TOTAL_ITEMS 10 // sum of items above
+/* constants for submenuactivating */
+#define MNU_CFG_GLOBAL 0
+#define MNU_CFG_LOADBAL 1
+#define MNU_CFG_CAMD33 2
+#define MNU_CFG_CAMD35 3
+#define MNU_CFG_CAMD35TCP 4
+#define MNU_CFG_NEWCAMD 5
+#define MNU_CFG_RADEGAST 6
+#define MNU_CFG_CCCAM 7
+#define MNU_CFG_ANTICASC 8
+#define MNU_CFG_MONITOR 9
+#define MNU_CFG_SERIAL 10
+#define MNU_CFG_DVBAPI 11
+
+#define MNU_CFG_FVERSION 12
+#define MNU_CFG_FCONF 13
+#define MNU_CFG_FUSER 14
+#define MNU_CFG_FSERVER 15
+#define MNU_CFG_FSERVICES 16
+#define MNU_CFG_FSRVID 17
+#define MNU_CFG_FPROVID 18
+#define MNU_CFG_FTIERS 19
+#define MNU_CFG_FLOGFILE 20
+#define MNU_CFG_FUSERFILE 21
+#define MNU_CFG_FACLOG 22
+#define MNU_CFG_FDVBAPI 23
+#define MNU_CFG_CSP 24
+#define MNU_CFG_WHITELIST 25
+#define MNU_CFG_TOTAL_ITEMS 26 // sum of items above. Use it for "All inactive" in function calls too.
+
+#ifdef IPV6SUPPORT
+
+#define GET_IP() *(struct in6_addr *)pthread_getspecific(getip)
 char *cs_inet6_ntoa(struct in6_addr addr)
 {
 	static char buff[40];
@@ -31,18 +93,13 @@ char *cs_inet6_ntoa(struct in6_addr addr)
 	}
 	return buff;
 }
+
 #else
+
+#define GET_IP() *(in_addr_t *)pthread_getspecific(getip)
 #define cs_inet6_ntoa	cs_inet_ntoa
+
 #endif
-
-
-extern void restart_cardreader(struct s_reader *rdr, int32_t restart);
-
-static int8_t running = 1;
-static pthread_t httpthread;
-CS_MUTEX_LOCK http_lock;
-
-pthread_key_t getip;
 
 static void refresh_oscam(enum refreshtypes refreshtype) {
 
@@ -111,8 +168,10 @@ char *get_ecm_historystring(struct s_client *cl){
 			}
 			k++;
 		}
-
-		return (value);
+		if(strlen(value) == 0){
+			free(value);
+			return "";
+		} else return value;
 
 	} else {
 		return "";
@@ -216,7 +275,6 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 
 	if (cfg.cwlogdir != NULL) tpl_addVar(vars, TPLADD, "CWLOGDIR", cfg.cwlogdir);
 	if (cfg.emmlogdir != NULL) tpl_addVar(vars, TPLADD, "EMMLOGDIR", cfg.emmlogdir);
-	if (cfg.saveinithistory == 1)	tpl_addVar(vars, TPLADD, "SAVEINITHISTORYCHECKED", "selected");
 	tpl_printf(vars, TPLADD, "LOGHISTORYSIZE", "%u", cfg.loghistorysize);
 
 	tpl_printf(vars, TPLADD, "CLIENTTIMEOUT", "%u", cfg.ctimeout);
@@ -614,7 +672,6 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 	tpl_printf(vars, TPLADD, "NODEID", "%02X%02X%02X%02X%02X%02X%02X%02X",
 		cfg.cc_fixed_nodeid[0], cfg.cc_fixed_nodeid[1], cfg.cc_fixed_nodeid[2], cfg.cc_fixed_nodeid[3],
 	    cfg.cc_fixed_nodeid[4], cfg.cc_fixed_nodeid[5], cfg.cc_fixed_nodeid[6], cfg.cc_fixed_nodeid[7]);
-	tpl_printf(vars,TPLADD, "CCCFGFILE","%s",cfg.cc_cfgfile);
 
 	tpl_printf(vars, TPLADD, "TMP", "MINIMIZECARDSELECTED%d", cfg.cc_minimize_cards);
 	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
@@ -631,8 +688,6 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 	if (cfg.cc_keep_connected)
 		tpl_printf(vars, TPLADD, "KEEPCONNECTED", "selected");
 
-	if (cfg.cc_autosidblock)
-		tpl_printf(vars, TPLADD, "AUTOSIDBLOCK", "selected");
 
 	return tpl_getTpl(vars, "CONFIGCCCAM");
 }
@@ -714,9 +769,6 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
 	else
 		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", "en");
-	
-	if(cs_http_use_utf8)
-		tpl_addVar(vars,TPLADD,"HTTPUTF8","selected");
 
 	tpl_printf(vars, TPLADD, "HTTPREFRESH", "%d", cfg.http_refresh);
 	tpl_addVar(vars, TPLADD, "HTTPTPL", cfg.http_tpl);
@@ -1232,10 +1284,6 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 
 	// Reset Cycle
 	tpl_printf(vars, TPLADD, "RESETCYCLE", "%d", rdr->resetcycle);
-	tpl_printf(vars, TPLADD, "RESTARTFORRESETRECYCLE",(rdr->restart_for_resetcycle == 1) ? "checked" : "");
-
-	// Auto Restart after
-	tpl_printf(vars, TPLADD, "AUTORESTARTSECONDS", "%d", rdr->autorestartseconds);
 
 	// Disable Serverfilter
 	if(!apicall) {
@@ -1691,7 +1739,7 @@ static char *send_oscam_reader_stats(struct templatevars *vars, struct uriparams
 		if(strlen(record) > 0) {
 			int32_t retval = 0;
 			uint32_t caid, provid, sid, cid, len;
-			sscanf(record, "%x:%x:%x:%x:%x", &caid, &provid, &sid, &cid, &len);
+			sscanf(record, "%4x:%6x:%4x:%4x:%4x", &caid, &provid, &sid, &cid, &len);
 			retval = clean_stat_by_id(rdr, caid, provid, sid, cid, len);
 			cs_log("Reader %s stats %d entr%s deleted by WebIF from %s",
 					rdr->label, retval,
@@ -2709,7 +2757,7 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 	int32_t offset = atoi(getParam(params, "offset")); //should be 0 if parameter is missed on very first call
 
 	struct s_reader *rdr = get_reader_by_label(getParam(params, "label"));
-	if (show_global_list || (cfg.saveinithistory && strlen(reader_) > 0) || (rdr && rdr->typ == R_CCCAM)) {
+	if (show_global_list || strlen(reader_) || (rdr && rdr->typ == R_CCCAM)) {
 
 		if (show_global_list || (rdr && rdr->typ == R_CCCAM && rdr->enable)) {
 
@@ -2756,7 +2804,7 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 
 		} else {
 #else
-	if (cfg.saveinithistory && strlen(reader_) > 0) {
+	if (strlen(reader_)) {
 		{
 			struct s_reader *rdr;
 #endif
@@ -2769,7 +2817,6 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 				struct s_client *cl = rdr->client;
 				if (rdr->ll_entitlements) {
 
-					char *typetxt[] = {"", "package", "PPV-Event", "chid", "tier", "class", "PBM", "admin" };
 					time_t now = (time((time_t*)0)/84600)*84600;
 
 					struct tm start_t, end_t;
@@ -2800,7 +2847,7 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 						tpl_printf(vars, TPLADD, "ENTPROVID", "%06X", item->provid);
 						tpl_printf(vars, TPLADD, "ENTID", "%08X%08X", (uint32_t)(item->id >> 32), (uint32_t)item->id);
 						tpl_printf(vars, TPLADD, "ENTCLASS", "%08X", item->class);
-						tpl_addVar(vars, TPLADD, "ENTTYPE", typetxt[item->type]);
+						tpl_addVar(vars, TPLADD, "ENTTYPE", entitlement_type[item->type]);
 
 						char *entresname;
 						entresname = xml_encode(vars, get_tiername((uint16_t)(item->id & 0xFFFF), item->caid, tbuffer));
@@ -2859,8 +2906,6 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 		}
 
 	} else {
-		tpl_addVar(vars, TPLADD, "LOGHISTORY",
-				"You have to set saveinithistory=1 in your config to see Entitlements!<BR>\n");
 		tpl_addVar(vars, TPLADD, "ENTITLEMENTCONTENT", tpl_getTpl(vars, "ENTITLEMENTGENERICBIT"));
 	}
 
@@ -4399,8 +4444,6 @@ static int8_t check_valid_origin(struct in6_addr addr) {
 		// check for IPv4 as before
 		if(check_ip(cfg.http_allowed, *((in_addr_t *)&addr.s6_addr32[3])))
 			return 1;
-		else if (inet_addr("127.0.0.1") == *((in_addr_t *)&addr.s6_addr32[3])))
-			return 1;
 
 	} else {
 		// Allow all IPv6
@@ -4423,8 +4466,6 @@ static int8_t check_valid_origin(in_addr_t addr) {
 
 	// check whether requesting IP is in allowed IP ranges
 	if(check_ip(cfg.http_allowed, addr))
-		return 1;
-	else if (inet_addr("127.0.0.1") == addr)
 		return 1;
 
 	// we havn't found the requesting IP in allowed range. So we check for allowed httpdyndns as last chance
@@ -5144,4 +5185,5 @@ void http_srv(void) {
 	close(sock);
 	//exit(SIGQUIT);
 }
+
 #endif

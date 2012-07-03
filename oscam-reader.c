@@ -4,15 +4,7 @@
 
 int32_t logfd = 0;
 
-void cs_ri_brk(struct s_reader * reader, int32_t flag)
-{
-  if (flag)
-    reader->brk_pos=reader->init_history_pos;
-  else
-    reader->init_history_pos=reader->brk_pos;
-}
-
-void cs_ri_log(struct s_reader * reader, char *fmt,...)
+void rdr_log(struct s_reader * reader, char *fmt,...)
 {
 	char txt[256];
 	char *desc;
@@ -32,21 +24,9 @@ void cs_ri_log(struct s_reader * reader, char *fmt,...)
 		desc = reader_get_type_desc(reader, 1);
 
 	cs_log("%s [%s] %s", reader->label, desc, txt);
-
-	if (cfg.saveinithistory) {
-		int32_t size = reader->init_history_pos+strlen(txt)+2;
-
-		cs_realloc(&reader->init_history, size, -1);
-
-		if (!reader->init_history)
-			return;
-
-		snprintf(reader->init_history+reader->init_history_pos, strlen(txt)+2, "%s\n", txt);
-		reader->init_history_pos+=strlen(txt)+1;
-	}
 }
 
-void cs_ri_debug_mask(struct s_reader * reader, uint16_t mask, char *fmt, ...)
+void rdr_debug_mask(struct s_reader * reader, uint16_t mask, char *fmt, ...)
 {
 	if (config_WITH_DEBUG()) {
 		char txt[2048], *desc, *dbg_prefix;
@@ -678,7 +658,7 @@ int32_t reader_do_emm(struct s_reader * reader, EMM_PACKET *ep)
 
 	MD5(ep->emm, ep->emm[2], md5tmp);
 
-	for (i=ecs=0; i<CS_EMMCACHESIZE; i++) {
+        for (i=ecs=0; (i<CS_EMMCACHESIZE) ; i++) {
        	if (!memcmp(cl->emmcache[i].emmd5, md5tmp, CS_EMMSTORESIZE)) {
 			cl->emmcache[i].count++;
 			if (reader->cachemm){
@@ -688,7 +668,7 @@ int32_t reader_do_emm(struct s_reader * reader, EMM_PACKET *ep)
 				else
 					ecs=1; //rewrite emm
 			}
-		break;
+		break; 
 		}
 	}
 

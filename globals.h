@@ -469,6 +469,11 @@ struct s_arm_led {
 #define DEFAULT_AC_PENALTY -1 // Use global cfg
 #endif
 
+// Return MPEG section length
+#define SCT_LEN(sct) (3+((sct[1]&0x0f)<<8)+sct[2])
+// Used by readers
+#define MAX_LEN      256
+
 /* ===========================
  *      global structures
  * =========================== */
@@ -485,7 +490,7 @@ typedef struct cs_mutexlock {
 	int16_t		writelock, readlock;
 } CS_MUTEX_LOCK;
 
-#include "module-datastruct-llist.h"
+#include "oscam-llist.h"
 
 typedef struct s_caidvaluetab {
 	uint16_t		n;
@@ -1157,8 +1162,6 @@ struct s_reader  									//contains device info, reader info and card info
 	FTAB			ftab;
 	CLASSTAB		cltab;
 	struct s_ecmWhitelist *ecmWhitelist;
-	char			*init_history;
-	int32_t			init_history_pos;
 	int32_t			brk_pos;
 	int32_t			msg_idx;
 #if defined(WEBIF) || defined(LCDSUPPORT)
@@ -1271,6 +1274,8 @@ struct s_reader  									//contains device info, reader info and card info
 #ifdef MODULE_PANDORA
 	int8_t			pand_send_ecm;
 #endif
+  uint8_t cnxlastecm; // == 0 - las ecm has not been paired ecm, > 0 last ecm has been paired ecm
+
 	struct s_reader *next;
 };
 
@@ -1545,7 +1550,6 @@ struct s_config
 	int8_t			waitforcards;
 	int32_t			waitforcards_extra_delay;
 	int8_t			preferlocalcards;
-	int8_t			saveinithistory;
 	int32_t     	reader_restart_seconds;			// schlocke: reader restart auf x seconds, disable = 0
 	int8_t			dropdups;						// drop duplicate logins
 

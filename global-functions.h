@@ -54,6 +54,8 @@ extern void clear_account_stats(struct s_auth *account);
 extern void clear_all_account_stats(void);
 extern void clear_system_stats(void);
 
+int32_t restart_cardreader(struct s_reader *rdr, int32_t restart);
+
 extern int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line);
 extern void global_whitelist_read(void);
 extern struct s_cacheex_matcher *is_cacheex_matcher_matching(ECM_REQUEST *er, ECM_REQUEST *ecm);
@@ -70,7 +72,6 @@ extern void start_thread(void * startroutine, char * nameroutine);
 extern void add_job(struct s_client *cl, int8_t action, void *ptr, int32_t len);
 extern void add_check(struct s_client *client, int8_t action, void *ptr, int32_t size, int32_t ms_delay);
 extern int32_t reader_init(struct s_reader *);
-extern void reader_nullcard(struct s_reader * reader);
 extern int reader_reset(struct s_reader * reader);
 extern void cs_reload_config(void);
 extern int32_t recv_from_udpipe(uchar *);
@@ -123,7 +124,7 @@ extern void cs_debug_level(void);
 extern void cs_add_cache(struct s_client *cl, ECM_REQUEST *er, int8_t csp);
 
 /* ===========================
- *           oscam-ac
+ *       module-anticasc
  * =========================== */
 extern void init_ac(void);
 extern void ac_init_stat(void);
@@ -217,7 +218,7 @@ extern void start_garbage_collector(int32_t);
 extern void stop_garbage_collector(void);
 
 /* ===========================
- *         oscam-http
+ *         module-webif
  * =========================== */
 extern void http_srv(void);
 
@@ -274,8 +275,8 @@ extern int32_t reader_cmd2icc(struct s_reader * reader, const uchar *buf, const 
 extern int32_t card_write(struct s_reader * reader, const uchar *, const uchar *, uchar *, uint16_t *);
 extern int32_t check_sct_len(const unsigned char *data, int32_t off);
 extern void cs_ri_brk(struct s_reader * reader, int32_t);
-extern void cs_ri_log(struct s_reader * reader, char *,...) __attribute__ ((format (printf, 2, 3)));
-extern void cs_ri_debug_mask(struct s_reader * reader, uint16_t mask, char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
+extern void rdr_log(struct s_reader * reader, char *,...) __attribute__ ((format (printf, 2, 3)));
+extern void rdr_debug_mask(struct s_reader * reader, uint16_t mask, char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
 extern void * start_cardreader(void *);
 extern void reader_card_info(struct s_reader * reader);
 extern int32_t hostResolve(struct s_reader * reader);
@@ -431,7 +432,6 @@ extern int32_t reader_checkhealth(struct s_reader * reader);
 extern void reader_post_process(struct s_reader * reader);
 extern int32_t reader_ecm(struct s_reader * reader, ECM_REQUEST *, struct s_ecm_answer *);
 extern int32_t reader_emm(struct s_reader * reader, EMM_PACKET *);
-extern int32_t reader_get_emm_type(EMM_PACKET *ep, struct s_reader * reader);
 extern struct s_cardsystem *get_cardsystem_by_caid(uint16_t caid);
 extern void reader_device_close(struct s_reader * reader);
 extern int8_t cs_emmlen_is_blocked(struct s_reader *rdr, int16_t len);

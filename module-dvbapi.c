@@ -1150,7 +1150,7 @@ int32_t chk_valid_btun(ECM_REQUEST *er, uint16_t caidto)
 }
 
 void dvbapi_resort_ecmpids(int32_t demux_index) {
-	int32_t n,highest_prio=0,found=-1,matching=0;
+	int32_t n,highest_prio=0,found=-1;
 	uint16_t btun_caid=0;
 
 	for (n=0; n<demux[demux_index].ECMpidcount; n++) {
@@ -1221,7 +1221,6 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 					if (demux[demux_index].ECMpids[n].status == -1) //ignore
 						continue;
 					
-					matching=0;
 					for (rdr=first_active_reader; rdr ; rdr=rdr->next) {
 						if (cfg.preferlocalcards
 								&& !(rdr->typ & R_IS_NETWORK)
@@ -1231,7 +1230,6 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 								cs_debug_mask(D_DVBAPI,
 										"[PRIORITIZE PID %d] %04X:%06X:%04X (localrdr: %s weight: %d)", n, demux[demux_index].ECMpids[n].CAID,
 										demux[demux_index].ECMpids[n].PROVID, demux[demux_index].ECMpids[n].ECM_PID, rdr->label, demux[demux_index].ECMpids[n].status);
-								matching=1;
 								break;
 							}
 						} else { // cfg.preferlocalcards = 0 or cfg.preferlocalcards = 1 and no local reader
@@ -1240,12 +1238,11 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 								cs_debug_mask(D_DVBAPI,
 									"[PRIORITIZE PID %d] %04X:%06X:%04X (rdr: %s weight: %d)", n, demux[demux_index].ECMpids[n].CAID,
 									demux[demux_index].ECMpids[n].PROVID, demux[demux_index].ECMpids[n].ECM_PID, rdr->label, demux[demux_index].ECMpids[n].status);
-								matching=1;
 								break;
 							}
 						}
 					}
-					if (!matching) {
+					if (!matching_reader(er, rdr)) {
 						demux[demux_index].ECMpids[n].status = -1;
 						cs_debug_mask(D_DVBAPI,
 								"[IGNORE PID %d] %04X:%06X:%04X (no matching reader)", n, demux[demux_index].ECMpids[n].CAID, demux[demux_index].ECMpids[n].PROVID,demux[demux_index].ECMpids[n].ECM_PID);
@@ -1280,7 +1277,6 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 					er->caid = btun_caid;
 			}
 		
-			matching=0;
 			for (rdr=first_active_reader; rdr ; rdr=rdr->next) {
 				if (!(rdr->typ & R_IS_NETWORK) && rdr->card_status==CARD_INSERTED) { // cfg.preferlocalcards = 1 local reader
 					if (matching_reader(er, rdr)) {
@@ -1288,7 +1284,6 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 						cs_debug_mask(D_DVBAPI,
 								"[PRIORITIZE PID %d] %04X:%06X:%04X (localrdr: %s weight: %d)", n, demux[demux_index].ECMpids[n].CAID,
 								demux[demux_index].ECMpids[n].PROVID, demux[demux_index].ECMpids[n].ECM_PID, rdr->label, demux[demux_index].ECMpids[n].status);
-						matching=1;
 						break;
 					}
 				} else { // cfg.preferlocalcards = 1 and no local reader
@@ -1297,12 +1292,11 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 						cs_debug_mask(D_DVBAPI, 
 								"[PRIORITIZE PID %d] %04X:%06X:%04X (rdr: %s weight: %d)", n, demux[demux_index].ECMpids[n].CAID,
 								demux[demux_index].ECMpids[n].PROVID, demux[demux_index].ECMpids[n].ECM_PID, rdr->label, demux[demux_index].ECMpids[n].status);
-						matching=1;
 						break;
 					}
 				}
 			}
-			if (!matching) {
+			if (!matching_reader(er, rdr)) {
 				demux[demux_index].ECMpids[n].status = -1;
 				cs_debug_mask(D_DVBAPI,
 						"[IGNORE PID %d] %04X:%06X:%04X (no matching reader)", n, demux[demux_index].ECMpids[n].CAID,
@@ -2496,7 +2490,7 @@ void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
 				default:
 					if (cfg.dvbapi_boxtype == BOXTYPE_NEUMO) {
 						int32_t idx=0;
-						sscanf(demux[i].pmt_file, "pmt%d.tmp", &idx);
+						sscanf(demux[i].pmt_file, "pmt%3d.tmp", &idx);
 						dvbapi_write_cw(i, er->cw, idx);
 						break;
 					}

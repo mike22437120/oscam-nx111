@@ -3,19 +3,11 @@ SHELL = /bin/sh
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 .NOTPARALLEL: all
-.PHONY: help config.mak build_config.mak
+.PHONY: all prepare build-programs help
 
 # Include config.mak which contains variables for all enabled modules
 # These variables will be used to select only needed files for compilation
 -include config.mak
-
-# config.mak do not exists, rebuild it
-# and re-execute make so the variables can be included
-ifndef CONFIG_INCLUDED
-build_config.mak:
-	@$(MAKE) --no-print-directory -s config.mak
-	@$(MAKE) --no-print-directory
-endif
 
 VER     := $(shell ./config.sh --oscam-version)
 SVN_REV := $(shell ./config.sh --oscam-revision)
@@ -132,6 +124,7 @@ LIBCRYPTO_FLAGS = $(DEFAULT_LIBCRYPTO_FLAGS)
 LIBCRYPTO_CFLAGS = $(DEFAULT_LIBCRYPTO_FLAGS)
 LIBCRYPTO_LDFLAGS = $(DEFAULT_LIBCRYPTO_FLAGS)
 LIBCRYPTO_LIB = $(DEFAULT_LIBCRYPTO_LIB)
+override CONFIG_LIB_BIGNUM:=n
 else
 CONFIG_WITHOUT_LIBCRYPTO=y
 endif
@@ -238,7 +231,7 @@ GLOBAL_DEP = Makefile
 
 ALGO_LIB = $(LIBDIR)/libminilzo-$(TARGET).a
 ALGO_DEP = $(GLOBAL_DEP) algo/minilzo.h
-ALGO_OBJ-$(CONFIG_MODULE_GBOX) += $(ALGO_LIB)(algo/minilzo.o)
+ALGO_OBJ-$(CONFIG_LIB_MINILZO) += $(ALGO_LIB)(algo/minilzo.o)
 ALGO_OBJ = $(ALGO_OBJ-y)
 ifeq "$(ALGO_OBJ)" ""
 ALGO_LIB =
@@ -247,26 +240,26 @@ endif
 CSCRYPT_LIB = $(LIBDIR)/libcscrypt-$(TARGET).a
 CSCRYPT_DEP = $(GLOBAL_DEP) cscrypt/cscrypt.h cscrypt/des.h cscrypt/bn.h
 CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/aes.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_add.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_asm.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_ctx.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_div.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_exp.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_lib.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_mul.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_print.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_shift.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_sqr.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/bn_word.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_add.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_asm.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_ctx.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_div.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_exp.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_lib.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_mul.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_print.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_shift.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_sqr.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/bn_word.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_BIGNUM) += $(CSCRYPT_LIB)(cscrypt/mem.o)
 CSCRYPT_OBJ-y += $(CSCRYPT_LIB)(cscrypt/crc32.o)
-CSCRYPT_OBJ-y += $(CSCRYPT_LIB)(cscrypt/des.o)
-CSCRYPT_OBJ-y += $(CSCRYPT_LIB)(cscrypt/i_cbc.o)
-CSCRYPT_OBJ-y += $(CSCRYPT_LIB)(cscrypt/i_ecb.o)
-CSCRYPT_OBJ-y += $(CSCRYPT_LIB)(cscrypt/i_skey.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_DES) += $(CSCRYPT_LIB)(cscrypt/des.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_IDEA) += $(CSCRYPT_LIB)(cscrypt/i_cbc.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_IDEA) += $(CSCRYPT_LIB)(cscrypt/i_ecb.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_IDEA) += $(CSCRYPT_LIB)(cscrypt/i_skey.o)
 CSCRYPT_OBJ-y += $(CSCRYPT_LIB)(cscrypt/md5.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/mem.o)
-CSCRYPT_OBJ-y += $(CSCRYPT_LIB)(cscrypt/rc6.o)
-CSCRYPT_OBJ-$(CONFIG_WITHOUT_LIBCRYPTO) += $(CSCRYPT_LIB)(cscrypt/sha1.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_RC6) += $(CSCRYPT_LIB)(cscrypt/rc6.o)
+CSCRYPT_OBJ-$(CONFIG_LIB_SHA1) += $(CSCRYPT_LIB)(cscrypt/sha1.o)
 CSCRYPT_OBJ = $(CSCRYPT_OBJ-y)
 
 CSCTAPI_LIB = $(LIBDIR)/libcsctapi-$(TARGET).a
@@ -314,7 +307,7 @@ cross-i386-pc-cygwin-pcsc:
 
 OSCAM_LIB = $(LIBDIR)/libcs-$(TARGET).a
 OSCAM_DEP = $(GLOBAL_DEP) globals.h oscam-config.h
-OSCAM_OBJ-y += $(OSCAM_LIB)(module-datastruct-llist.o)
+OSCAM_OBJ-$(CONFIG_CS_ANTICASC) += $(OSCAM_LIB)(module-anticasc.o)
 OSCAM_OBJ-$(CONFIG_MODULE_CAMD33) += $(OSCAM_LIB)(module-camd33.o)
 OSCAM_OBJ-$(sort $(CONFIG_MODULE_CAMD35) $(CONFIG_MODULE_CAMD35_TCP)) += $(OSCAM_LIB)(module-camd35.o)
 OSCAM_OBJ-$(CONFIG_MODULE_CCCAM) += $(OSCAM_LIB)(module-cccam.o)
@@ -333,17 +326,10 @@ OSCAM_OBJ-$(CONFIG_MODULE_PANDORA) += $(OSCAM_LIB)(module-pandora.o)
 OSCAM_OBJ-$(CONFIG_MODULE_RADEGAST) += $(OSCAM_LIB)(module-radegast.o)
 OSCAM_OBJ-$(CONFIG_MODULE_SERIAL) += $(OSCAM_LIB)(module-serial.o)
 OSCAM_OBJ-$(CONFIG_WITH_LB) += $(OSCAM_LIB)(module-stat.o)
-OSCAM_OBJ-$(CONFIG_WEBIF) += $(OSCAM_LIB)(oscam-http-helpers.o)
-OSCAM_OBJ-$(CONFIG_WEBIF) += $(OSCAM_LIB)(oscam-http.o)
-OSCAM_OBJ-$(CONFIG_CS_ANTICASC) += $(OSCAM_LIB)(oscam-ac.o)
-OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-chk.o)
-OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-config.o)
-OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-garbage.o)
-OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-log.o)
-OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-reader.o)
-OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-simples.o)
-
-OSCAM_OBJ-y += $(OSCAM_LIB)(reader-common.o)
+OSCAM_OBJ-$(CONFIG_WEBIF) += $(OSCAM_LIB)(module-webif.o)
+OSCAM_OBJ-$(CONFIG_WEBIF) += $(OSCAM_LIB)(module-webif-lib.o)
+OSCAM_OBJ-$(CONFIG_WEBIF) += $(OSCAM_LIB)(module-webif-pages.o)
+OSCAM_OBJ-$(CONFIG_WITH_CARDREADER) += $(OSCAM_LIB)(reader-common.o)
 OSCAM_OBJ-$(CONFIG_READER_BULCRYPT) += $(OSCAM_LIB)(reader-bulcrypt.o)
 OSCAM_OBJ-$(CONFIG_READER_CONAX) += $(OSCAM_LIB)(reader-conax.o)
 OSCAM_OBJ-$(CONFIG_READER_CRYPTOWORKS) += $(OSCAM_LIB)(reader-cryptoworks.o)
@@ -358,13 +344,22 @@ OSCAM_OBJ-$(CONFIG_READER_VIDEOGUARD) += $(OSCAM_LIB)(reader-videoguard-common.o
 OSCAM_OBJ-$(CONFIG_READER_VIDEOGUARD) += $(OSCAM_LIB)(reader-videoguard1.o)
 OSCAM_OBJ-$(CONFIG_READER_VIDEOGUARD) += $(OSCAM_LIB)(reader-videoguard12.o)
 OSCAM_OBJ-$(CONFIG_READER_VIDEOGUARD) += $(OSCAM_LIB)(reader-videoguard2.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-chk.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-config.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-garbage.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-log.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-llist.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-reader.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-simples.o)
 OSCAM_OBJ = $(OSCAM_OBJ-y)
 
-# The default build target
-all: prepare $(OSCAM_BIN) $(LIST_SMARGO_BIN)
-
-config.mak: oscam-config.h
+# The default build target rebuilds the config.mak if needed and then
+# starts the compilation.
+all:
 	$(shell ./config.sh --make-config.mak)
+	@$(MAKE) --no-print-directory build-programs
+
+build-programs: prepare $(OSCAM_BIN) $(LIST_SMARGO_BIN)
 
 prepare:
 	@-test -d "$(LIBDIR)" || mkdir "$(LIBDIR)"
@@ -385,9 +380,9 @@ prepare:
 |  LDFLAGS  = $(LDFLAGS)\n\
 |  LIBS     = $(LIBS)\n\
 | Config:\n\
-|  Addons   : $(shell ./config.sh --show addons)\n\
-|  Protocols: $(shell ./config.sh --show protocols)\n\
-|  Readers  : $(shell ./config.sh --show readers)\n\
+|  Addons   : $(shell ./config.sh --show-enabled addons)\n\
+|  Protocols: $(shell ./config.sh --show-enabled protocols | sed -e 's|MODULE_||g')\n\
+|  Readers  : $(shell ./config.sh --show-enabled readers | sed -e 's|READER_||g')\n\
 |  Compiler : $(shell $(CC) --version 2>/dev/null | head -n 1)\n\
 |  Binary   : $(OSCAM_BIN)\n\
 +-------------------------------------------------------------------------------\n"
@@ -434,6 +429,18 @@ config:
 	$(SHELL) ./config.sh --gui
 
 menuconfig: config
+
+allyesconfig:
+	@echo "Enabling all config options."
+	@-$(SHELL) ./config.sh --enable all
+
+allnoconfig:
+	@echo "Disabling all config options."
+	@-$(SHELL) ./config.sh --disable all
+
+defconfig:
+	@echo "Restoring default config."
+	@-$(SHELL) ./config.sh --restore
 
 clean:
 	@-rm -rfv lib
@@ -595,8 +602,11 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
    EXTRA_LIBS     - Add text to LIBS (affects linking).\n\
                     Example: 'make EXTRA_LIBS=-L./stapi -loscam_stapi'\n\
 \n\
- Config target:\n\
-   make config    - Start configuration utility.\n\
+ Config targets:\n\
+   make config        - Start configuration utility.\n\
+   make allyesconfig  - Enable all configuration options.\n\
+   make allnoconfig   - Disable all configuration options.\n\
+   make defconfig     - Restore default configuration options.\n\
 \n\
  Cleaning targets:\n\
    make clean     - Remove lib/ directory which contains built object files.\n\

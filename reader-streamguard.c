@@ -27,7 +27,7 @@ static int32_t streamguard_card_init(struct s_reader *reader, ATR* newatr)
   def_resp;
   get_atr;
 
-  cs_ri_log(reader, "[reader-streamguard] StreamGuard atr_size:%d, atr[0]:%02x, atr[1]:%02x", atr_size, atr[0], atr[1]);
+  rdr_log(reader, "[reader-streamguard] StreamGuard atr_size:%d, atr[0]:%02x, atr[1]:%02x", atr_size, atr[0], atr[1]);
   
   if ((atr_size != 4) || (atr[0] != 0x3b) || (atr[1] != 0x02)) return ERROR;
 
@@ -36,7 +36,7 @@ static int32_t streamguard_card_init(struct s_reader *reader, ATR* newatr)
   reader->nprov = 1;
   memset(reader->prid, 0x00, sizeof(reader->prid));
 
-  cs_ri_log(reader, "[reader-streamguard] StreamGuard card detected");
+  rdr_log(reader, "[reader-streamguard] StreamGuard card detected");
 
   write_cmd(begin_cmd1, begin_cmd1 + 5);
   if((cta_res[cta_lr - 2] != 0x90) || (cta_res[cta_lr - 1] != 0x00)) return ERROR;
@@ -54,7 +54,7 @@ static int32_t streamguard_card_init(struct s_reader *reader, ATR* newatr)
   memset(reader->hexserial, 0, 8);
   memcpy(reader->hexserial + 2, data + 3, 4); // might be incorrect offset
 
-  cs_ri_log(reader, "type: StreamGuard, caid: %04X, serial: %llu, hex serial: %02x%02x%02x%02x",
+  rdr_log(reader, "type: StreamGuard, caid: %04X, serial: %llu, hex serial: %02x%02x%02x%02x",
             reader->caid, b2ll(6, reader->hexserial), reader->hexserial[2],
             reader->hexserial[3], reader->hexserial[4], reader->hexserial[5]);
 
