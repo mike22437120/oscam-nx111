@@ -4,53 +4,101 @@
 
 int32_t logfd = 0;
 
-void rdr_log(struct s_reader * reader, char *fmt,...)
-{
-	char txt[256];
-	char *desc;
-
-	va_list params;
-	va_start(params, fmt);
-	vsnprintf(txt, sizeof(txt), fmt, params);
-	va_end(params);
-
-	if (reader->csystem.desc)
-		desc = reader->csystem.desc;
-	else if (reader->crdr.desc)
-		desc = reader->crdr.desc;
-	else if (reader->ph.desc)
-		desc = reader->ph.desc;
-	else
-		desc = reader_get_type_desc(reader, 1);
-
-	cs_log("%s [%s] %s", reader->label, desc, txt);
+static char *debug_mask_txt(int mask) {
+	switch (mask) {
+		case D_EMM    : return "EMM: ";
+		case D_IFD    : return "IFD: ";
+		case D_TRACE  : return "TRACE: ";
+		case D_DEVICE : return "IO: ";
+		default       : return "";
+	}
 }
 
-void rdr_debug_mask(struct s_reader * reader, uint16_t mask, char *fmt, ...)
-{
+static char *reader_desc_txt(struct s_reader *reader) {
+	if (reader->csystem.desc)
+		return reader->csystem.desc;
+	else if (reader->crdr.desc)
+		return reader->crdr.desc;
+	else if (reader->ph.desc)
+		return reader->ph.desc;
+	else
+		return reader_get_type_desc(reader, 1);
+}
+
+static char *format_sensitive(char *result, int remove_sensitive) {
+	// Filter sensitive information
+	int i, n = strlen(result), p = 0;
+	if (remove_sensitive) {
+		int in_sens = 0;
+		for (i = 0; i < n; i++) {
+			switch(result[i]) {
+				case '{': in_sens = 1; continue;
+				case '}': in_sens = 0; break;
+			}
+			if (in_sens)
+				result[i] = '#';
+		}
+	}
+	// Filter sensitive markers
+	for (i = 0; i < n; i++) {
+		if (result[i] == '{' || result[i] == '}')
+			continue;
+		result[p++] = result[i];
+	}
+	result[p] = '\0';
+	return result;
+}
+
+void rdr_log(struct s_reader * reader, char *fmt, ...) {
+	char txt[256];
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(txt, sizeof(txt), fmt, args);
+	va_end(args);
+	cs_log("%s [%s] %s", reader->label, reader_desc_txt(reader), txt);
+}
+
+void rdr_log_sensitive(struct s_reader * reader, char *fmt, ...) {
+	char txt[256];
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(txt, sizeof(txt), fmt, args);
+	va_end(args);
+	format_sensitive(txt, log_remove_sensitive);
+	rdr_log(reader, "%s", txt);
+}
+
+void rdr_debug_mask(struct s_reader * reader, uint16_t mask, char *fmt, ...) {
 	if (config_WITH_DEBUG()) {
-		char txt[2048], *desc, *dbg_prefix;
+		char txt[2048];
+		va_list args;
+		va_start(args, fmt);
+		vsnprintf(txt, sizeof(txt), fmt, args);
+		va_end(args);
+		cs_debug_mask(mask, "%s [%s] %s%s", reader->label, reader_desc_txt(reader), debug_mask_txt(mask), txt);
+	}
+}
 
-		va_list params;
-		va_start(params, fmt);
-		vsnprintf(txt, sizeof(txt), fmt, params);
-		va_end(params);
+void rdr_debug_mask_sensitive(struct s_reader * reader, uint16_t mask, char *fmt, ...) {
+	if (config_WITH_DEBUG()) {
+		char txt[2048];
+		va_list args;
+		va_start(args, fmt);
+		vsnprintf(txt, sizeof(txt), fmt, args);
+		va_end(args);
+		format_sensitive(txt, log_remove_sensitive);
+		rdr_debug_mask(reader, mask, "%s", txt);
+	}
+}
 
-		if (mask == D_EMM)
-			dbg_prefix = "EMM: ";
-		else
-			dbg_prefix = "";
-
-		if (reader->csystem.desc)
-			desc = reader->csystem.desc;
-		else if (reader->crdr.desc)
-			desc = reader->crdr.desc;
-		else if (reader->ph.desc)
-			desc = reader->ph.desc;
-		else
-			desc = reader_get_type_desc(reader, 1);
-
-		cs_debug_mask(mask, "%s [%s] %s%s", reader->label, desc, dbg_prefix, txt);
+void rdr_ddump_mask(struct s_reader * reader, uint16_t mask, const uint8_t * buf, int n, char *fmt, ...) {
+	if (config_WITH_DEBUG()) {
+		char txt[2048];
+		va_list args;
+		va_start(args, fmt);
+		vsnprintf(txt, sizeof(txt), fmt, args);
+		va_end(args);
+		cs_ddump_mask(mask, buf, n, "%s [%s] %s%s", reader->label, reader_desc_txt(reader), debug_mask_txt(mask), txt);
 	}
 }
 
@@ -74,9 +122,13 @@ void cs_add_entitlement(struct s_reader *rdr, uint16_t caid, uint32_t provid, ui
 		item->type = type;
 
 		//add item
+		if (cfg.dvbapi_checking_entitlements)
 		ll_append(rdr->ll_entitlements, item);
-
-		// cs_debug_mask(D_TRACE, "entitlement: Add caid %4X id %4X %s - %s ", item->caid, item->id, item->start, item->end);
+        else {
+                LL_ITER itr = ll_iter_create(rdr->ll_entitlements);
+     	        ll_iter_insert(&itr, item);
+             }
+	  // cs_debug_mask(D_TRACE, "entitlement: Add caid %4X id %4X %s - %s ", item->caid, item->id, item->start, item->end);
 	}
 
 }
@@ -100,8 +152,8 @@ void casc_check_dcw(struct s_reader * reader, int32_t idx, int32_t rc, uchar *cw
 	ECM_REQUEST *ecm;
 	struct s_client *cl = reader->client;
 
-	if(!cl) return; 
-  
+	if(!cl) return;
+
 	for (i = 0; i < cfg.max_pending; i++) {
 		ecm = &cl->ecmtask[i];
 		if ((ecm->rc>=10) && ecm->caid == cl->ecmtask[idx].caid && (!memcmp(ecm->ecmd5, cl->ecmtask[idx].ecmd5, CS_ECMSTORESIZE))) {
@@ -132,13 +184,13 @@ void casc_check_dcw(struct s_reader * reader, int32_t idx, int32_t rc, uchar *cw
 
 int32_t hostResolve(struct s_reader *rdr){
    struct s_client *cl = rdr->client;
-   
+
    if(!cl) return 0;
-    
+
    in_addr_t last_ip = cl->ip;
    cl->ip = cs_getIPfromHost(rdr->device);
    cl->udp_sa.sin_addr.s_addr = cl->ip;
-   
+
    if (cl->ip != last_ip) {
      cs_log("%s: resolved ip=%s", rdr->device, cs_inet_ntoa(cl->ip));
    }
@@ -160,7 +212,7 @@ void block_connect(struct s_reader *rdr) {
   rdr->tcp_block_delay *= 4; //increment timeouts
 //  if (rdr->tcp_block_delay >= 60*1000)
 //    rdr->tcp_block_delay = 60*1000; //max 1min, todo config
-  cs_debug_mask(D_TRACE, "tcp connect blocking delay for %s set to %d", rdr->label, rdr->tcp_block_delay);
+  rdr_debug_mask(rdr, D_TRACE, "tcp connect blocking delay set to %d", rdr->tcp_block_delay);
 }
 
 int32_t is_connect_blocked(struct s_reader *rdr) {
@@ -170,7 +222,7 @@ int32_t is_connect_blocked(struct s_reader *rdr) {
   if (blocked) {
 		int32_t time = 1000*(rdr->tcp_block_connect_till.time-cur_time.time)
 				+rdr->tcp_block_connect_till.millitm-cur_time.millitm;
-		cs_log("%s connection blocked, retrying in %ds", rdr->label, time/1000);
+		rdr_log(rdr, "connection blocked, retrying in %ds", time/1000);
   }
   return blocked;
 }
@@ -195,19 +247,19 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 	}
 
 	if (client->reader->r_port<=0) {
-		cs_log("invalid port %d for server %s", client->reader->r_port, client->reader->device);
+		rdr_log(client->reader, "invalid port %d for server %s", client->reader->r_port, client->reader->device);
 		return -1;
 	}
 
 	client->is_udp=(rdr->typ==R_CAMD35);
 
-	cs_log("connecting to %s on %s:%d", rdr->label, rdr->device, rdr->r_port);
+	rdr_log(rdr, "connecting to %s:%d", rdr->device, rdr->r_port);
 
 	if (client->udp_fd)
-		cs_log("WARNING: client->udp_fd was not 0");
+		rdr_log(rdr, "WARNING: client->udp_fd was not 0");
 
 	if ((client->udp_fd=socket(PF_INET, client->is_udp ? SOCK_DGRAM : SOCK_STREAM, client->is_udp ? IPPROTO_UDP : IPPROTO_TCP))<0) {
-		cs_log("Socket creation failed (errno=%d %s)", errno, strerror(errno));
+		rdr_log(rdr, "Socket creation failed (errno=%d %s)", errno, strerror(errno));
 		client->udp_fd = 0;
 		block_connect(rdr);
 		return -1;
@@ -231,7 +283,7 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 
 		loc_sa.sin_port = htons(client->reader->l_port);
 		if (bind(client->udp_fd, (struct sockaddr *)&loc_sa, sizeof (loc_sa))<0) {
-			cs_log("bind failed (errno=%d %s)", errno, strerror(errno));
+			rdr_log(rdr, "bind failed (errno=%d %s)", errno, strerror(errno));
 			close(client->udp_fd);
 			client->udp_fd = 0;
 			block_connect(rdr);
@@ -242,13 +294,13 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 	client->udp_sa.sin_family = AF_INET;
 	client->udp_sa.sin_port = htons((uint16_t)client->reader->r_port);
 
-	cs_debug_mask(D_READER,"socket open for %s fd=%d", rdr->ph.desc, client->udp_fd);
+	rdr_log(rdr, "socket open for %s fd=%d", rdr->ph.desc, client->udp_fd);
 
 	if (client->is_udp) {
 		rdr->tcp_connected = 1;
 		return client->udp_fd;
 	}
-  
+
        int32_t fl = fcntl(client->udp_fd, F_GETFL);
 	fcntl(client->udp_fd, F_SETFL, O_NONBLOCK);
 
@@ -271,7 +323,7 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 			}
 		}
 		if (r != 0) {
-			cs_log("connect %s(fd=%d) failed: (errno=%d %s)", client->reader->device,client->udp_fd, errno, strerror(errno));
+			rdr_log(rdr, "connect(fd=%d) failed: (errno=%d %s)", client->udp_fd, errno, strerror(errno));
 			block_connect(rdr); //connect has failed. Block connect for a while
 			close(client->udp_fd);
 			client->udp_fd = 0;
@@ -287,7 +339,7 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 	client->last_caid=client->last_srvid=0;
 	client->pfd = client->udp_fd;
 	rdr->tcp_connected = 1;
-	cs_log("connect succesfull %s fd=%d", rdr->ph.desc, client->udp_fd);
+	rdr_log(rdr, "connect succesfull %s fd=%d", rdr->ph.desc, client->udp_fd);
 	return client->udp_fd;
 }
 
@@ -307,8 +359,8 @@ void network_tcp_connection_close(struct s_reader *reader, char *reason)
 	int32_t i;
 
 	if (fd) {
-		cs_log("tcp_conn_close(): fd=%d, cl->typ == '%c' is_udp %d label == '%s' reason %s",
-				fd, cl->typ, cl->is_udp, reader->label, reason?reason:"undef");
+		rdr_log(reader, "tcp_conn_close(): fd=%d, cl->typ == '%c' is_udp %d reason %s",
+			fd, cl->typ, cl->is_udp, reason ? reason : "undef");
 		close(fd);
 
 		cl->udp_fd = 0;
@@ -332,7 +384,7 @@ void casc_do_sock_log(struct s_reader * reader)
   uint16_t caid, srvid;
   uint32_t provid;
   struct s_client *cl = reader->client;
-  
+
   if(!cl) return;
 
   idx=reader->ph.c_recv_log(&caid, &provid, &srvid);
@@ -340,7 +392,7 @@ void casc_do_sock_log(struct s_reader * reader)
   if (idx<0) return;        // no dcw-msg received
 
   if(!cl->ecmtask) {
-    cs_log("WARNING: casc_do_sock_log: ecmtask not a available");
+    rdr_log(reader, "WARNING: casc_do_sock_log: ecmtask not a available");
     return;
   }
 
@@ -363,12 +415,12 @@ int32_t casc_process_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	int32_t rc, n, i, sflag, pending=0;
 	time_t t;//, tls;
 	struct s_client *cl = reader->client;
-  
+
 	if(!cl || !cl->ecmtask) {
-		cs_log("WARNING: casc_process_ecm: ecmtask not a available");
+		rdr_log(reader, "WARNING: casc_process_ecm: ecmtask not a available");
 		return -1;
 	}
-  
+
 	uchar buf[512];
 
 	t=time((time_t *)0);
@@ -392,14 +444,14 @@ int32_t casc_process_ecm(struct s_reader * reader, ECM_REQUEST *er)
 		// ... this level at least
 		if ((ecm->rc>=10) &&  er->caid == ecm->caid && (!memcmp(er->ecmd5, ecm->ecmd5, CS_ECMSTORESIZE)) && (er->level<=ecm->level))
 			sflag=0;
-      
-		if (ecm->rc >=10) 
+
+		if (ecm->rc >=10)
 			pending++;
 	}
 	cl->pending=pending;
 
 	if (n<0) {
-		cs_log("WARNING: reader ecm pending table overflow !!");
+		rdr_log(reader, "WARNING: reader ecm pending table overflow !!");
 		return(-2);
 	}
 
@@ -460,12 +512,12 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 		// so we could use send_dcw(er->client, er) or write_ecm_answer(reader, er), but send_dcw wont be threadsafe from here cause there may be multiple threads accessing same s_client struct.
 		// maybe rc should be checked before request is sent to reader but i could not find the reason why this is happening now and not in v1.10 (zetack)
 		//send_dcw(cl, er);
-		cs_debug_mask(D_TRACE, "skip ecm %04X reader=%s, rc=%d", er->checksum, reader->label, er->rc);
+		rdr_debug_mask(reader, D_TRACE, "skip ecm %04X, rc=%d", er->checksum, er->rc);
 		return;
 	}
-  
+
 	if (!chk_bcaid(er, &reader->ctab)) {
-		cs_debug_mask(D_READER, "caid %04X filtered", er->caid);
+		rdr_debug_mask(reader, D_READER, "caid %04X filtered", er->caid);
 		write_ecm_answer(reader, er, E_NOTFOUND, E2_CAID, NULL, NULL);
 		return;
 	}
@@ -473,7 +525,7 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	// cache2
 	struct ecm_request_t *ecm = check_cwcache(er, cl);
 	if (ecm && ecm->rc <= E_NOTFOUND) {
-		cs_debug_mask(D_TRACE, "ecm %04X answer from cache reader=%s", er->checksum, reader->label);
+		rdr_debug_mask(reader, D_TRACE, "ecm %04X answer from cache", er->checksum);
 		write_ecm_answer(reader, er, E_CACHE2, 0, ecm->cw, NULL);
 		return;
 	}
@@ -498,13 +550,13 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 			if (now - reader->cooldowntime >= reader->cooldown[1]) {
 				reader->cooldownstate = 0;
 				reader->cooldowntime = now;
-				cs_log("%s cooldown OFF", reader->label);
+				rdr_log(reader, "cooldown OFF");
 			}
 		} else {
 			if (now - reader->cooldowntime >= reader->cooldown[0]) {
 				reader->cooldownstate = 1;
 				reader->cooldowntime = now;
-				cs_log("%s cooldown ON", reader->label);
+				rdr_log(reader, "cooldown ON");
 			}
 		}
 	}
@@ -518,7 +570,7 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 				foundspace=h;
 				cs_debug_mask(D_READER, "ratelimit found srvid in use at pos: %d",h);
 				break;
-			} 
+			}
 		}
 		if (foundspace<0) {
 			for (h=0;h<reader->ratelimitecm;h++) {
@@ -526,14 +578,14 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 					foundspace=h;
 					cs_debug_mask(D_READER, "ratelimit found space at pos: %d old seconds %ld",h,reader->rlecmh[h].last);
 					break;
-				} 
+				}
 			}
 		}
 		#ifdef HAVE_DVBAPI
 		//overide ratelimit priority for dvbapi request
 		if ((foundspace < 0) && (cfg.dvbapi_enabled == 1) && (strcmp(er->client->account->usr,cfg.dvbapi_usr) == 0)) {
 			if(reader->lastdvbapirateoverride < time(NULL) - reader->ratelimitseconds){
-				time_t minecmtime = time(NULL);			
+				time_t minecmtime = time(NULL);
 				for (h=0;h<reader->ratelimitecm;h++) {
 					if(reader->rlecmh[h].last < minecmtime){
 						foundspace = h;
@@ -541,11 +593,15 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 					}
 				}
 				reader->lastdvbapirateoverride = time(NULL);
-				cs_debug_mask(D_READER, "Prioritizing DVBAPI User %s over other watching client on reader %s.",er->client->account->usr, reader->label);
-			} else cs_debug_mask(D_READER, "DVBAPI User %s is switching too fast for ratelimit and can't be prioritized on reader %s.",er->client->account->usr, reader->label);
+				rdr_debug_mask(reader, D_READER, "Prioritizing DVBAPI User %s over other watching client",
+					er->client->account->usr);
+			} else {
+				rdr_debug_mask(reader, D_READER, "DVBAPI User %s is switching too fast for ratelimit and can't be prioritized",
+					er->client->account->usr);
+			}
 		}
 		#endif
-		
+
 		if (foundspace<0) {
 			//drop
 			cs_debug_mask(D_READER, "ratelimit could not find space for srvid %04X. Dropping.",er->srvid);
@@ -566,13 +622,14 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	memset(&ea, 0, sizeof(struct s_ecm_answer));
 
 	int32_t rc = reader_ecm(reader, er, &ea);
-	
+
 	ea.rc = E_FOUND; //default assume found
 	ea.rcEx = 0; //no special flag
-	
+
 	if(rc == ERROR ){
 		char buf[32];
-		cs_debug_mask(D_TRACE, "Error processing ecm for caid %04X, srvid %04X (servicename: %s) on reader %s.", er->caid, er->srvid, get_servicename(cl, er->srvid, er->caid, buf), reader->label);
+		rdr_debug_mask(reader, D_TRACE, "Error processing ecm for caid %04X, srvid %04X, servicename: %s",
+			er->caid, er->srvid, get_servicename(cl, er->srvid, er->caid, buf));
 		ea.rc = E_NOTFOUND;
 		ea.rcEx = 0;
 		if (reader->typ == R_SC8in1 && reader->sc8in1_config->mcr_type) {
@@ -583,7 +640,8 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 
 	if(rc == E_CORRUPT ){
 		char buf[32];
-		cs_debug_mask(D_TRACE, "Error processing ecm for caid %04X, srvid %04X (servicename: %s) on reader %s.", er->caid, er->srvid, get_servicename(cl, er->srvid, er->caid, buf), reader->label);
+		rdr_debug_mask(reader, D_TRACE, "Error processing ecm for caid %04X, srvid %04X, servicename: %s",
+			er->caid, er->srvid, get_servicename(cl, er->srvid, er->caid, buf));
 		ea.rc = E_NOTFOUND;
 		ea.rcEx = E2_WRONG_CHKSUM; //flag it as wrong checksum
 		memcpy (ea.msglog,"Invalid ecm type for card",25);
@@ -591,7 +649,8 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	cs_ftime(&tpe);
 	cl->lastecm=time((time_t*)0);
 
-	cs_debug_mask(D_TRACE, "reader: %s ecm: %04X real time: %ld ms", reader->label, htons(er->checksum), 1000*(tpe.time-tps.time)+tpe.millitm-tps.millitm);
+	rdr_debug_mask(reader, D_TRACE, "ecm: %04X real time: %ld ms",
+		htons(er->checksum), 1000 * (tpe.time - tps.time) + tpe.millitm - tps.millitm);
 
 	write_ecm_answer(reader, er, ea.rc, ea.rcEx, ea.cw, ea.msglog);
 	reader_post_process(reader);
@@ -611,8 +670,10 @@ void reader_log_emm(struct s_reader * reader, EMM_PACKET *ep, int32_t i, int32_t
 		if (!tps)
 			tps = &tpe;
 
-		cs_log("%s emmtype=%s, len=%d, idx=%d, cnt=%d: %s (%ld ms) by %s", username(ep->client), typedesc[cl->emmcache[i].type], ep->emm[2], i, cl->emmcache[i].count, rtxt[rc],
-				1000*(tpe.time-tps->time)+tpe.millitm-tps->millitm, reader->label);
+		rdr_log(reader, "%s emmtype=%s, len=%d, idx=%d, cnt=%d: %s (%ld ms)",
+				username(ep->client), typedesc[cl->emmcache[i].type], ep->emm[2],
+				i, cl->emmcache[i].count, rtxt[rc],
+				1000 * (tpe.time - tps->time) + tpe.millitm - tps->millitm);
 	}
 
 	if (rc)
@@ -651,9 +712,9 @@ int32_t reader_do_emm(struct s_reader * reader, EMM_PACKET *ep)
   unsigned char md5tmp[MD5_DIGEST_LENGTH];
   struct timeb tps;
   struct s_client *cl = reader->client;
-  
+
   if(!cl) return 0;
-  
+
     cs_ftime(&tps);
 
 	MD5(ep->emm, ep->emm[2], md5tmp);
@@ -668,7 +729,7 @@ int32_t reader_do_emm(struct s_reader * reader, EMM_PACKET *ep)
 				else
 					ecs=1; //rewrite emm
 			}
-		break; 
+		break;
 		}
 	}
 
@@ -679,16 +740,16 @@ int32_t reader_do_emm(struct s_reader * reader, EMM_PACKET *ep)
   if ((rc=ecs)<2)
   {
           if (reader->typ & R_IS_CASCADING) {
-                  cs_debug_mask(D_READER, "network emm reader: %s" ,reader->label);
+                  rdr_debug_mask(reader, D_READER, "network emm reader");
 
                   if (reader->ph.c_send_emm) {
                           rc=reader->ph.c_send_emm(ep);
                   } else {
-                          cs_debug_mask(D_READER, "send_emm() support missing");
+                          rdr_debug_mask(reader, D_READER, "send_emm() support missing");
                           rc=0;
                   }
           } else {
-                  cs_debug_mask(D_READER, "local emm reader: %s" ,reader->label);
+                  rdr_debug_mask(reader, D_READER, "local emm reader");
 #ifdef WITH_CARDREADER
                   rc=reader_emm(reader, ep);
 #else
@@ -708,7 +769,7 @@ int32_t reader_do_emm(struct s_reader * reader, EMM_PACKET *ep)
 void reader_do_card_info(struct s_reader * reader)
 {
 #ifdef WITH_CARDREADER
-      reader_card_info(reader); 
+      reader_card_info(reader);
 #endif
       if (reader->ph.c_card_info)
       	reader->ph.c_card_info();
@@ -743,7 +804,7 @@ int32_t reader_init(struct s_reader *reader) {
 		client->ip=cs_inet_addr("0.0.0.0");
 
 		if (!(reader->ph.c_init)) {
-			cs_log("FATAL: %s-protocol not supporting cascading", reader->ph.desc);
+			rdr_log(reader, "FATAL: %s-protocol not supporting cascading", reader->ph.desc);
 			return 0;
 		}
 
@@ -757,7 +818,7 @@ int32_t reader_init(struct s_reader *reader) {
 
 		cs_malloc(&client->ecmtask, cfg.max_pending * sizeof(ECM_REQUEST), 1);
 
-		cs_log("proxy %s initialized (server=%s:%d)", reader->label, reader->device, reader->r_port);
+		rdr_log(reader, "proxy initialized, server %s:%d", reader->device, reader->r_port);
 	}
 #ifdef WITH_CARDREADER
 	else {
@@ -772,12 +833,19 @@ int32_t reader_init(struct s_reader *reader) {
 			} while (i < 30);
 		}
 		if (reader->mhz > 2000) {
-			
-			cs_log("Reader %s initialized (device=%s, detect=%s%s, pll max=%.2f Mhz, wanted cardmhz=%.2f Mhz", reader->label, reader->device,
-				reader->detect&0x80 ? "!" : "",RDR_CD_TXT[reader->detect&0x7f], (float) reader->mhz /100, (float) reader->cardmhz / 100);
-		}
-		else {
-		cs_log("reader %s initialized (device=%s, detect=%s%s, mhz=%d, cardmhz=%d)", reader->label, reader->device, reader->detect&0x80 ? "!" : "",RDR_CD_TXT[reader->detect&0x7f], reader->mhz,reader->cardmhz);
+			rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, pll max=%.2f Mhz, wanted cardmhz=%.2f Mhz",
+				reader->device,
+				reader->detect & 0x80 ? "!" : "",
+				RDR_CD_TXT[reader->detect & 0x7f],
+				(float)reader->mhz /100,
+				(float)reader->cardmhz / 100);
+		} else {
+			rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, mhz=%d, cardmhz=%d)",
+				reader->device,
+				reader->detect & 0x80 ? "!" : "",
+				RDR_CD_TXT[reader->detect&0x7f],
+				reader->mhz,
+				reader->cardmhz);
 		}
 	}
 

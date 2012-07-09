@@ -40,5 +40,5 @@ sed -i "s/Version:.*/Version: ${csver}-svn${svnver}/" DEBIAN/control
 tar czf ../oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz var usr
 cd ../ 
 dpkg -b image oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.deb
-rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/usr/bin/oscam utilus
+rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/usr/bin/oscam utils
 cd $curdir

@@ -337,8 +337,8 @@ extern const char *boxdesc[];
 enum {E1_GLOBAL=0, E1_USER, E1_READER, E1_SERVER, E1_LSERVER};
 
 //LB blocking events:
-enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_OFFLINE, 
-      E2_SID, E2_CCCAM_NOCARD, 
+enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_OFFLINE,
+      E2_SID, E2_CCCAM_NOCARD,
       //From here only LB nonblocking events:
       E2_CCCAM_NOK1, E2_CCCAM_NOK2, E2_CCCAM_LOOP, E2_WRONG_CHKSUM, E2_RATELIMIT};
 
@@ -728,7 +728,7 @@ typedef struct ecm_request_t {
 	struct s_ecm_answer	*matching_rdr;		//list of matching readers
 	const struct s_reader	*fallback;		//fallback is the first fallback reader in the list matching_rdr
 	struct s_client	*client;			//contains pointer to 'c' client while running in 'r' client
-	uint64_t        grp;	
+	uint64_t        grp;
 	int32_t			msgid;				// client pending table index
 	int32_t			stage;				// processing stage in server module
 	int32_t			level;				// send-level in client module
@@ -918,7 +918,7 @@ struct s_client {
 
 	pthread_t		thread;
 
-#ifdef MODULE_SERIAL	
+#ifdef MODULE_SERIAL
 	struct s_serial_client	*serialdata;
 #endif
 	//reader common
@@ -1453,7 +1453,7 @@ struct s_config
 	char			*mailfile;
 	uint8_t			logtostdout;
 	uint8_t 		logtosyslog;
-#if defined(WEBIF) || defined(MODULE_MONITOR) 
+#if defined(WEBIF) || defined(MODULE_MONITOR)
 	uint32_t		loghistorysize;
 #endif
 	int8_t			disablelog;
@@ -1489,7 +1489,7 @@ struct s_config
 	int8_t			http_readonly;
 	in_addr_t		http_dynip[MAX_HTTP_DYNDNS];
 	uchar			http_dyndns[MAX_HTTP_DYNDNS][64];
-#ifdef WITH_SSL	
+#ifdef WITH_SSL
 	int8_t			http_use_ssl;
 	int8_t			http_force_sslv3;
 #endif
@@ -1594,6 +1594,7 @@ struct s_config
 	int8_t          dvbapi_reopenonzap;
 	int32_t         dvbapi_delayer;                                         // delayer ms, minimum time to write cw
 #endif
+	int8_t		dvbapi_checking_entitlements;
 
 #ifdef CS_ANTICASC
 	char		ac_enabled;
@@ -1632,7 +1633,7 @@ struct s_config
 
 	uint32_t	max_cache_time;  //seconds
 	uint32_t	max_cache_count; //count ecms
-	
+
 #ifdef CS_CACHEEX
 	in_addr_t	csp_srvip;
 	int32_t		csp_port;
@@ -1640,7 +1641,7 @@ struct s_config
 
 	uint32_t	cacheex_wait_time; 		//cache wait time in ms
 	uint8_t		cacheex_enable_stats;	//enable stats
-	
+
 	struct s_cacheex_matcher *cacheex_matcher;
 #endif
 
@@ -1741,7 +1742,7 @@ extern uint16_t len4caid[256];
 extern struct s_config cfg;
 extern char cs_confdir[];
 extern int32_t exit_oscam;
-#if defined(WEBIF) || defined(MODULE_MONITOR) 
+#if defined(WEBIF) || defined(MODULE_MONITOR)
 extern char *loghist, *loghistptr;
 #endif
 extern struct s_module ph[CS_MAX_MOD];
@@ -1755,6 +1756,8 @@ extern CS_MUTEX_LOCK sr_lock;
 
 extern pid_t server_pid;							// PID of server - set while startup
 extern LLIST *log_list;				// log list
+
+extern int log_remove_sensitive;
 /* ===========================
  *      global functions
  * =========================== */

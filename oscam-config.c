@@ -297,7 +297,7 @@ static void chk_ftab(char *zFilterAsc, FTAB *ftab, const char *zType, const char
 	char *ptr[CS_MAXFILTERS] = {0};
 	FTAB newftab;
 	memset(&newftab, 0, sizeof(FTAB));
-	
+
 	for( i = 0, ptr1 = strtok_r(zFilterAsc, ";", &saveptr1); (i < CS_MAXFILTERS) && (ptr1); ptr1 = strtok_r(NULL, ";", &saveptr1), i++ ) {
 		ptr[i] = ptr1;
 		if( (ptr2 = strchr(trim(ptr1), ':')) ) {
@@ -453,7 +453,7 @@ void chk_t_global(const char *token, char *value)
 		return;
 	}
 
-#if defined(WEBIF) || defined(MODULE_MONITOR) 
+#if defined(WEBIF) || defined(MODULE_MONITOR)
 	if (!strcmp(token, "loghistorysize")) {
 		uint32_t newsize = strToUIntVal(value, 4096);
 		if (newsize < 1024 && newsize != 0) {
@@ -737,7 +737,7 @@ void chk_t_global(const char *token, char *value)
 		cfg.lb_auto_betatunnel = strToIntVal(value, DEFAULT_LB_AUTO_BETATUNNEL);
 		return;
 	}
-	
+
 	if (!strcmp(token, "lb_auto_betatunnel_prefer_beta")) {
 		cfg.lb_auto_betatunnel_prefer_beta = strToIntVal(value, DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA);
 		return;
@@ -778,7 +778,7 @@ void chk_t_global(const char *token, char *value)
 		cfg.max_cache_time = strToIntVal(value, 0);
 		return;
 	}
-	
+
 	if (!strcmp(token, "max_cache_count")) {
 		cfg.max_cache_count = strToIntVal(value, 0);
 		return;
@@ -1024,7 +1024,7 @@ void chk_t_webif(char *token, char *value)
 		return;
 	}
 
-#ifdef WITH_SSL		
+#ifdef WITH_SSL
 	if (!strcmp(token, "httpforcesslv3")) {
 		cfg.http_force_sslv3 = strToIntVal(value, 0);
 		return;
@@ -1497,6 +1497,12 @@ void chk_t_dvbapi(char *token, char *value)
 		return;
 	}
 
+		if (!strcmp(token, "checking_entitlements")) {
+		cfg.dvbapi_checking_entitlements = strToIntVal(value, 0);
+		return;
+	}
+
+
 	if (!strcmp(token, "user")) {
 		cs_strncpy(cfg.dvbapi_usr, value, sizeof(cfg.dvbapi_usr));
 		return;
@@ -1522,12 +1528,12 @@ void chk_t_dvbapi(char *token, char *value)
 		dvbapi_chk_caidtab(value, 'd');
 		return;
 	}
-	
+
 	if (!strcmp(token, "reopenonzap")) {
 		cfg.dvbapi_reopenonzap = strToIntVal(value, 0);
 		return;
 	}
-	
+
 	if (!strcmp(token, "delayer")) {
 		cfg.dvbapi_delayer = strToIntVal(value, 0);
 		return;
@@ -1629,7 +1635,7 @@ void init_len4caid(void)
 	int32_t nr;
 	FILE *fp;
 	char *value, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return;	
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return;
 
 	memset(len4caid, 0, sizeof(uint16_t)<<8);
 	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_l4ca);
@@ -1708,7 +1714,7 @@ int32_t init_config(void)
 	int32_t tag=TAG_GLOBAL;
 	FILE *fp;
 	char *value=NULL, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;	
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;
 
 #ifdef PRIO_PROCESS
 // FIXME: On WRT54G calling getpriority() results in OSCam not starting.
@@ -1736,7 +1742,7 @@ int32_t init_config(void)
 	cfg.max_log_size = 10;
 	cfg.disableuserfile = 1;
 	cfg.disablemail = 1;
-#if defined(WEBIF) || defined(MODULE_MONITOR) 
+#if defined(WEBIF) || defined(MODULE_MONITOR)
 	cfg.loghistorysize = 0;
 	cs_reinit_loghist(4096);
 #endif
@@ -1800,7 +1806,7 @@ int32_t init_config(void)
 
 	cfg.max_cache_time = DEFAULT_MAX_CACHE_TIME;
 	cfg.max_cache_count = DEFAULT_MAX_CACHE_COUNT;
-	 
+
 	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_conf);
 	if (!(fp = fopen(token, "r"))) {
 		fprintf(stderr, "Cannot open config file '%s' (errno=%d %s)\n", token, errno, strerror(errno));
@@ -2020,12 +2026,12 @@ void chk_account(const char *token, char *value, struct s_auth *account)
 			account->autoau = 1;
 		}
 		ll_clear(account->aureader_list);
-		
+
 		// exit if invalid or no value
 		if ((strlen(value) == 0) || (value[0] == '0'))
 			return;
-			
-		LL_ITER itr = ll_iter_create(configured_readers);		
+
+		LL_ITER itr = ll_iter_create(configured_readers);
 		struct s_reader *rdr;
 		char *pch;
 
@@ -2233,7 +2239,7 @@ int32_t write_config(void)
 		fprintf_conf(f, "disableuserfile", "%d\n", cfg.usrfile?cfg.disableuserfile:1);
 	if ((cfg.mailfile && cfg.disablemail == 0) || cfg.http_full_cfg)
 		fprintf_conf(f, "disablemail", "%d\n", cfg.mailfile?cfg.disablemail:1);
-#if defined(WEBIF) || defined(MODULE_MONITOR) 
+#if defined(WEBIF) || defined(MODULE_MONITOR)
 	if ((cfg.loghistorysize != 4096) || cfg.http_full_cfg)
 		fprintf_conf(f, "loghistorysize", "%u\n", cfg.loghistorysize);
 #endif
@@ -2348,7 +2354,7 @@ int32_t write_config(void)
 		fprintf_conf(f, "max_cache_time", "%d\n", cfg.max_cache_time);
 	if (cfg.max_cache_count != DEFAULT_MAX_CACHE_COUNT || cfg.http_full_cfg)
 		fprintf_conf(f, "max_cache_count", "%d\n", cfg.max_cache_count);
-		
+
 	fputc((int)'\n', f);
 
 	/*monitor settings*/
@@ -2577,6 +2583,8 @@ int32_t write_config(void)
 			fprintf_conf(f, "ecm_infomode", "%d\n", cfg.dvbapi_ecm_infomode);
 		if(cfg.dvbapi_reopenonzap != 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "reopenonzap", "%d\n", cfg.dvbapi_reopenonzap);
+        if(cfg.dvbapi_checking_entitlements != 0 || cfg.http_full_cfg)
+			fprintf_conf(f, "checkingentitlements", "%d\n", cfg.dvbapi_checking_entitlements);
 		if(cfg.dvbapi_delayer != 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "delayer", "%d\n", cfg.dvbapi_delayer);
 		fputc((int)'\n', f);
@@ -2587,7 +2595,7 @@ int32_t write_config(void)
 	/*webinterface*/
 	if (cfg.http_port > 0) {
 		fprintf(f,"[webif]\n");
-#ifdef WITH_SSL	
+#ifdef WITH_SSL
 		if (cfg.http_use_ssl) {
 			fprintf_conf(f, "httpport", "+%d\n", cfg.http_port);
 		} else
@@ -3578,7 +3586,7 @@ int32_t init_provid(void) {
 	int32_t nr;
 	FILE *fp;
 	char *payload, *saveptr1 = NULL, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;	
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
 	static struct s_provid *provid=(struct s_provid *)0;
 	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_provid);
 
@@ -3592,7 +3600,7 @@ int32_t init_provid(void) {
 
 		int32_t l;
 		void *ptr;
-		char *tmp, *providasc; 
+		char *tmp, *providasc;
 		tmp = trim(token);
 
 		if (tmp[0] == '#') continue;
@@ -3813,7 +3821,7 @@ int32_t init_tierid(void)
 	int32_t nr;
 	FILE *fp;
 	char *payload, *saveptr1 = NULL, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;	
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
 	static struct s_tierid *tierid=NULL, *new_cfg_tierid=NULL;
 	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_trid);
 
@@ -4764,7 +4772,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 		memset(rdr->cc_version, 0, sizeof(rdr->cc_version));
 		if (strlen(value) > sizeof(rdr->cc_version) - 1) {
 			fprintf(stderr, "cccam config: version too long.\n");
-		}	else	
+		}	else
 			cs_strncpy(rdr->cc_version, value, sizeof(rdr->cc_version));
 		return;
 	}
@@ -4883,7 +4891,7 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 			return;
 		}
 	}
-	
+
 	if (!strcmp(token, "dropbadcws")) {
 		rdr->dropbadcws = strToIntVal(value, 0);
 		return;
@@ -5319,7 +5327,7 @@ int32_t init_readerdb(void)
 	int32_t checked=0;
 	FILE *fp;
 	char *value, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;	
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;
 
 	if(!configured_readers)
 		configured_readers = ll_create("configured_readers");
@@ -5433,7 +5441,7 @@ void init_ac(void)
   int32_t nr;
   FILE *fp;
   char *saveptr1 = NULL, *token;
-  if(!cs_malloc(&token, MAXLINESIZE, -1)) return;	
+  if(!cs_malloc(&token, MAXLINESIZE, -1)) return;
 
   snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_ac);
   if (!(fp=fopen(token, "r")))
@@ -5443,7 +5451,7 @@ void init_ac(void)
     free(token);
     return;
   }
-  
+
   struct s_cpmap *cur_cpmap, *first_cpmap = NULL, *last_cpmap = NULL;
 
   for(nr=0; fgets(token, MAXLINESIZE, fp);)
@@ -5528,7 +5536,7 @@ void init_ac(void)
   }
   free(token);
   fclose(fp);
-  
+
   last_cpmap = cfg.cpmap;
   cfg.cpmap = first_cpmap;
   for(cur_cpmap = last_cpmap; cur_cpmap; cur_cpmap = cur_cpmap->next)
@@ -5554,7 +5562,7 @@ char *mk_t_caidtab(CAIDTAB *ctab){
 	char *saveptr = value;
 	i = 0;
 	while(ctab->caid[i]) {
-	
+
 		if (ctab->caid[i] < 0x0100) { //for "ignore provider for" option, caid-shortcut, just first 2 bytes:
 			if(i == 0) {
 				snprintf(value + pos, needed-(value-saveptr), "%02X", ctab->caid[i]);
@@ -5572,7 +5580,7 @@ char *mk_t_caidtab(CAIDTAB *ctab){
 				pos += 5;
 			}
 		}
-		
+
 		if((ctab->mask[i]) && (ctab->mask[i] != 0xFFFF)){
 			snprintf(value + pos, needed-(value-saveptr), "&%04X", ctab->mask[i]);
 			pos += 5;
