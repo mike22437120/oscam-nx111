@@ -1497,12 +1497,6 @@ void chk_t_dvbapi(char *token, char *value)
 		return;
 	}
 
-		if (!strcmp(token, "checking_entitlements")) {
-		cfg.dvbapi_checking_entitlements = strToIntVal(value, 0);
-		return;
-	}
-
-
 	if (!strcmp(token, "user")) {
 		cs_strncpy(cfg.dvbapi_usr, value, sizeof(cfg.dvbapi_usr));
 		return;
@@ -2583,8 +2577,6 @@ int32_t write_config(void)
 			fprintf_conf(f, "ecm_infomode", "%d\n", cfg.dvbapi_ecm_infomode);
 		if(cfg.dvbapi_reopenonzap != 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "reopenonzap", "%d\n", cfg.dvbapi_reopenonzap);
-        if(cfg.dvbapi_checking_entitlements != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "checkingentitlements", "%d\n", cfg.dvbapi_checking_entitlements);
 		if(cfg.dvbapi_delayer != 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "delayer", "%d\n", cfg.dvbapi_delayer);
 		fputc((int)'\n', f);
