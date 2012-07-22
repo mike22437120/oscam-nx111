@@ -668,7 +668,9 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 	tpl_printf(vars, TPLADD, "UPDATEINTERVAL", "%d", cfg.cc_update_interval);
 	if (cfg.cc_stealth)
 		tpl_printf(vars, TPLADD, "STEALTH", "selected");
-		
+
+	tpl_printf(vars,TPLADD, "CCCFGFILE","%s",cfg.cc_cfgfile);
+	
 	tpl_printf(vars, TPLADD, "NODEID", "%02X%02X%02X%02X%02X%02X%02X%02X",
 		cfg.cc_fixed_nodeid[0], cfg.cc_fixed_nodeid[1], cfg.cc_fixed_nodeid[2], cfg.cc_fixed_nodeid[3],
 	    cfg.cc_fixed_nodeid[4], cfg.cc_fixed_nodeid[5], cfg.cc_fixed_nodeid[6], cfg.cc_fixed_nodeid[7]);
@@ -688,6 +690,8 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 	if (cfg.cc_keep_connected)
 		tpl_printf(vars, TPLADD, "KEEPCONNECTED", "selected");
 
+	if (cfg.cc_autosidblock)
+		tpl_printf(vars, TPLADD, "AUTOSIDBLOCK", "selected");
 
 	return tpl_getTpl(vars, "CONFIGCCCAM");
 }
@@ -769,6 +773,9 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
 	else
 		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", "en");
+
+	if(cs_http_use_utf8)
+		tpl_addVar(vars,TPLADD,"HTTPUTF8","selected");
 
 	tpl_printf(vars, TPLADD, "HTTPREFRESH", "%d", cfg.http_refresh);
 	tpl_addVar(vars, TPLADD, "HTTPTPL", cfg.http_tpl);
@@ -1284,6 +1291,13 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 
 	// Reset Cycle
 	tpl_printf(vars, TPLADD, "RESETCYCLE", "%d", rdr->resetcycle);
+
+	// Reset Cycle For NOK
+	tpl_printf(vars, TPLADD, "RESETCYCLENOK", "%d", rdr->resetcycle_nok);
+
+	// Auto Restart after
+	tpl_printf(vars, TPLADD, "AUTORESTARTSECONDS", "%d", rdr->autorestartseconds);
+
 
 	// Disable Serverfilter
 	if(!apicall) {

@@ -1052,7 +1052,8 @@ struct s_reader  									//contains device info, reader info and card info
 	uint8_t		changes_since_shareupdate;
 	int32_t			resetcycle;						// ECM until reset
 	int32_t			resetcounter;					// actual count
-	int8_t			restart_for_resetcycle;				// restart for resetcycle
+	int32_t			resetcycle_nok;						// nok until reset
+	int32_t			resetcounter_nok;					// actual nok count
 	uint32_t		auprovid;						// AU only for this provid
 	int8_t			audisabled;						// exclude reader from auto AU
 	int8_t			smargopatch;
