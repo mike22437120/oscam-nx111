@@ -73,6 +73,15 @@ REZAPP=0
 logger $0 $1
 echo $0 $1
 
+quit_oscam(){
+   CONF=/var/tuxbox/config/oscam.conf
+   PORT=`cat $CONF| sed -n -e '/\[cccam\]/,/port/p' | grep port | cut -f 2 -d= | sed -e 's/[[:space:]]//g'`
+   OSCAM=`netstat -tlnp | grep $PORT |sed -e 's/[[:space:]][[:space:]]*/ /g'| cut -f7 -d' ' | cut -f2 -d/`
+   [ _$OSCAM = _ ] && exit 0
+   killall $OSCAM 2>/dev/null
+   killall -9 $OSCAM 2>/dev/null
+}
+
 remove_tmp () {
   rm -rf /tmp/*.info* /tmp/*.tmp*
 }
@@ -80,12 +89,11 @@ remove_tmp () {
 case "$1" in
   start)
   remove_tmp
+  quit_oscam
   /var/bin/$CAMD_BIN -b
   ;;
   stop)
-  killall $CAMD_BIN 2>/dev/null
-  sleep 2
-  killall -9 $CAMD_BIN 2>/dev/null
+  quit_oscam
   remove_tmp
   ;;
   *)

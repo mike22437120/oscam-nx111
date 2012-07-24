@@ -1,12 +1,22 @@
 #!/bin/sh
 oscam_version=1.20-svn7189
 
+quit_oscam(){
+   CONF=/var/tuxbox/config/oscam.conf
+   PORT=`cat $CONF| sed -n -e '/\[cccam\]/,/port/p' | grep port | cut -f 2 -d= | sed -e 's/[[:space:]]//g'`
+   OSCAM=`netstat -tlnp | grep $PORT |sed -e 's/[[:space:]][[:space:]]*/ /g'| cut -f7 -d' ' | cut -f2 -d/`
+   [ _$OSCAM = _ ] && exit 0
+   killall $OSCAM 2>/dev/null
+   killall -9 $OSCAM 2>/dev/null
+}
+
 case "$1" in
 start)
-	exec start-stop-daemon -S -x /usr/bin/oscam -- -b
+	quit_oscam
+	/usr/bin/oscam -b
 	;;
 stop)
-	exec start-stop-daemon -K -R 2 -x /usr/bin/oscam
+	quit_oscam
 	;;
 restart|reload)
 	$0 stop

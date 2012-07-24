@@ -1,11 +1,20 @@
 #!/bin/sh
 
+quit_oscam(){
+   CONF=/var/etc/oscam.conf
+   PORT=`cat $CONF| sed -n -e '/\[cccam\]/,/port/p' | grep port | cut -f 2 -d= | sed -e 's/[[:space:]]//g'`
+   OSCAM=`netstat -tlnp | grep $PORT |sed -e 's/[[:space:]][[:space:]]*/ /g'| cut -f7 -d' ' | cut -f2 -d/`
+   [ _$OSCAM = _ ] && exit 0
+   killall $OSCAM 2>/dev/null
+   killall -9 $OSCAM 2>/dev/null
+}
+
 if [ -f /var/tuxbox/config/oscam.conf.bak ]; then
 	mv /var/tuxbox/config/oscam.conf /var/tuxbox/config/oscam.conf.new
 	mv /var/tuxbox/config/oscam.conf.bak /var/tuxbox/config/oscam.conf
 fi
 
-killall -9 oscam
+quit_oscam
 oscam -b
 
 exit 0
