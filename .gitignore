@@ -1,4 +1,4 @@
-# generated config header file
+-# generated config header file
 oscam-ostype.h
 
 # generated libraries
@@ -13,4 +13,3 @@ Distribution/oscam-*
 
 # build directories
 /build*/
-*.tmp
