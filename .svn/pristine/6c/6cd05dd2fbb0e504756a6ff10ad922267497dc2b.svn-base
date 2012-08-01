@@ -292,7 +292,6 @@ static void usage(void)
 	_check(READER_VIDEOGUARD, "videoguard");
 	_check(READER_DRE, "dre");
 	_check(READER_TONGFANG, "tongfang");
-	_check(READER_STREAMGUARD, "streamguard");
 	_check(READER_BULCRYPT, "bulcrypt");
 	printf("\n");
 
@@ -1049,13 +1048,8 @@ void cs_exit(int32_t sig)
 	cs_log("cardserver down");
 	cs_close_log();
 
-	if (sig == SIGINT){
-#ifdef HAVE_DVBAPI
-		dvbapi_main_exit();
-#endif
-
+	if (sig == SIGINT)
 		exit(sig);
-	}
 
 	cs_cleanup();
 
@@ -1838,11 +1832,8 @@ void cs_cache_push(ECM_REQUEST *er)
 	if (er->cacheex_pushed || (er->ecmcacheptr && er->ecmcacheptr->cacheex_pushed))
 		return;
 
-        int64_t grp;
         if (er->selected_reader)
-            grp = er->selected_reader->grp;
-        else
-            grp = er->grp;
+            er->grp = er->selected_reader->grp;
             
 	//cacheex=2 mode: push (server->remote)
 	struct s_client *cl;
@@ -1850,7 +1841,7 @@ void cs_cache_push(ECM_REQUEST *er)
 		if (er->cacheex_src != cl) {
 			if (cl->typ == 'c' && !cl->dup && cl->account && cl->account->cacheex == 2) { //send cache over user
 				if (ph[cl->ctyp].c_cache_push // cache-push able
-						&& (!grp || (cl->grp & grp)) //Group-check
+						&& (!er->grp || (cl->grp & er->grp)) //Group-check
 						&& chk_srvid(cl, er) //Service-check
 						&& (chk_caid(er->caid, &cl->ctab) > 0))  //Caid-check
 				{
@@ -1874,7 +1865,7 @@ void cs_cache_push(ECM_REQUEST *er)
 		struct s_client *cl = rdr->client;
 		if (cl && er->cacheex_src != cl && rdr->cacheex == 3) { //send cache over reader
 			if (rdr->ph.c_cache_push
-				&& (!grp || (rdr->grp & grp)) //Group-check
+				&& (!er->grp || (rdr->grp & er->grp)) //Group-check
 				&& chk_srvid(cl, er) //Service-check
 				&& chk_ctab(er->caid, &rdr->ctab))  //Caid-check
 			{
@@ -1969,7 +1960,6 @@ struct ecm_request_t *check_cwcache(ECM_REQUEST *er, struct s_client *cl)
 	cs_readunlock(&ecmcache_lock);
 	return ecm;
 }
-
 
 /*
  * write_ecm_request():
@@ -2246,21 +2236,6 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 #endif
 		}
 	}
-	else
-	if (reader && rc == E_NOTFOUND && (rcEx == E2_CCCAM_NOK1 || rcEx == E2_CCCAM_NOK2) && reader->resetcycle_nok > 0)
-	{
-		reader->resetcounter_nok++;
-		if (reader->resetcounter_nok > reader->resetcycle_nok) {
-			reader->resetcounter_nok = 0;
-			rdr_log(reader, "Resetting reader, resetcyle of %d NOK ecms reached", reader->resetcycle_nok);
-			reader->card_status = CARD_NEED_INIT;
-#ifdef WITH_CARDREADER
-      			//reader_reset(reader);
-      			add_job(cl, ACTION_READER_RESET, NULL, 0);
-#endif
-		}
-	}
-
 
 	return res;
 }
@@ -3227,6 +3202,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 		ac_chk(client, er, 0);
 #endif
 	}
+
 	struct s_ecm_answer *ea, *prv = NULL;
 #ifdef CS_CACHEEX
 	if(er->rc >= E_99 && !is_match_alias(client, er)) {
@@ -3795,7 +3771,7 @@ void cs_waitforcardinit(void)
 }
 
 static void check_status(struct s_client *cl) {
-	if (!cl || cl->kill || !cl->init_done )
+	if (!cl || cl->kill || !cl->init_done)
 		return;
 
 	struct s_reader *rdr = cl->reader;
@@ -3814,8 +3790,7 @@ static void check_status(struct s_client *cl) {
 			//check for card inserted or card removed on pysical reader
 			if (!rdr || !rdr->enable)
 				break;
-			reader_checkhealth(rdr);
-//			add_job(cl, ACTION_READER_CHECK_HEALTH, NULL, 0);
+			add_job(cl, ACTION_READER_CHECK_HEALTH, NULL, 0);
 			break;
 #endif
 		case 'p':
@@ -4136,7 +4111,7 @@ void * work_thread(void *ptr) {
 void add_job(struct s_client *cl, int8_t action, void *ptr, int32_t len) {
 
 	if (!cl) {
-		cs_log("WARNING: add_job failed. (action=%d)",action);
+		cs_log("WARNING: add_job failed.");
 		if (len && ptr) free(ptr);
 		return;
 	}
@@ -4527,17 +4502,6 @@ void * reader_check(void) {
 		for (cl=first_client->next; cl ; cl=cl->next) {
 			if (!cl->thread_active)
 				check_status(cl);
-			struct s_reader *rdr=cl->reader;
-			if (rdr && rdr->autorestartseconds
- 			    && (cl->login + (time_t)rdr->autorestartseconds) < time(NULL)){
-				if(rdr->enable){
-					rdr->enable=0;
-					kill_thread(cl);
-					cs_sleepms(cfg.reader_restart_seconds * 1000);
-				}
-				rdr->enable=1;
-				restart_cardreader(rdr, 1);
-			}
 		}
 		cs_readlock(&readerlist_lock);
 		for (rdr=first_active_reader; rdr; rdr=rdr->next) {
@@ -4755,9 +4719,6 @@ int32_t main (int32_t argc, char *argv[])
 #ifdef READER_TONGFANG
 	reader_tongfang,
 #endif
-#ifdef READER_STREAMGUARD
-	reader_streamguard,
-#endif
 #ifdef READER_BULCRYPT
 	reader_bulcrypt,
 #endif
@@ -4957,40 +4918,6 @@ int32_t main (int32_t argc, char *argv[])
 	start_thread((void *) &check_thread, "check");
 
 	start_lcd_thread();
-
-#ifndef WITH_CARDREADER
-	cs_log("Binary without Cardreader Support! No EMM processing possible!");
-#endif
-#ifndef READER_NAGRA
-	cs_log("Binary without Nagra Module - no EMM processing for Nagra possible!");
-#endif
-#ifndef READER_IRDETO
-	cs_log("Binary without Irdeto Module - no EMM processing for Irdeto possible!");
-#endif
-#ifndef READER_CONAX
-	cs_log("Binary without Conax Module - no EMM processing for Conax possible!");
-#endif
-#ifndef READER_CRYPTOWORKS
-	cs_log("Binary without Cryptoworks Module - no EMM processing for Cryptoworks possible!");
-#endif
-#ifndef READER_SECA
-	cs_log("Binary without Seca Module - no EMM processing for Seca possible!");
-#endif
-#ifndef READER_VIACCESS
-	cs_log("Binary without Viaaccess Module - no EMM processing for Viaaccess possible!");
-#endif
-#ifndef READER_VIDEOGUARD
-	cs_log("Binary without Videoguard Module - no EMM processing for Videoguard possible!");
-#endif
-#ifndef READER_DRE
-	cs_log("Binary without Dre Module - no EMM processing for Dre possible!");
-#endif
-#ifndef READER_TONGFANG
-	cs_log("Binary without Tongfang Module - no EMM processing for Tongfang possible!");
-#endif
-#ifndef READER_BULCRYPT
-	cs_log("Binary without Bulcrypt Module - no EMM processing for Bulcrypt possible!");
-#endif
 
 	init_cardreader();
 

@@ -98,7 +98,7 @@ char *CSS =
 "HR {height:1px; border-width:0; color:white; background-color:#AAAAAA}\n"
 "DIV.log {border:1px dotted #AAAAAA; background-color: #FAFAFA; padding:10px; font-family:\"Courier New\", monospace; color:#666666; font-size: 11px; word-wrap:break-word; text-align:left; }\n"
 "DIV.sidlist {border:1px dotted #AAAAAA; background-color: #fffdf5; padding:2px; font-family:\"Courier New\", monospace ; color:#666666; font-size: 11px; word-wrap:break-word; text-align:left;}\n"
-"DIV.message {font-family: Arial; font-size: 12px;font-weight:bold;}\n"
+"DIV.message {position:absolute;right:0;font-family: Arial; font-size: 12px;font-weight:bold;}\n"
 "DIV.div_notifier {height:14px;width:14px;border-radius:7px;-webkit-border-radius:7px;background-color:red;margin-left:4px;text-align:center;float:right;}\n"
 "DIV.debugmenu {line-height: 20px;}\n"
 "DIV.logmenu {line-height: 20px;}\n"
@@ -409,7 +409,6 @@ SFRTIFJFU0VSVkVEADs="
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLFILEMENU##\n\
-##TPLMESSAGE##\
 	<DIV CLASS=\"debugmenu\">##SDEBUG##</DIV>\
 	<DIV CLASS=\"logmenu\">##LOGMENU##</DIV>\
 	<DIV CLASS=\"filterform\">##FILTERFORM##</DIV>\
@@ -420,12 +419,6 @@ SFRTIFJFU0VSVkVEADs="
 		<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Save\" TITLE=\"Save file\" ##BTNDISABLED##>\n\
 	</FORM>\n\
 ##TPLFOOTER##"
-
-#define TPLFILTERFORM "<FORM ACTION=\"files.html\" method=\"get\">\n\
-<INPUT name=\"file\" type=\"hidden\" value=\"userfile\">\n\
-<SELECT name=\"filter\">\n\
-##FILTERFORMOPTIONS##\
-</SELECT><input type=\"submit\" name=\"action\" value=\"Filter\" title=\"Filter for a specific user\"></FORM>"
 
 #define TPLAPIFILE "##TPLAPIHEADER##\n\
 	<file filename=\"##APIFILENAME##\" writable=\"##APIWRITABLE##\">\n\
@@ -454,7 +447,6 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLFAILBAN "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
 		<TABLE border=0 class=\"configmenu\">\n\
 		<TR>\n\
 			<TD CLASS=\"configmenu\"><A HREF=\"failban.html?action=delete&intip=all\">Clear all</TD>\n\
@@ -691,7 +683,7 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLUSERCONFIGLIST "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<TABLE CLASS=\"configmenu\">\n\
 		<TR>\n\
 			<TD CLASS=\"configmenu\"><A HREF=\"userconfig.html?part=adduser\">Add User</A></TD>\n\
@@ -832,7 +824,7 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLUSEREDIT "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+	<DIV CLASS=\"message\">##MESSAGE##</DIV>\
 	<BR><BR>\n\
 	<form action=\"user_edit.html\" method=\"get\">\n\
 		<input name=\"user\" type=\"hidden\" value=\"##USERNAME##\">\n\
@@ -909,7 +901,7 @@ SFRTIFJFU0VSVkVEADs="
 													</select>\n\
 												</TD></TR>\n\
 							<TR><TD>##TPLHELPPREFIX##user#cacheex_maxhop##TPLHELPSUFFIX##Cache-EX Maxhop:</A></TD><TD><input name=\"cacheex_maxhop\" type=\"text\" size=\"4\" maxlength=\"4\" value=\"##CACHEEX_MAXHOP##\"></TD></TR>\n"
-							
+
 
 #define TPLREADEREDITCACHEEXBIT "			<TR><TD>##TPLHELPPREFIX##server#cacheex##TPLHELPSUFFIX##Cache-EX-Mode:</A></TD>\n\
 												<TD><select name=\"cacheex\">\n\
@@ -989,7 +981,6 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLREADERS "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
 	<TABLE CLASS=\"configmenu\"><TR><TD CLASS=\"configmenu\"><A HREF=\"scanusb.html\">Scan USB</A></TD><TD CLASS=\"configmenu\"><A TARGET=\"_blank\" HREF=\"graph.svg?type=servers\">Show Graphs</A></TD></TR></TABLE>\n\
 	<form action=\"readerconfig.html\" method=\"get\">\n\
 		<TABLE CLASS=\"readers\">\n\
@@ -1063,7 +1054,7 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLREADERSTATS "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+	<DIV CLASS=\"message\">##MESSAGE##</DIV>\
 	<TABLE border=0 class=\"configmenu\">\n\
 		<TR>\n\
 			<TD CLASS=\"configmenu\"><A HREF=\"readerstats.html?label=##ENCODEDLABEL##&amp;hide=-1\">show all</A></TD>\n\
@@ -1099,7 +1090,7 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLSCANUSB "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+	<DIV CLASS=\"message\">##MESSAGE##</DIV>\
 	<BR><BR>\n\
 	<TABLE cellpadding=\"10\">\n\
 		<TR><TH>USB Devices</TH></TR>\n\
@@ -1112,7 +1103,7 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLENTITLEMENTS "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+	<DIV CLASS=\"message\">##MESSAGE##</DIV>\
 	<BR><BR>Entitlements for ##READERNAME##<BR><BR>\n\
 ##ENTITLEMENTCONTENT##\
 ##TPLFOOTER##"
@@ -1194,7 +1185,8 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 #define TPLREADERCONFIG "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\n\
+	<BR><BR>\n\
+##MESSAGE##\n\
 	<form action=\"readerconfig.html?action=execute\" method=\"get\">\n\
 		<input name=\"label\" type=\"hidden\" value=\"##READERNAME##\">\n\
 		<input name=\"protocol\" type=\"hidden\" value=\"##PROTOCOL##\">\n\
@@ -1251,9 +1243,6 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
             <TR><TD>##TPLHELPPREFIX##server#disablecrccws##TPLHELPSUFFIX##Skip CWs checksum test:</A><input name=\"disablecrccws\" type=\"hidden\" value=\"0\"></TD><TD><input name=\"disablecrccws\" type=\"checkbox\" value=\"1\" ##DISABLECRCCWSCHECKED##></TD></TR>\n\
             <TR><TD>##TPLHELPPREFIX##server#use_gpio##TPLHELPSUFFIX##Use GPIO:</A><input name=\"use_gpio\" type=\"hidden\" value=\"0\"></TD><TD><input name=\"use_gpio\" type=\"checkbox\" value=\"1\" ##USE_GPIOCHECKED##></TD></TR>\n\
 			##TPLREADEREDITCACHEEXBIT##\
-			<TR><TD>##TPLHELPPREFIX##server#resetcycle##TPLHELPSUFFIX##Reset after No. ECM:</A></TD><TD><input name=\"resetcycle\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##RESETCYCLE##\"></TD></TR>\n\
-			<TR><TD>Reset after No. NOK:</A></TD><TD><input name=\"resetcycle_nok\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##RESETCYCLENOK##\"></TD></TR>\n\
-	<TR><TD>Auto Restart after</A></TD><TD><input name=\"autorestartseconds\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##AUTORESTARTSECONDS##\">&nbsp;seconds</TD></TR>\n\
 			<TR><TH>&nbsp;</TH><TH>Reader specific settings for protocol ##PROTOCOL##</TH></TR>\n\
 ##READERDEPENDINGCONFIG##\n\
 			<TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" name=\"action\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
@@ -1293,6 +1282,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 				<TR><TD>##TPLHELPPREFIX##server#fix9993##TPLHELPSUFFIX##Fix 9993 for CAID 0919:</A><input name=\"fix9993\" type=\"hidden\" value=\"0\"></TD><TD><input name=\"fix9993\" type=\"checkbox\" value=\"1\" ##FIX9993CHECKED##></TD></TR>\n\
 				<TR><TD>##TPLHELPPREFIX##server#ins7e##TPLHELPSUFFIX##ins7E payload (26 bytes):</A></TD><TD><input name=\"ins7e\" type=\"text\" size=\"60\" maxlength=\"56\" value=\"##INS7E##\"></TD></TR>\n\
 				<TR><TD>##TPLHELPPREFIX##server#ins7e11##TPLHELPSUFFIX##ins7E11 TA1 Byte (1 byte):</A></TD><TD><input name=\"ins7e11\" type=\"text\" size=\"10\" maxlength=\"2\" value=\"##INS7E11##\"></TD></TR>\n\
+				<TR><TD>##TPLHELPPREFIX##server#resetcycle##TPLHELPSUFFIX##Reset after No. ECM:</A></TD><TD><input name=\"resetcycle\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##RESETCYCLE##\"></TD></TR>\n\
 				<TR><TD>##TPLHELPPREFIX##server#ndsversion##TPLHELPSUFFIX##Force NDS Version:</A></TD>\n\
 					<TD>\n\
 						<SELECT name=\"ndsversion\">\n\
@@ -1395,7 +1385,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+	<DIV CLASS=\"message\">##MESSAGE##</DIV>\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"gbox\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1417,7 +1407,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"anticasc\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1451,7 +1441,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"cccam\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1503,8 +1493,6 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 					</SELECT>\n\
 				</TD>\n\
 			</TR>\n\
-			<TR class=\"cfg_cccam\"><TD>CCcam.cfg:</TD><TD><input name=\"cccamcfgfile\" type=\"text\" size=\"80\" maxlength=\"80\" value=\"##CCCFGFILE##\"></TD></TR>\n\
-			<TR class=\"cfg_cccam\"><TD>Auto Sid Block:</A></TD><TD><SELECT NAME=\"autosidblock\"><OPTION VALUE=\"0\" >OFF</OPTION><OPTION VALUE=\"1\" ##AUTOSIDBLOCK##>ON</OPTION></SELECT></TD></TR>\n\
 			<TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
 		</TABLE>\n\
 	</form>\n\
@@ -1531,7 +1519,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"monitor\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1580,7 +1568,6 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<TR><TD>##TPLHELPPREFIX##conf#httpallowed##TPLHELPSUFFIX##Http allowed:</A></TD><TD><input name=\"httpallowed\" type=\"text\" size=\"63\" maxlength=\"200\" value=\"##HTTPALLOW##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httpdyndns##TPLHELPSUFFIX##Http dyndns:</A></TD><TD><input name=\"httpdyndns\" type=\"text\" size=\"63\" maxlength=\"200\" value=\"##HTTPDYNDNS##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#httpsavefullcfg##TPLHELPSUFFIX##Http save full config:</A></TD><TD><SELECT NAME=\"httpsavefullcfg\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##HTTPSAVEFULLSELECT##>YES</OPTION></SELECT></TD></TR>\n\
-			<TR><TD>UTF8 Charset:</TD><TD><SELECT NAME=\"httputf8\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##HTTPUTF8##>YES</OPTION></SELECT></TD></TR>\n\
 ##TPLHTTPFORCESSLV3##\
 ##TPLLCDOPTIONS##\
 			<TR><TD colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"Save\" ##BTNDISABLED##></TD></TR>\n\
@@ -1588,7 +1575,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 	</form>\n\
 ##TPLFOOTER##"
 
-#ifdef WITH_SSL	
+#ifdef WITH_SSL
 #define TPLHTTPFORCESSLV3 "\
 			<TR><TD>##TPLHELPPREFIX##conf#httpforcesslv3##TPLHELPSUFFIX##Force more secure v3 of ssl:</A></TD><TD><SELECT NAME=\"httpforcesslv3\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##HTTPFORCESSLV3SELECT##>YES</OPTION></SELECT></TD></TR>\n"
 #endif
@@ -1608,7 +1595,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"radegast\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1629,7 +1616,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"newcamd\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1653,7 +1640,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"global\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1736,12 +1723,17 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<TR><TD>##TPLHELPPREFIX##conf#enableled##TPLHELPSUFFIX##Enable LED:</A></TD><TD><SELECT NAME=\"enableled\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##ENABLELEDSELECTED1##>For Router</OPTION><OPTION VALUE=\"2\" ##ENABLELEDSELECTED2##>For QboxHD</OPTION></SELECT></TD></TR>\n"
 #endif
 
+#if defined(QBOXHD_LED) || defined(CS_LED)
+#define TPLENABLELEDBIT "\
+			<TR><TD>##TPLHELPPREFIX##conf#enableled##TPLHELPSUFFIX##Enable LED:</A></TD><TD><SELECT NAME=\"enableled\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##ENABLELEDSELECTED1##>For Router</OPTION><OPTION VALUE=\"2\" ##ENABLELEDSELECTED2##>For QboxHD</OPTION></SELECT></TD></TR>\n"
+#endif
+
 #ifdef WITH_LB
 #define TPLCONFIGLOADBALANCER "\
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"loadbalancer\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1799,7 +1791,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"camd33\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1821,7 +1813,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"camd35\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1842,7 +1834,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"camd35tcp\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1863,7 +1855,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"csp\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1883,7 +1875,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<form action=\"config.html\" method=\"get\">\n\
 		<input name=\"part\" type=\"hidden\" value=\"serial\">\n\
 		<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1905,7 +1897,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLCONFIGMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 <form action=\"config.html\" method=\"get\">\n\
 	<input name=\"part\" type=\"hidden\" value=\"dvbapi\">\n\
 	<input name=\"action\" type=\"hidden\" value=\"execute\">\n\
@@ -1941,7 +1933,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 #define TPLSERVICECONFIGLIST "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<FORM action=\"services_edit.html\" method=\"get\"><INPUT TYPE=\"hidden\" NAME=\"action\" VALUE=\"add\">\n\
 		<TABLE CLASS=\"stats\">\n\
 			<TR>\n\
@@ -1973,7 +1965,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 #define TPLSERVICEEDIT "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<BR><BR>\n\
 	<form action=\"services_edit.html\" method=\"get\">\n\
 		<input name=\"service\" type=\"hidden\" value=\"##LABEL##\">\n\
@@ -2019,16 +2011,10 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 	<br><P CLASS=\"blinking\">OSCam Shutdown - Try Reconnect in ##SECONDS## Seconds</p><br><br>\n\
 ##TPLFOOTER##"
 
-#define TPLWRITEPROTECTION "You cannot change the content of this file!"
-
-#define TPLMESSAGEBIT "##MESSAGE##<BR>"
-
-#define TPLMESSAGE "<DIV CLASS=\"message\">##MESSAGES##</DIV>\n"
-
 #define TPLSCRIPT "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<br><br><b>OSCam execute script: ##SCRIPTNAME## --> Status: ##SCRIPTRESULT## --> Returncode: ##CODE##</b><br>\n\
 ##TPLFOOTER##"
 
@@ -2291,7 +2277,7 @@ function isNumber(a) {\n\
 #define TPLCACHEEXPAGE "\
 ##TPLHEADER##\
 ##TPLMENU##\
-##TPLMESSAGE##\
+##MESSAGE##\
 	<BR><BR>\n\
 	<TABLE CLASS=\"stats\">\n\
 			<TR><TH COLSPAN=\"7\">CacheEX Stats</TH></TR>\n\
@@ -2306,190 +2292,367 @@ function isNumber(a) {\n\
 		<TR><TD class=\"centered\">##TOTAL_CACHEXPUSH##</TD><TD class=\"centered\">##TOTAL_CACHEXGOT##</TD><TD class=\"centered\">##TOTAL_CACHEXHIT## (##REL_CACHEXHIT##%)</TD><TD class=\"centered\">##TOTAL_CACHESIZE##</TD></TR>\n\
 	</TABLE>\n\
 	<BR><BR>\n\
-##TPLFOOTER##" 
+##TPLFOOTER##"
 
 #define TPLCACHEEXTABLEROW "			<TR><TD>&nbsp;&nbsp;##DIRECTIONIMG##&nbsp;&nbsp;</TD><TD>##TYPE##</TD><TD>##NAME##</TD><TD>##LEVEL##</TD><TD>##PUSH##</TD><TD>##GOT##</TD><TD>##HIT##</TD></TR>\n"
 #endif
 
-const char *tpl[][3] = {
-	{"HEADER", TPLHEADER, ""}
-	,{"APIHEADER", TPLAPIHEADER, ""}
-	,{"JSONHEADER", TPLJSONHEADER, ""}
-	,{"APIERROR", TPLAPIERROR, ""}
-	,{"APICONFIRMATION", TPLAPICONFIRMATION, ""}
-	,{"FOOTER", TPLFOOTER, ""}
-	,{"APIFOOTER", TPLAPIFOOTER, ""}
-	,{"JSONFOOTER", TPLJSONFOOTER, ""}
-	,{"MENU", TPLMENU, ""}
-	,{"REFRESH", TPLREFRESH, ""}
-	,{"HELPPREFIX", TPLHELPPREFIX, ""}
-	,{"HELPSUFFIX", TPLHELPSUFFIX, ""}
-	,{"STATUS", TPLSTATUS, ""}
-	,{"APISTATUS", TPLAPISTATUS, ""}
-	,{"JSONSTATUS", TPLJSONSTATUS, ""}
-	,{"CLIENTSTATUSBIT", TPLCLIENTSTATUSBIT, ""}
-	,{"APISTATUSBIT", TPLAPISTATUSBIT, ""}
-	,{"JSONSTATUSBIT", TPLJSONSTATUSBIT, ""}
-	,{"USERCONFIGLIST", TPLUSERCONFIGLIST, ""}
-	,{"ADDNEWUSER", TPLADDNEWUSER, ""}
-	,{"USERCONFIGLISTBIT", TPLUSERCONFIGLISTBIT, ""}
-	,{"APIUSERCONFIGLIST", TPLAPIUSERCONFIGLIST, ""}
-	,{"APIUSERCONFIGLISTBIT", TPLAPIUSERCONFIGLISTBIT, ""}
-	,{"SIDTAB", TPLSIDTAB, ""}
-	,{"SIDTABBIT", TPLSIDTABBIT, ""}
-	,{"READERS", TPLREADERS, ""}
-	,{"APIREADERS", TPLAPIREADERS, ""}
-	,{"APIREADERSBIT", TPLAPIREADERSBIT, ""}
-	,{"READERSBIT", TPLREADERSBIT, ""}
-	,{"READERENTITLEBIT", TPLREADERENTITLEBIT, ""}
-	,{"READERREFRESHBIT", TPLREADERREFRESHBIT, ""}
-	,{"READERSTATS", TPLREADERSTATS, ""}
-	,{"READERSTATSBIT", TPLREADERSTATSBIT, ""}
-	,{"SCANUSB", TPLSCANUSB, ""}
-	,{"SCANUSBBIT", TPLSCANUSBBIT, ""}
-	,{"ENTITLEMENTS", TPLENTITLEMENTS, ""}
-	,{"ENTITLEMENTGENERICBIT", TPLENTITLEMENTGENERICBIT, ""}
-	,{"ENTITLEMENTBIT", TPLENTITLEMENTBIT, ""}
-	,{"ENTITLEMENTITEMBIT", TPLENTITLEMENTITEMBIT, ""}
-	,{"ENTITLEMENTCCCAMBIT", TPLENTITLEMENTCCCAMBIT, ""}
-	,{"ENTITLEMENTCCCAMENTRYBIT", TPLENTITLEMENTCCCAMENTRYBIT, ""}
-	,{"APICCCAMCARDLIST", TPLAPICCCAMCARDLIST, ""}
-	,{"APICCCAMCARDBIT", TPLAPICCCAMCARDBIT, ""}
-	,{"APICCCAMCARDNODEBIT", TPLAPICCCAMCARDNODEBIT, ""}
-	,{"APICCCAMCARDPROVIDERBIT", TPLAPICCCAMCARDPROVIDERBIT, ""}
-	,{"APIREADERSTATS", TPLAPIREADERSTATS, ""}
-	,{"APIREADERSTATSEMMBIT", TPLAPIREADERSTATSEMMBIT, ""}
-	,{"APIREADERSTATSECMBIT", TPLAPIREADERSTATSECMBIT, ""}
-	,{"READERCONFIG", TPLREADERCONFIG, ""}
-	,{"READERCONFIGSIDOKBIT", TPLREADERCONFIGSIDOKBIT, ""}
-	,{"READERCONFIGSIDNOBIT", TPLREADERCONFIGSIDNOBIT, ""}
-	,{"READERCONFIGSTDHWREADERBIT", TPLREADERCONFIGSTDHWREADERBIT, ""}
-	,{"READERCONFIGHOPBIT", TPLREADERCONFIGHOPBIT, ""}
-	,{"READERCONFIGCAMD35BIT", TPLREADERCONFIGCAMD35BIT, ""}
-	,{"READERCONFIGCS378XBIT", TPLREADERCONFIGCS378XBIT, ""}
-	,{"READERCONFIGRADEGASTBIT", TPLREADERCONFIGRADEGASTBIT, ""}
-	,{"READERCONFIGNCD525BIT", TPLREADERCONFIGNCD525BIT, ""}
-	,{"READERCONFIGNCD524BIT", TPLREADERCONFIGNCD524BIT, ""}
-	,{"READERCONFIGCCCAMBIT", TPLREADERCONFIGCCCAMBIT, ""}
-	,{"APIUSEREDIT", TPLAPIUSEREDIT, ""}
-	,{"USEREDIT", TPLUSEREDIT, ""}
-	,{"USEREDITRDRSELECTED", TPLUSEREDITRDRSELECTED, ""}
-	,{"USEREDITSIDOKBIT", TPLUSEREDITSIDOKBIT, ""}
-	,{"USEREDITSIDNOBIT", TPLUSEREDITSIDNOBIT, ""}
-	,{"SAVETEMPLATES", TPLSAVETEMPLATES, ""}
-	,{"CONFIGMENU", TPLCONFIGMENU, ""}
-	,{"FILEMENU", TPLFILEMENU, ""}
-	,{"FILE", TPLFILE, ""}
-	,{"FILTERFORM", TPLFILTERFORM, ""}
-	,{"APIFILE", TPLAPIFILE, ""}
-	,{"FAILBAN", TPLFAILBAN, ""}
-	,{"APIFAILBAN", TPLAPIFAILBAN, ""}
-	,{"FAILBANBIT", TPLFAILBANBIT, ""}
-	,{"APIFAILBANBIT", TPLAPIFAILBANBIT, ""}
-	,{"CONFIGGBOX", TPLCONFIGGBOX, ""}
-	,{"CONFIGMONITOR", TPLCONFIGMONITOR, ""}
-	,{"CONFIGGLOBAL", TPLCONFIGGLOBAL, ""}
-	,{"CONFIGSERIALDEVICEBIT", TPLCONFIGSERIALDEVICEBIT, ""}
-	,{"SERVICECONFIGLIST", TPLSERVICECONFIGLIST, ""}
-	,{"SERVICECONFIGLISTBIT", TPLSERVICECONFIGLISTBIT, ""}
-	,{"SERVICECONFIGSIDBIT", TPLSERVICECONFIGSIDBIT, ""}
-	,{"SERVICEEDIT", TPLSERVICEEDIT, ""}
-	,{"PRESHUTDOWN", TPLPRESHUTDOWN, ""}
-	,{"SHUTDOWN", TPLSHUTDOWN, ""}
-	,{"WRITEPROTECTION", TPLWRITEPROTECTION, ""}
-	,{"MESSAGE", TPLMESSAGE, ""}
-	,{"MESSAGEBIT", TPLMESSAGEBIT, ""}
-	,{"SCRIPT", TPLSCRIPT, ""}
-	,{"GRAPH", TPLGRAPH, ""}
+char *tpl[] = {
+	"HEADER",
+	"APIHEADER",
+	"JSONHEADER",
+	"APIERROR",
+	"APICONFIRMATION",
+	"FOOTER",
+	"APIFOOTER",
+	"JSONFOOTER",
+	"MENU",
+	"REFRESH",
+	"HELPPREFIX",
+	"HELPSUFFIX",
+	"STATUS",
+	"APISTATUS",
+	"JSONSTATUS",
+	"CLIENTSTATUSBIT",
+	"APISTATUSBIT",
+	"JSONSTATUSBIT",
+	"USERCONFIGLIST",
+	"ADDNEWUSER",
+	"USERCONFIGLISTBIT",
+	"APIUSERCONFIGLIST",
+	"APIUSERCONFIGLISTBIT",
+	"SIDTAB",
+	"SIDTABBIT",
+	"READERS",
+	"APIREADERS",
+	"APIREADERSBIT",
+	"READERSBIT",
+	"READERENTITLEBIT",
+	"READERREFRESHBIT",
+	"READERSTATS",
+	"READERSTATSBIT",
+	"SCANUSB",
+	"SCANUSBBIT",
+	"ENTITLEMENTS",
+	"ENTITLEMENTGENERICBIT",
+	"ENTITLEMENTBIT",
+	"ENTITLEMENTITEMBIT",
+	"ENTITLEMENTCCCAMBIT",
+	"ENTITLEMENTCCCAMENTRYBIT",
+	"APICCCAMCARDLIST",
+	"APICCCAMCARDBIT",
+	"APICCCAMCARDNODEBIT",
+	"APICCCAMCARDPROVIDERBIT",
+	"APIREADERSTATS",
+	"APIREADERSTATSEMMBIT",
+	"APIREADERSTATSECMBIT",
+	"READERCONFIG",
+	"READERCONFIGSIDOKBIT",
+	"READERCONFIGSIDNOBIT",
+	"READERCONFIGSTDHWREADERBIT",
+	"READERCONFIGHOPBIT",
+	"READERCONFIGCAMD35BIT",
+	"READERCONFIGCS378XBIT",
+	"READERCONFIGRADEGASTBIT",
+	"READERCONFIGNCD525BIT",
+	"READERCONFIGNCD524BIT",
+	"READERCONFIGCCCAMBIT",
+	"APIUSEREDIT",
+	"USEREDIT",
+	"USEREDITRDRSELECTED",
+	"USEREDITSIDOKBIT",
+	"USEREDITSIDNOBIT",
+	"SAVETEMPLATES",
+	"CONFIGMENU",
+	"FILEMENU",
+	"FILE",
+	"APIFILE",
+	"FAILBAN",
+	"APIFAILBAN",
+	"FAILBANBIT",
+	"APIFAILBANBIT",
+	"CONFIGGBOX",
+	"CONFIGMONITOR",
+	"CONFIGGLOBAL",
+	"CONFIGSERIALDEVICEBIT",
+	"SERVICECONFIGLIST",
+	"SERVICECONFIGLISTBIT",
+	"SERVICECONFIGSIDBIT",
+	"SERVICEEDIT",
+	"PRESHUTDOWN",
+	"SHUTDOWN",
+	"SCRIPT",
+	"GRAPH"
 #ifdef HAVE_DVBAPI
-	,{"CONFIGDVBAPI", TPLCONFIGDVBAPI, "HAVE_DVBAPI"}
-	,{"CONFIGMENUDVBAPI", TPLCONFIGMENUDVBAPI, "HAVE_DVBAPI"}
-	,{"FILEMENUDVBAPI", TPLFILEMENUDVBAPI, "HAVE_DVBAPI"}
+	,"CONFIGDVBAPI"
+	,"CONFIGMENUDVBAPI"
+	,"FILEMENUDVBAPI"
 #endif
 #ifdef CS_ANTICASC
-	,{"USEREDITANTICASC", TPLUSEREDITANTICASC, "CS_ANTICASC"}
-	,{"CONFIGANTICASC", TPLCONFIGANTICASC, "CS_ANTICASC"}
-	,{"CONFIGMENUANTICASC", TPLCONFIGMENUANTICASC, "CS_ANTICASC"}
-	,{"FILEMENUANTICASC", TPLFILEMENUANTICASC, "CS_ANTICASC"}
+	,"USEREDITANTICASC"
+	,"CONFIGANTICASC"
+	,"CONFIGMENUANTICASC"
+	,"FILEMENUANTICASC"
 #endif
 #if defined(QBOXHD) || defined(__arm__)
-	,{"ENABLELEDBIT", TPLENABLELEDBIT, "QBOXHD,ARM"}
+	,"ENABLELEDBIT"
+#endif
+#if defined(QBOXHD_LED) || defined(CS_LED)
+	,"ENABLELEDBIT"
 #endif
 #ifdef WITH_LIBUSB
-	,{"READERCONFIGDEVICEEPBIT", TPLREADERCONFIGDEVICEEPBIT, "WITH_LIBUSB"}
+	,"READERCONFIGDEVICEEPBIT"
 #endif
 #ifdef WITH_COOLAPI
-	,{"READERCOOLSTREAMBIT", TPLREADERCOOLSTREAMBIT, "WITH_COOLAPI"}
+	,"READERCOOLSTREAMBIT"
 #endif
 #ifdef WITH_DEBUG
-	,{"DEBUGSELECT", TPLDEBUGSELECT, "WITH_DEBUG"}
+	,"DEBUGSELECT"
 #endif
 #ifdef WITH_LB
-	,{"CONFIGMENULB", TPLCONFIGMENULB, "WITH_LB"}
-	,{"CONFIGLOADBALANCER", TPLCONFIGLOADBALANCER, "WITH_LB"}
+	,"CONFIGMENULB"
+	,"CONFIGLOADBALANCER"
 #endif
 #ifdef MODULE_CAMD33
-	,{"CONFIGCAMD33", TPLCONFIGCAMD33, "MODULE_CAMD33"}
-	,{"CONFIGMENUCAMD33", TPLCONFIGMENUCAMD33, "MODULE_CAMD33"}
+	,"CONFIGCAMD33"
+	,"CONFIGMENUCAMD33"
 #endif
 #ifdef MODULE_CAMD35
-	,{"CONFIGCAMD35", TPLCONFIGCAMD35, "MODULE_CAMD35"}
-	,{"CONFIGMENUCAMD35", TPLCONFIGMENUCAMD35, "MODULE_CAMD35"}
+	,"CONFIGCAMD35"
+	,"CONFIGMENUCAMD35"
 #endif
 #ifdef MODULE_CCCAM
-	,{"USEREDITCCCAM", TPLUSEREDITCCCAM, "MODULE_CCCAM"}
-	,{"CONFIGCCCAM", TPLCONFIGCCCAM, "MODULE_CCCAM"}
-	,{"CONFIGMENUCCCAM", TPLCONFIGMENUCCCAM, "MODULE_CCCAM"}
+	,"USEREDITCCCAM"
+	,"CONFIGCCCAM"
+	,"CONFIGMENUCCCAM"
 #endif
 #ifdef MODULE_NEWCAMD
-	,{"CONFIGNEWCAMD", TPLCONFIGNEWCAMD, "MODULE_NEWCAMD"}
-	,{"CONFIGMENUNEWCAMD", TPLCONFIGMENUNEWCAMD, "MODULE_NEWCAMD"}
+	,"CONFIGNEWCAMD"
+	,"CONFIGMENUNEWCAMD"
 #endif
 #ifdef MODULE_RADEGAST
-	,{"CONFIGRADEGAST", TPLCONFIGRADEGAST, "MODULE_RADEGAST"}
-	,{"CONFIGMENURADEGAST", TPLCONFIGMENURADEGAST, "MODULE_RADEGAST"}
+	,"CONFIGRADEGAST"
+	,"CONFIGMENURADEGAST"
 #endif
 #ifdef MODULE_CAMD35_TCP
-	,{"CONFIGCAMD35TCP", TPLCONFIGCAMD35TCP, "MODULE_CAMD35_TCP"}
-	,{"CONFIGMENUCAMD35TCP", TPLCONFIGMENUCAMD35TCP, "MODULE_CAMD35_TCP"}
+	,"CONFIGCAMD35TCP"
+	,"CONFIGMENUCAMD35TCP"
 #endif
 #ifdef MODULE_SERIAL
-	,{"CONFIGSERIAL", TPLCONFIGSERIAL, "MODULE_SERIAL"}
-	,{"CONFIGMENUSERIAL", TPLCONFIGMENUSERIAL, "MODULE_SERIAL"}
+	,"CONFIGSERIAL"
+	,"CONFIGMENUSERIAL"
 #endif
 #ifdef LCDSUPPORT
-	,{"LCDOPTIONS", TPLLCDOPTIONS, "LCDSUPPORT"}
+	,"LCDOPTIONS"
 #endif
 #ifdef WITH_SSL
-	,{"HTTPFORCESSLV3", TPLHTTPFORCESSLV3, "WITH_SSL"}
+	,"HTTPFORCESSLV3"
 #endif
 #ifdef CS_CACHEEX
-	,{"USEREDITCACHEEXBIT", TPLUSEREDITCACHEEXBIT, "CS_CACHEEX"}
-	,{"READEREDITCACHEEXBIT", TPLREADEREDITCACHEEXBIT, "CS_CACHEEX"}
-	,{"CACHEEXWAITTIME", TPLCACHEEXWAITTIME, "CS_CACHEEX"}
-	,{"CACHEEXPAGE", TPLCACHEEXPAGE, "CS_CACHEEX"}
-	,{"CACHEEXTABLEROW", TPLCACHEEXTABLEROW, "CS_CACHEEX"}
-	,{"CACHEEXMENUITEM", TPLCACHEEXMENUITEM, "CS_CACHEEX"}
-	,{"CONFIGMENUCSP", TPLCONFIGMENUCSP, "CS_CACHEEX"}
-	,{"CONFIGCSP", TPLCONFIGCSP, "CS_CACHEEX"}
-	,{"ICARRR", ICARRR, "CS_CACHEEX"}
-	,{"ICARRL", ICARRL, "CS_CACHEEX"}
+	,"USEREDITCACHEEXBIT"
+	,"READEREDITCACHEEXBIT"
+	,"CACHEEXWAITTIME"
+	,"CACHEEXPAGE"
+	,"CACHEEXTABLEROW"
+	,"CACHEEXMENUITEM"
+	,"CONFIGMENUCSP"
+	,"CONFIGCSP"
+	,"ICARRR"
+	,"ICARRL"
 #endif
-	,{"ICMAI", ICMAI, ""}
-	,{"ICSTA", ICSTA, ""}
-	,{"ICDEL", ICDEL, ""}
-	,{"ICEDI", ICEDI, ""}
-	,{"ICENT", ICENT, ""}
-	,{"ICREF", ICREF, ""}
-	,{"ICKIL", ICKIL, ""}
-	,{"ICDIS", ICDIS, ""}
-	,{"ICENA", ICENA, ""}
-	,{"ICHID", ICHID, ""}
-	,{"ICRES", ICRES, ""}
-	,{"ICSPAC", ICSPAC, ""}
+	,"ICMAI"
+	,"ICSTA"
+	,"ICDEL"
+	,"ICEDI"
+	,"ICENT"
+	,"ICREF"
+	,"ICKIL"
+	,"ICDIS"
+	,"ICENA"
+	,"ICHID"
+	,"ICRES"
+	,"ICSPAC"
 };
 
-int32_t tpl_count(void) { return sizeof(tpl) / (3*sizeof(char *)); }
+char *tplmap[] = {
+	TPLHEADER,
+	TPLAPIHEADER,
+	TPLJSONHEADER,
+	TPLAPIERROR,
+	TPLAPICONFIRMATION,
+	TPLFOOTER,
+	TPLAPIFOOTER,
+	TPLJSONFOOTER,
+	TPLMENU,
+	TPLREFRESH,
+	TPLHELPPREFIX,
+	TPLHELPSUFFIX,
+	TPLSTATUS,
+	TPLAPISTATUS,
+	TPLJSONSTATUS,
+	TPLCLIENTSTATUSBIT,
+	TPLAPISTATUSBIT,
+	TPLJSONSTATUSBIT,
+	TPLUSERCONFIGLIST,
+	TPLADDNEWUSER,
+	TPLUSERCONFIGLISTBIT,
+	TPLAPIUSERCONFIGLIST,
+	TPLAPIUSERCONFIGLISTBIT,
+	TPLSIDTAB,
+	TPLSIDTABBIT,
+	TPLREADERS,
+	TPLAPIREADERS,
+	TPLAPIREADERSBIT,
+	TPLREADERSBIT,
+	TPLREADERENTITLEBIT,
+	TPLREADERREFRESHBIT,
+	TPLREADERSTATS,
+	TPLREADERSTATSBIT,
+	TPLSCANUSB,
+	TPLSCANUSBBIT,
+	TPLENTITLEMENTS,
+	TPLENTITLEMENTGENERICBIT,
+	TPLENTITLEMENTBIT,
+	TPLENTITLEMENTITEMBIT,
+	TPLENTITLEMENTCCCAMBIT,
+	TPLENTITLEMENTCCCAMENTRYBIT,
+	TPLAPICCCAMCARDLIST,
+	TPLAPICCCAMCARDBIT,
+	TPLAPICCCAMCARDNODEBIT,
+	TPLAPICCCAMCARDPROVIDERBIT,
+	TPLAPIREADERSTATS,
+	TPLAPIREADERSTATSEMMBIT,
+	TPLAPIREADERSTATSECMBIT,
+	TPLREADERCONFIG,
+	TPLREADERCONFIGSIDOKBIT,
+	TPLREADERCONFIGSIDNOBIT,
+	TPLREADERCONFIGSTDHWREADERBIT,
+	TPLREADERCONFIGHOPBIT,
+	TPLREADERCONFIGCAMD35BIT,
+	TPLREADERCONFIGCS378XBIT,
+	TPLREADERCONFIGRADEGASTBIT,
+	TPLREADERCONFIGNCD525BIT,
+	TPLREADERCONFIGNCD524BIT,
+	TPLREADERCONFIGCCCAMBIT,
+	TPLAPIUSEREDIT,
+	TPLUSEREDIT,
+	TPLUSEREDITRDRSELECTED,
+	TPLUSEREDITSIDOKBIT,
+	TPLUSEREDITSIDNOBIT,
+	TPLSAVETEMPLATES,
+	TPLCONFIGMENU,
+	TPLFILEMENU,
+	TPLFILE,
+	TPLAPIFILE,
+	TPLFAILBAN,
+	TPLAPIFAILBAN,
+	TPLFAILBANBIT,
+	TPLAPIFAILBANBIT,
+	TPLCONFIGGBOX,
+	TPLCONFIGMONITOR,
+	TPLCONFIGGLOBAL,
+	TPLCONFIGSERIALDEVICEBIT,
+	TPLSERVICECONFIGLIST,
+	TPLSERVICECONFIGLISTBIT,
+	TPLSERVICECONFIGSIDBIT,
+	TPLSERVICEEDIT,
+	TPLPRESHUTDOWN,
+	TPLSHUTDOWN,
+	TPLSCRIPT,
+	TPLGRAPH
+#ifdef HAVE_DVBAPI
+	,TPLCONFIGDVBAPI
+	,TPLCONFIGMENUDVBAPI
+	,TPLFILEMENUDVBAPI
+#endif
+#ifdef CS_ANTICASC
+	,TPLUSEREDITANTICASC
+	,TPLCONFIGANTICASC
+	,TPLCONFIGMENUANTICASC
+	,TPLFILEMENUANTICASC
+#endif
+#if defined(QBOXHD) || defined(__arm__)
+	,TPLENABLELEDBIT
+#endif
+#if defined(QBOXHD_LED) || defined(CS_LED)
+	,TPLENABLELEDBIT
+#endif
+#ifdef WITH_LIBUSB
+	,TPLREADERCONFIGDEVICEEPBIT
+#endif
+#ifdef WITH_COOLAPI
+	,TPLREADERCOOLSTREAMBIT
+#endif
+#ifdef WITH_DEBUG
+	,TPLDEBUGSELECT
+#endif
+#ifdef WITH_LB
+	,TPLCONFIGMENULB
+	,TPLCONFIGLOADBALANCER
+#endif
+#ifdef MODULE_CAMD33
+	,TPLCONFIGCAMD33
+	,TPLCONFIGMENUCAMD33
+#endif
+#ifdef MODULE_CAMD35
+	,TPLCONFIGCAMD35
+	,TPLCONFIGMENUCAMD35
+#endif
+#ifdef MODULE_CCCAM
+	,TPLUSEREDITCCCAM
+	,TPLCONFIGCCCAM
+	,TPLCONFIGMENUCCCAM
+#endif
+#ifdef MODULE_NEWCAMD
+	,TPLCONFIGNEWCAMD
+	,TPLCONFIGMENUNEWCAMD
+#endif
+#ifdef MODULE_RADEGAST
+	,TPLCONFIGRADEGAST
+	,TPLCONFIGMENURADEGAST
+#endif
+#ifdef MODULE_CAMD35_TCP
+	,TPLCONFIGCAMD35TCP
+	,TPLCONFIGMENUCAMD35TCP
+#endif
+#ifdef MODULE_SERIAL
+	,TPLCONFIGSERIAL
+	,TPLCONFIGMENUSERIAL
+#endif
+#ifdef LCDSUPPORT
+	,TPLLCDOPTIONS
+#endif
+#ifdef WITH_SSL
+	,TPLHTTPFORCESSLV3
+#endif
+#ifdef CS_CACHEEX
+	,TPLUSEREDITCACHEEXBIT
+	,TPLREADEREDITCACHEEXBIT
+	,TPLCACHEEXWAITTIME
+	,TPLCACHEEXPAGE
+	,TPLCACHEEXTABLEROW
+	,TPLCACHEEXMENUITEM
+	,TPLCONFIGMENUCSP
+	,TPLCONFIGCSP
+	,ICARRR
+	,ICARRL
+#endif
+	,ICMAI
+	,ICSTA
+	,ICDEL
+	,ICEDI
+	,ICENT
+	,ICREF
+	,ICKIL
+	,ICDIS
+	,ICENA
+	,ICHID
+	,ICRES
+	,ICSPAC
+};
+
+int32_t tpl_count(void) { return sizeof(tpl) / sizeof(char *); }
+int32_t tplmap_count(void) { return sizeof(tplmap) / sizeof(char *); }
 int32_t cv(void) { return 91789605==crc32(0L,(unsigned char*)ICMAI,strlen(ICMAI))/2?1:0; }
 
 #endif
