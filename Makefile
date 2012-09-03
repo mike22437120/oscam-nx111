@@ -22,6 +22,7 @@ ifeq ($(uname_S),Darwin)
 # './config.sh --detect-osx-sdk-version' returns the newest SDK if
 # SDK_VER is not set.
 OSX_SDK := $(shell ./config.sh --detect-osx-sdk-version $(OSX_VER))
+override CONFIG_HAVE_DVBAPI:=
 endif
 
 ifeq "$(shell ./config.sh --enabled WITH_SSL)" "Y"
@@ -218,15 +219,16 @@ NP = --no-print-directory
 SAY = @echo
 endif
 
-OSCAM_BIN := Distribution/oscam-$(VER)$(SVN_REV)-$(subst cygwin,cygwin.exe,$(TARGET))
-LIST_SMARGO_BIN := Distribution/list_smargo-$(VER)$(SVN_REV)-$(subst cygwin,cygwin.exe,$(TARGET))
+BINDIR := Distribution
+LIBDIR := lib
+
+OSCAM_BIN := $(BINDIR)/oscam-$(VER)$(SVN_REV)-$(subst cygwin,cygwin.exe,$(TARGET))
+LIST_SMARGO_BIN := $(BINDIR)/list_smargo-$(VER)$(SVN_REV)-$(subst cygwin,cygwin.exe,$(TARGET))
 
 # Build list_smargo-.... only when WITH_LIBUSB build is requested.
 ifndef USE_LIBUSB
 override LIST_SMARGO_BIN =
 endif
-
-LIBDIR = lib
 
 GLOBAL_DEP = Makefile
 
@@ -352,6 +354,7 @@ OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-log.o)
 OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-llist.o)
 OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-reader.o)
 OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-simples.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam.o)
 OSCAM_OBJ = $(OSCAM_OBJ-y)
 
 # The default build target rebuilds the config.mak if needed and then
@@ -404,9 +407,9 @@ $(OSCAM_OBJ): $(OSCAM_DEP)
 $(OSCAM_LIB): $(OSCAM_OBJ)
 	-@$(RANLIB) $@
 
-$(OSCAM_BIN): oscam.c $(ALGO_LIB) $(CSCRYPT_LIB) $(CSCTAPI_LIB) $(OSCAM_LIB)
+$(OSCAM_BIN): $(ALGO_LIB) $(CSCRYPT_LIB) $(CSCTAPI_LIB) $(OSCAM_LIB)
 	$(SAY) "LINK	$@"
-	$(Q)$(CC) $(STD_DEFS) $(CC_OPTS) $(CC_WARN) $(LDFLAGS) oscam.c $(OSCAM_LIB) $(ALGO_LIB) $(CSCRYPT_LIB) $(CSCTAPI_LIB) $(LIBS) -o $@
+	$(Q)$(CC) $(STD_DEFS) $(CC_OPTS) $(CC_WARN) $(LDFLAGS) $(OSCAM_LIB) $(ALGO_LIB) $(CSCRYPT_LIB) $(CSCTAPI_LIB) $(LIBS) -o $@
 ifndef DEBUG
 	$(SAY) "STRIP	$@"
 	$(Q)$(STRIP) $@
@@ -444,10 +447,10 @@ defconfig:
 	@-$(SHELL) ./config.sh --restore
 
 clean:
-	@-rm -rfv lib
+	@-rm -rfv $(LIBDIR)/*.a
 
 distclean: clean
-	@-rm -rfv Distribution/oscam-* Distribution/list_smargo-* config.mak
+	@-rm -rfv $(BINDIR)/oscam-$(VER)* $(BINDIR)/list_smargo-* config.mak
 
 help:
 	@-printf "\
@@ -592,7 +595,7 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
                     Example: 'make EXTRA_TARGET=-private'\n\
 \n\
    EXTRA_CFLAGS   - Add text to CFLAGS (affects compilation).\n\
-                    Example: 'make EXTRA_CFLAGS=-DBLAH=1 -I/opt/local'\n\
+                    Example: 'make EXTRA_CFLAGS=\"-DBLAH=1 -I/opt/local\"'\n\
 \n\
    EXTRA_LDLAGS   - Add text to LDLAGS (affects linking).\n\
                     Example: 'make EXTRA_LDLAGS=-Llibdir'\n\
@@ -601,7 +604,7 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
                     Example: 'make EXTRA_FLAGS=-DWEBIF=1'\n\
 \n\
    EXTRA_LIBS     - Add text to LIBS (affects linking).\n\
-                    Example: 'make EXTRA_LIBS=-L./stapi -loscam_stapi'\n\
+                    Example: 'make EXTRA_LIBS=\"-L./stapi -loscam_stapi\"'\n\
 \n\
  Config targets:\n\
    make config        - Start configuration utility.\n\
@@ -610,9 +613,9 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
    make defconfig     - Restore default configuration options.\n\
 \n\
  Cleaning targets:\n\
-   make clean     - Remove lib/ directory which contains built object files.\n\
+   make clean     - Remove $(LIBDIR)/ directory which contains built object files.\n\
    make distclean - Executes clean target and also removes binary files\n\
-                    located in Distribution/ directory.\n\
+                    located in $(BINDIR)/ directory.\n\
 \n\
  Build system files:\n\
    config.sh      - OSCam configuration. Run 'config.sh --help' to see\n\

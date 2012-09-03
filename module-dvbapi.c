@@ -643,9 +643,14 @@ void dvbapi_set_pid(int32_t demux_id, int32_t num, int32_t index) {
 						ca_pid2.index = index;
 
 						if (cfg.dvbapi_boxtype == BOXTYPE_PC) {
+							// preparing packet
 							int32_t request = CA_SET_PID;
-							send(ca_fd[i],(void*)&request, sizeof(request), 0);
-							send(ca_fd[i],(void*)&ca_pid2, sizeof(ca_pid2), 0);
+							unsigned char packet[sizeof(request) + sizeof(ca_pid2)];
+							memcpy(&packet, &request, sizeof(request));
+							memcpy(&packet[sizeof(request)], &ca_pid2, sizeof(ca_pid2));
+
+							// sending data
+							send(ca_fd[i], &packet, sizeof(packet), 0);
 						} else {
 							if (ioctl(ca_fd[i], CA_SET_PID, &ca_pid2)==-1)
 								cs_debug_mask(D_DVBAPI, "Error CA_SET_PID pid=0x%04x index=%d (errno=%d %s)", ca_pid2.pid, ca_pid2.index, errno, strerror(errno));
@@ -2310,9 +2315,14 @@ void dvbapi_write_cw(int32_t demux_id, uchar *cw, int32_t index) {
 					}
 
 					if (cfg.dvbapi_boxtype == BOXTYPE_PC) {
+						// preparing packet
 						int32_t request = CA_SET_DESCR;
-						send(ca_fd[i],(void*)&request, sizeof(request), 0);
-						send(ca_fd[i],(void*)&ca_descr, sizeof(ca_descr), 0);
+						unsigned char packet[sizeof(request) + sizeof(ca_descr)];
+						memcpy(&packet, &request, sizeof(request));
+						memcpy(&packet[sizeof(request)], &ca_descr, sizeof(ca_descr));
+
+						// sending data
+						send(ca_fd[i], &packet, sizeof(packet), 0);
 					} else {
 						if (ioctl(ca_fd[i], CA_SET_DESCR, &ca_descr) < 0)
 							cs_debug_mask(D_DVBAPI, "Error CA_SET_DESCR");
@@ -2535,7 +2545,7 @@ void dvbapi_send_dcw(struct s_client *client, ECM_REQUEST *er)
 static void * dvbapi_handler(struct s_client * cl, uchar* UNUSED(mbuf), int32_t len) {
 	//cs_log("dvbapi loaded fd=%d", idx);
 	if (cfg.dvbapi_enabled == 1) {
-		cl = create_client(0);
+		cl = create_client(get_null_ip());
 		cl->ctyp = len;
 		cl->typ='c';
 		int32_t ret = pthread_create(&cl->thread, NULL, dvbapi_main_local, (void*) cl);

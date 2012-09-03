@@ -181,15 +181,20 @@ int32_t hostResolve(struct s_reader *rdr){
 
    if(!cl) return 0;
 
-   in_addr_t last_ip = cl->ip;
+   IN_ADDR_T last_ip;
+   IP_ASSIGN(last_ip, cl->ip);
+#ifdef IPV6SUPPORT
+   cs_getIPv6fromHost(rdr->device, &cl->ip, &cl->udp_sa);
+#else
    cl->ip = cs_getIPfromHost(rdr->device);
-   cl->udp_sa.sin_addr.s_addr = cl->ip;
+#endif
+   IP_ASSIGN(SIN_GET_ADDR(cl->udp_sa), cl->ip);
 
-   if (cl->ip != last_ip) {
+   if (!IP_EQUAL(cl->ip, last_ip)) {
      cs_log("%s: resolved ip=%s", rdr->device, cs_inet_ntoa(cl->ip));
    }
 
-   return cl->ip?1:0;
+   return IP_ISSET(cl->ip);
 }
 
 void clear_block_delay(struct s_reader *rdr) {
@@ -216,7 +221,7 @@ int32_t is_connect_blocked(struct s_reader *rdr) {
   if (blocked) {
 		int32_t time = 1000*(rdr->tcp_block_connect_till.time-cur_time.time)
 				+rdr->tcp_block_connect_till.millitm-cur_time.millitm;
-		rdr_log(rdr, "connection blocked, retrying in %ds", time/1000);
+		rdr_debug_mask(rdr, D_TRACE, "connection blocked, retrying in %ds", time/1000);
   }
   return blocked;
 }
@@ -229,11 +234,12 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 
 	memset((char *)&client->udp_sa, 0, sizeof(client->udp_sa));
 
-	in_addr_t last_ip = client->ip;
+	IN_ADDR_T last_ip;
+	IP_ASSIGN(last_ip, client->ip);
 	if (!hostResolve(rdr))
 		return -1;
 
-	if (last_ip != client->ip) //clean blocking delay on ip change:
+	if (!IP_EQUAL(last_ip, client->ip)) //clean blocking delay on ip change:
 		clear_block_delay(rdr);
 
 	if (is_connect_blocked(rdr)) { //inside of blocking delay, do not connect!
@@ -252,7 +258,15 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 	if (client->udp_fd)
 		rdr_log(rdr, "WARNING: client->udp_fd was not 0");
 
-	if ((client->udp_fd=socket(PF_INET, client->is_udp ? SOCK_DGRAM : SOCK_STREAM, client->is_udp ? IPPROTO_UDP : IPPROTO_TCP))<0) {
+	int s_domain = PF_INET;
+#ifdef IPV6SUPPORT
+	if (!IN6_IS_ADDR_V4MAPPED(&rdr->client->ip) && !IN6_IS_ADDR_V4COMPAT(&rdr->client->ip))
+		s_domain = PF_INET6;
+#endif
+	int s_type   = client->is_udp ? SOCK_DGRAM : SOCK_STREAM;
+	int s_proto  = client->is_udp ? IPPROTO_UDP : IPPROTO_TCP;
+
+	if ((client->udp_fd = socket(s_domain, s_type, s_proto)) < 0) {
 		rdr_log(rdr, "Socket creation failed (errno=%d %s)", errno, strerror(errno));
 		client->udp_fd = 0;
 		block_connect(rdr);
@@ -270,8 +284,8 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 	if (client->reader->l_port>0) {
 		memset((char *)&loc_sa,0,sizeof(loc_sa));
 		loc_sa.sin_family = AF_INET;
-		if (cfg.srvip)
-			loc_sa.sin_addr.s_addr = cfg.srvip;
+		if (IP_ISSET(cfg.srvip))
+			IP_ASSIGN(SIN_GET_ADDR(loc_sa), cfg.srvip);
 		else
 			loc_sa.sin_addr.s_addr = INADDR_ANY;
 
@@ -285,10 +299,20 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 		}
 	}
 
+#ifdef IPV6SUPPORT
+	if (IN6_IS_ADDR_V4MAPPED(&rdr->client->ip) || IN6_IS_ADDR_V4COMPAT(&rdr->client->ip)) {
+		((struct sockaddr_in *)(&client->udp_sa))->sin_family = AF_INET;
+		((struct sockaddr_in *)(&client->udp_sa))->sin_port = htons((uint16_t)client->reader->r_port);
+	} else {
+		((struct sockaddr_in6 *)(&client->udp_sa))->sin6_family = AF_INET6;
+		((struct sockaddr_in6 *)(&client->udp_sa))->sin6_port = htons((uint16_t)client->reader->r_port);
+	}
+#else
 	client->udp_sa.sin_family = AF_INET;
 	client->udp_sa.sin_port = htons((uint16_t)client->reader->r_port);
+#endif
 
-	rdr_log(rdr, "socket open for %s fd=%d", rdr->ph.desc, client->udp_fd);
+	rdr_debug_mask(rdr, D_TRACE, "socket open for %s fd=%d", rdr->ph.desc, client->udp_fd);
 
 	if (client->is_udp) {
 		rdr->tcp_connected = 1;
@@ -317,7 +341,7 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 			}
 		}
 		if (r != 0) {
-			rdr_log(rdr, "connect(fd=%d) failed: (errno=%d %s)", client->udp_fd, errno, strerror(errno));
+			rdr_log(rdr, "connect failed: %s", strerror(errno));
 			block_connect(rdr); //connect has failed. Block connect for a while
 			close(client->udp_fd);
 			client->udp_fd = 0;
@@ -333,7 +357,7 @@ int32_t network_tcp_connection_open(struct s_reader *rdr)
 	client->last_caid=client->last_srvid=0;
 	client->pfd = client->udp_fd;
 	rdr->tcp_connected = 1;
-	rdr_log(rdr, "connect succesfull %s fd=%d", rdr->ph.desc, client->udp_fd);
+	rdr_debug_mask(rdr, D_TRACE, "connect succesfull fd=%d", client->udp_fd);
 	return client->udp_fd;
 }
 
@@ -341,7 +365,7 @@ void network_tcp_connection_close(struct s_reader *reader, char *reason)
 {
 	if (!reader) {
 		//only proxy reader should call this, client connections are closed on thread cleanup
-		cs_log("WARNING: invalid client tcp_conn_close()");
+		cs_log("WARNING: invalid client");
 		cs_disconnect_client(cur_client());
 		return;
 	}
@@ -353,8 +377,7 @@ void network_tcp_connection_close(struct s_reader *reader, char *reason)
 	int32_t i;
 
 	if (fd) {
-		rdr_log(reader, "tcp_conn_close(): fd=%d, cl->typ == '%c' is_udp %d reason %s",
-			fd, cl->typ, cl->is_udp, reason ? reason : "undef");
+		rdr_log(reader, "disconnected: reason %s", reason ? reason : "undef");
 		close(fd);
 
 		cl->udp_fd = 0;
@@ -386,7 +409,7 @@ void casc_do_sock_log(struct s_reader * reader)
   if (idx<0) return;        // no dcw-msg received
 
   if(!cl->ecmtask) {
-    rdr_log(reader, "WARNING: casc_do_sock_log: ecmtask not a available");
+    rdr_log(reader, "WARNING: ecmtask not a available");
     return;
   }
 
@@ -411,7 +434,7 @@ int32_t casc_process_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	struct s_client *cl = reader->client;
 
 	if(!cl || !cl->ecmtask) {
-		rdr_log(reader, "WARNING: casc_process_ecm: ecmtask not a available");
+		rdr_log(reader, "WARNING: ecmtask not a available");
 		return -1;
 	}
 
@@ -795,7 +818,7 @@ int32_t reader_init(struct s_reader *reader) {
 	if (reader->typ & R_IS_CASCADING) {
 		client->typ='p';
 		client->port=reader->r_port;
-		client->ip=cs_inet_addr("0.0.0.0");
+		set_null_ip(&client->ip);
 
 		if (!(reader->ph.c_init)) {
 			rdr_log(reader, "FATAL: %s-protocol not supporting cascading", reader->ph.desc);
@@ -817,7 +840,7 @@ int32_t reader_init(struct s_reader *reader) {
 #ifdef WITH_CARDREADER
 	else {
 		client->typ='r';
-		client->ip=cs_inet_addr("127.0.0.1");
+		set_localhost_ip(&client->ip);
 		while (reader_device_init(reader)==2){
 			int8_t i = 0;
 			do{

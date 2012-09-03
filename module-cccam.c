@@ -3061,9 +3061,9 @@ int32_t cc_recv(struct s_client *cl, uchar *buf, int32_t l) {
 	if (n <= 0) {
 		struct cc_data *cc = cl->cc;
 		if (cc && cc->nok_message)
-			cs_log("%s connection closed by %s. n=%d, Reason: %s", getprefix(), remote_txt(), n, cc->nok_message);
+			cs_debug_mask(D_CLIENT, "%s connection closed by %s. n=%d, Reason: %s", getprefix(), remote_txt(), n, cc->nok_message);
 		else {
-			cs_log("%s connection closed by %s, n=%d.", getprefix(), remote_txt(), n);
+			cs_debug_mask(D_CLIENT, "%s connection closed by %s, n=%d.", getprefix(), remote_txt(), n);
 			if (rdr) {
 				cc_cli_close(cl, TRUE);
 			} else {
@@ -3342,7 +3342,7 @@ int32_t cc_srv_connect(struct s_client *cl) {
 
 void cc_srv_init2(struct s_client *cl) {
 	if (!cl->init_done && !cl->kill) {
-		if (cl->ip)
+		if (IP_ISSET(cl->ip))
 			cs_debug_mask(D_CLIENT, "cccam: new connection from %s", cs_inet_ntoa(cl->ip));
 
 		cl->pfd = cl->udp_fd;
@@ -3405,7 +3405,7 @@ int32_t cc_cli_connect(struct s_client *cl) {
 	// connect
 	handle = network_tcp_connection_open(rdr);
 	if (handle <= 0) {
-		cs_log("%s network connect error!", rdr->label);
+		cs_debug_mask(D_READER, "%s network connect error!", rdr->label);
 		return -1;
 	}
 	if (errno == EISCONN) {
@@ -3417,7 +3417,7 @@ int32_t cc_cli_connect(struct s_client *cl) {
 	// get init seed
 	if ((n = cc_recv_to(cl, data, 16)) != 16) {
 		if (n <= 0)
-			cs_log("Didn't get init seed from reader %s (errno=%d %s)", rdr->label, errno, strerror(errno));
+			cs_log("init error from reader %s", rdr->label);
 		else
 			cs_log("%s server returned %d instead of 16 bytes as init seed (errno=%d %s)",
 				rdr->label, n, errno, strerror(errno));
@@ -3490,13 +3490,13 @@ int32_t cc_cli_connect(struct s_client *cl) {
 	cc_cmd_send(cl, buf, 6, MSG_NO_HEADER); // send 'CCcam' xor w/ pwd
 
 	if ((n = cc_recv_to(cl, data, 20)) != 20) {
-		cs_log("%s login failed, pwd ack not received (n = %d)", getprefix(), n);
+		cs_log("%s login failed, usr/pwd invalid", getprefix());
 		cc_cli_close(cl, FALSE);
 		block_connect(rdr);
 		return -2;
 	}
 	cc_crypt(&cc->block[DECRYPT], data, 20, DECRYPT);
-	cs_ddump_mask(D_CLIENT, data, 20, "cccam: pwd ack received:");
+	cs_ddump_mask(D_CLIENT, data, 20, "cccam: login failed, usr/pwd invalid");
 
 	if (memcmp(data, buf, 5)) { // check server response
 		cs_log("%s login failed, usr/pwd invalid", getprefix());
@@ -3727,7 +3727,7 @@ void module_cccam(struct s_module *ph) {
 	ph->c_send_ecm = cc_send_ecm;
 	ph->c_send_emm = cc_send_emm;
 #ifdef MODULE_CCCSHARE
-	ph->s_ip = cfg.cc_srvip;
+	IP_ASSIGN(ph->s_ip, cfg.cc_srvip);
 	ph->s_handler = cc_srv_init;
 	ph->s_init = cc_srv_init2;
 	ph->s_idle = cc_s_idle;

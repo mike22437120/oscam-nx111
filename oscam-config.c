@@ -176,10 +176,11 @@ static void chk_iprange(char *value, struct s_ip **base)
 
 		if( (ptr2=strchr(trim(ptr1), '-')) ) {
 			*ptr2++ ='\0';
-			cip->ip[0]=cs_inet_addr(trim(ptr1));
-			cip->ip[1]=cs_inet_addr(trim(ptr2));
+			cs_inet_addr(trim(ptr1), &cip->ip[0]);
+			cs_inet_addr(trim(ptr2), &cip->ip[1]);
 		} else {
-			cip->ip[0]=cip->ip[1]=cs_inet_addr(ptr1);
+			cs_inet_addr(ptr1, &cip->ip[0]);
+			IP_ASSIGN(cip->ip[1], cip->ip[0]);
 		}
 		lip = cip;
 	}
@@ -467,10 +468,10 @@ void chk_t_global(const char *token, char *value)
 
 	if (!strcmp(token, "serverip")) {
 		if (strlen(value) == 0) {
-			cfg.srvip = 0;
+			set_null_ip(&cfg.srvip);
 			return;
 		} else {
-			cfg.srvip=cs_inet_addr(value);
+			cs_inet_addr(value, &cfg.srvip);
 			return;
 		}
 	}
@@ -877,10 +878,10 @@ void chk_t_monitor(char *token, char *value)
 
 	if (!strcmp(token, "serverip")) {
 		if(strlen(value) == 0) {
-			cfg.mon_srvip = 0;
+			set_null_ip(&cfg.mon_srvip);
 			return;
 		} else {
-			cfg.mon_srvip=cs_inet_addr(value);
+			cs_inet_addr(value, &cfg.mon_srvip);
 			return;
 		}
 	}
@@ -896,7 +897,7 @@ void chk_t_monitor(char *token, char *value)
 	}
 
 	if (!strcmp(token, "aulow")) {
-		cfg.mon_aulow = strToIntVal(value, 0);
+		cfg.mon_aulow = strToIntVal(value, 30);
 		return;
 	}
 
@@ -1064,10 +1065,10 @@ void chk_t_camd33(char *token, char *value)
 
 	if (!strcmp(token, "serverip")) {
 		if(strlen(value) == 0) {
-			cfg.c33_srvip = 0;
+			set_null_ip(&cfg.c33_srvip);
 			return;
 		} else {
-			cfg.c33_srvip = cs_inet_addr(value);
+			cs_inet_addr(value, &cfg.c33_srvip);
 			return;
 		}
 	}
@@ -1116,10 +1117,10 @@ void chk_t_csp(char *token, char *value)
 
 	if (!strcmp(token, "serverip")) {
 		if(strlen(value) == 0) {
-			cfg.csp_srvip = 0;
+			set_null_ip(&cfg.csp_srvip);
 			return;
 		} else {
-			cfg.csp_srvip = cs_inet_addr(value);
+			cs_inet_addr(value, &cfg.csp_srvip);
 			return;
 		}
 	}
@@ -1143,10 +1144,10 @@ void chk_t_camd35(char *token, char *value)
 
 	if (!strcmp(token, "serverip")) {
 		if(strlen(value) == 0) {
-			cfg.c35_srvip = 0;
+			set_null_ip(&cfg.c35_srvip);
 			return;
 		} else {
-			cfg.c35_srvip = cs_inet_addr(value);
+			cs_inet_addr(value, &cfg.c35_srvip);
 			return;
 		}
 	}
@@ -1174,10 +1175,10 @@ void chk_t_camd35_tcp(char *token, char *value)
 
 	if (!strcmp(token, "serverip")) {
 		if(strlen(value) == 0) {
-			cfg.c35_tcp_srvip = 0;
+			set_null_ip(&cfg.c35_tcp_srvip);
 			return;
 		} else {
-			cfg.c35_tcp_srvip = cs_inet_addr(value);
+			cs_inet_addr(value, &cfg.c35_tcp_srvip);
 			return;
 		}
 	}
@@ -1205,10 +1206,10 @@ void chk_t_newcamd(char *token, char *value)
 
 	if (!strcmp(token, "serverip")) {
 		if(strlen(value) == 0) {
-			cfg.ncd_srvip = 0;
+			set_null_ip(&cfg.ncd_srvip);
 			return;
 		} else {
-			cfg.ncd_srvip = cs_inet_addr(value);
+			cs_inet_addr(value, &cfg.ncd_srvip);
 			return;
 		}
 	}
@@ -1385,7 +1386,7 @@ void chk_t_pandora(char *token, char *value)
 	}
 
 	if(!strcmp(token, "pand_srvid")) {
-		cfg.pand_srvip = cs_inet_addr(token);
+		cs_inet_addr(token, &cfg.pand_srvip);
 		return;
 	}
 
@@ -1403,10 +1404,10 @@ void chk_t_radegast(char *token, char *value)
 
 	if (!strcmp(token, "serverip")) {
 		if(strlen(value) == 0) {
-			cfg.rad_srvip = 0;
+			set_null_ip(&cfg.rad_srvip);
 			return;
 		} else {
-			cfg.rad_srvip = cs_inet_addr(value);
+			cs_inet_addr(value, &cfg.rad_srvip);
 			return;
 		}
 	}
@@ -2221,7 +2222,7 @@ int32_t write_config(void)
 
 	/*global settings*/
 	fprintf(f,"[global]\n");
-	if (cfg.srvip != 0 || cfg.http_full_cfg)
+	if (IP_ISSET(cfg.srvip) || cfg.http_full_cfg)
 		fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.srvip));
 	if (cfg.usrfile != NULL || cfg.http_full_cfg)
 		fprintf_conf(f, "usrfile", "%s\n", cfg.usrfile?cfg.usrfile:"");
@@ -2338,7 +2339,7 @@ int32_t write_config(void)
 	
 	
 
-	if (cfg.lb_savepath || cfg.http_full_cfg)
+	if ((cfg.lb_savepath && strlen(cfg.lb_savepath) > 0) || cfg.http_full_cfg)
 		fprintf_conf(f, "lb_savepath", "%s\n", cfg.lb_savepath?cfg.lb_savepath:"");
 	if (cfg.lb_stat_cleanup != DEFAULT_LB_STAT_CLEANUP || cfg.http_full_cfg)
 		fprintf_conf(f, "lb_stat_cleanup", "%d\n", cfg.lb_stat_cleanup);
@@ -2378,13 +2379,13 @@ int32_t write_config(void)
 		fprintf(f,"[monitor]\n");
 		if (cfg.mon_port != 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "port", "%d\n", cfg.mon_port);
-		if (cfg.mon_srvip != 0 || cfg.http_full_cfg)
+		if (IP_ISSET(cfg.mon_srvip) || cfg.http_full_cfg)
 			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.mon_srvip));
 		value = mk_t_iprange(cfg.mon_allowed);
 		if(strlen(value) > 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "nocrypt", "%s\n", value);
 		free_mk_t(value);
-		if(cfg.mon_aulow != 30 || cfg.http_full_cfg)
+		if((cfg.mon_aulow > 0 && cfg.mon_aulow != 30) || cfg.http_full_cfg)
 			fprintf_conf(f, "aulow", "%d\n", cfg.mon_aulow);
 		if(cfg.mon_hideclient_to != 15 || cfg.http_full_cfg)
 			fprintf_conf(f, "hideclient_to", "%d\n", cfg.mon_hideclient_to);
@@ -2404,7 +2405,7 @@ int32_t write_config(void)
 		fprintf_conf(f, "port", "%s\n", value);
 		free_mk_t(value);
 
-		if (cfg.ncd_srvip != 0)
+		if (IP_ISSET(cfg.ncd_srvip))
 			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.ncd_srvip));
 		fprintf_conf(f, "key", "");
 		for (i = 0; i < 14; i++) fprintf(f,"%02X", cfg.ncd_key[i]);
@@ -2424,7 +2425,7 @@ int32_t write_config(void)
 	if ( cfg.c33_port > 0) {
 		fprintf(f,"[camd33]\n");
 		fprintf_conf(f, "port", "%d\n", cfg.c33_port);
-		if (cfg.c33_srvip != 0)
+		if (IP_ISSET(cfg.c33_srvip))
 			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.c33_srvip));
 		if(cfg.c33_passive != 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "passive", "%d\n", cfg.c33_passive);
@@ -2441,7 +2442,7 @@ int32_t write_config(void)
 	if ( cfg.csp_port > 0) {
 		fprintf(f,"[csp]\n");
 		fprintf_conf(f, "port", "%d\n", cfg.csp_port);
-		if (cfg.csp_srvip != 0)
+		if (IP_ISSET(cfg.csp_srvip))
 			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.csp_srvip));
 		if (cfg.csp_wait_time > 0 || cfg.http_full_cfg)
 			fprintf_conf(f, "wait_time", "%d\n", cfg.csp_wait_time);
@@ -2453,7 +2454,7 @@ int32_t write_config(void)
 	if ( cfg.c35_port > 0) {
 		fprintf(f,"[cs357x]\n");
 		fprintf_conf(f, "port", "%d\n", cfg.c35_port);
-		if (cfg.c35_srvip != 0)
+		if (IP_ISSET(cfg.c35_srvip))
 			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.c35_srvip));
 		if (cfg.c35_udp_suppresscmd08 || cfg.http_full_cfg)
 			fprintf_conf(f, "suppresscmd08", "%d\n", cfg.c35_udp_suppresscmd08);
@@ -2468,7 +2469,7 @@ int32_t write_config(void)
 		fprintf_conf(f, "port", "%s\n", value);
 		free_mk_t(value);
 
-		if (cfg.c35_tcp_srvip != 0)
+		if (IP_ISSET(cfg.c35_tcp_srvip))
 			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.c35_tcp_srvip));
 		if (cfg.c35_tcp_suppresscmd08 || cfg.http_full_cfg)
 			fprintf_conf(f, "suppresscmd08", "%d\n", cfg.c35_tcp_suppresscmd08);
@@ -2479,7 +2480,7 @@ int32_t write_config(void)
 	if ( cfg.rad_port > 0) {
 		fprintf(f,"[radegast]\n");
 		fprintf_conf(f, "port", "%d\n", cfg.rad_port);
-		if (cfg.rad_srvip != 0)
+		if (IP_ISSET(cfg.rad_srvip))
 			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.rad_srvip));
 		fprintf_conf(f, "user", "%s\n", cfg.rad_usr);
 		value = mk_t_iprange(cfg.rad_allowed);
@@ -2575,7 +2576,7 @@ int32_t write_config(void)
 		if (cfg.pand_port || cfg.http_full_cfg)
 			fprintf_conf(f, "pand_port", "%d\n", cfg.pand_port);
 
-		if (cfg.pand_srvip || cfg.http_full_cfg)
+		if (IP_ISSET(cfg.pand_srvip) || cfg.http_full_cfg)
 			fprintf_conf(f, "pand_srvip", "%s\n", cs_inet_ntoa(cfg.pand_srvip));
 
 		fprintf(f,"\n");
@@ -6044,7 +6045,7 @@ char *mk_t_iprange(struct s_ip *range){
 
 	for (cip = range; cip; cip = cip->next){
 		pos += snprintf(tmp + pos, needed - pos, "%s%s", dot, cs_inet_ntoa(cip->ip[0]));
-		if (cip->ip[0] != cip->ip[1])	pos += snprintf(tmp + pos, needed - pos, "-%s", cs_inet_ntoa(cip->ip[1]));
+		if (!IP_EQUAL(cip->ip[0], cip->ip[1]))	pos += snprintf(tmp + pos, needed - pos, "-%s", cs_inet_ntoa(cip->ip[1]));
 		dot=",";
 	}
 	if(pos == 0 || !cs_malloc(&value, (pos + 1) * sizeof(char), -1)) return "";

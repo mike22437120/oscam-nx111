@@ -71,6 +71,8 @@ Usage: `basename $0` [parameters]
 
  -m, --make-config.mak     Create or update config.mak
 
+ -O, --detect-osx-sdk-version  Find where OS X SDK is located
+
  -h, --help                Display this help text.
 
 Examples:
@@ -453,10 +455,10 @@ do
 		(svnversion -n . 2>/dev/null || echo -n 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'
 		break
 	;;
-	'--detect-osx-sdk-version')
+	'-O'|'--detect-osx-sdk-version')
 		shift
 		OSX_VER=${1:-10.8}
-		for DIR in /Developer/SDKs/MacOSX{$OSX_VER,10.7,10.6,10.5}.sdk
+		for DIR in /Developer/SDKs/MacOSX{$OSX_VER,10.6,10.5}.sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX{10.7,10,8,$OSX_VER}.sdk
 		do
 			if test -d $DIR
 			then
@@ -464,7 +466,7 @@ do
 				exit 0
 			fi
 		done
-		echo /Developer/SDKs/MacOSX$(OSX_VER).sdk
+		echo Cant_find_OSX_SDK
 		break
 	;;
 	'-l'|'--list-config')
