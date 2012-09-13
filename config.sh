@@ -302,7 +302,7 @@ menu_reader() {
 
 	menuitem=`cat $tempfile`
 	if [ "$menuitem" != "" ]; then
-		echo -n " \"WITH_CARDREADER\"" >> ${tempfile}
+		printf " \"WITH_CARDREADER\"" >> ${tempfile}
 	fi
 	disable_all "$readers"
 	enable_package
@@ -452,13 +452,13 @@ do
 		break
 	;;
 	'-r'|'--oscam-revision')
-		(svnversion -n . 2>/dev/null || echo -n 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'
+		(svnversion -n . 2>/dev/null || printf 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'
 		break
 	;;
 	'-O'|'--detect-osx-sdk-version')
 		shift
 		OSX_VER=${1:-10.8}
-		for DIR in /Developer/SDKs/MacOSX{$OSX_VER,10.6,10.5}.sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX{10.7,10,8,$OSX_VER}.sdk
+		for DIR in /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX{$OSX_VER,10.8,10.7}.sdk /Developer/SDKs/MacOSX{$OSX_VER,10.6,10.5}.sdk
 		do
 			if test -d $DIR
 			then

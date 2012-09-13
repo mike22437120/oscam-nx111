@@ -3,7 +3,7 @@ SHELL = /bin/sh
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 .NOTPARALLEL: all
-.PHONY: all prepare build-programs help
+.PHONY: all prepare build-programs help README.build
 
 # Include config.mak which contains variables for all enabled modules
 # These variables will be used to select only needed files for compilation
@@ -157,8 +157,8 @@ CONFIG_WITH_LIBUSB=y
 endif
 
 ifeq ($(uname_S),Darwin)
-DEFAULT_PCSC_FLAGS = -isysroot $(OSX_SDK) -DWITH_PCSC
-DEFAULT_PCSC_LIB = -syslibroot,$(OSX_SDK) -framework IOKit -framework CoreFoundation -framework PCSC
+DEFAULT_PCSC_FLAGS = -isysroot $(OSX_SDK) -DWITH_PCSC -I/usr/local/include
+DEFAULT_PCSC_LIB = -syslibroot,$(OSX_SDK) -framework IOKit -framework CoreFoundation -framework PCSC -L/usr/local/lib
 else
 DEFAULT_PCSC_FLAGS = -DWITH_PCSC -I/usr/include/PCSC
 DEFAULT_PCSC_LIB = -lpcsclite
@@ -348,6 +348,9 @@ OSCAM_OBJ-$(CONFIG_READER_VIDEOGUARD) += $(OSCAM_LIB)(reader-videoguard1.o)
 OSCAM_OBJ-$(CONFIG_READER_VIDEOGUARD) += $(OSCAM_LIB)(reader-videoguard12.o)
 OSCAM_OBJ-$(CONFIG_READER_VIDEOGUARD) += $(OSCAM_LIB)(reader-videoguard2.o)
 OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-chk.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-conf.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-conf-chk.o)
+OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-conf-mk.o)
 OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-config.o)
 OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-garbage.o)
 OSCAM_OBJ-y += $(OSCAM_LIB)(oscam-log.o)
@@ -452,9 +455,19 @@ clean:
 distclean: clean
 	@-rm -rfv $(BINDIR)/oscam-$(VER)* $(BINDIR)/list_smargo-* config.mak
 
+README.build:
+	@echo "Extracting 'make help' into $@ file."
+	@-printf "\
+** This file is generated from 'make help' output, do not edit it. **\n\
+\n\
+" > $@
+	@-make --no-print-directory help >> $@
+	@echo "Done."
+
 help:
 	@-printf "\
-OSCam ver: $(VER) rev: $(SVN_REV)\n\
+OSCam build system documentation\n\
+================================\n\
 \n\
  Build variables:\n\
    The build variables are set on the make command line and control the build\n\
@@ -497,6 +510,32 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
                     what is being compiled. To request verbose build run:\n\
                     'make V=1'\n\
 \n\
+ Extra build variables:\n\
+   These variables add text to build variables. They are useful if you want\n\
+   to add additional options to already set variables without overwriting them\n\
+   Currently defined EXTRA_xxx variables are:\n\
+\n\
+   EXTRA_CC_OPTS  - Add text to CC_OPTS.\n\
+                    Example: 'make EXTRA_CC_OPTS=-Os'\n\
+\n\
+   EXTRA_CC_WARN  - Add text to CC_WARN.\n\
+                    Example: 'make EXTRA_CC_WARN=-Wshadow'\n\
+\n\
+   EXTRA_TARGET   - Add text to TARGET.\n\
+                    Example: 'make EXTRA_TARGET=-private'\n\
+\n\
+   EXTRA_CFLAGS   - Add text to CFLAGS (affects compilation).\n\
+                    Example: 'make EXTRA_CFLAGS=\"-DBLAH=1 -I/opt/local\"'\n\
+\n\
+   EXTRA_LDLAGS   - Add text to LDLAGS (affects linking).\n\
+                    Example: 'make EXTRA_LDLAGS=-Llibdir'\n\
+\n\
+   EXTRA_FLAGS    - Add text to both EXTRA_CFLAGS and EXTRA_LDFLAGS.\n\
+                    Example: 'make EXTRA_FLAGS=-DWEBIF=1'\n\
+\n\
+   EXTRA_LIBS     - Add text to LIBS (affects linking).\n\
+                    Example: 'make EXTRA_LIBS=\"-L./stapi -loscam_stapi\"'\n\
+\n\
  Use flags:\n\
    Use flags are used to request additional libraries or features to be used\n\
    by OSCam. Currently defined USE_xxx flags are:\n\
@@ -508,6 +547,9 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
                          LIBUSB_LDFLAGS='$(DEFAULT_LIBUSB_FLAGS)'\n\
                          LIBUSB_LIB='$(DEFAULT_LIBUSB_LIB)'\n\
                      Using USE_LIBUSB=1 adds to '-libusb' to PLUS_TARGET.\n\
+                     To build with static libusb, set the variable LIBUSB_LIB\n\
+                     to contain full path of libusb library. For example:\n\
+                      make USR_LIBUSB=1 LIBUSB_LIB=/usr/lib/libusb-1.0.a\n\
 \n\
    USE_PCSC=1      - Request linking with PCSC. The variables that control\n\
                      USE_PCSC=1 build are:\n\
@@ -516,6 +558,9 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
                          PCSC_LDFLAGS='$(DEFAULT_PCSC_FLAGS)'\n\
                          PCSC_LIB='$(DEFAULT_PCSC_LIB)'\n\
                      Using USE_PCSC=1 adds to '-pcsc' to PLUS_TARGET.\n\
+                     To build with static PCSC, set the variable PCSC_LIB\n\
+                     to contain full path of PCSC library. For example:\n\
+                      make USE_PCSC=1 PCSC_LIB=/usr/local/lib/libpcsclite.a\n\
 \n\
    USE_STAPI=1    - Request linking with STAPI. The variables that control\n\
                      USE_STAPI=1 build are:\n\
@@ -568,43 +613,23 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
  Automatically intialized variables:\n\
 \n\
    TARGET=text     - This variable is auto detected by using the compiler's\n\
-                    -dumpmachine output. On your machine the target is set to\n\
-                    '$(TARGET)'\n\
+                    -dumpmachine output. To see the target on your machine run:\n\
+                     'gcc -dumpmachine'\n\
 \n\
    PLUS_TARGET     - This variable is added to TARGET and it is set depending\n\
                      on the chosen USE_xxx (or DEBUG) flags. To disable adding\n\
                      PLUS_TARGET to TARGET, set NO_PLUS_TARGET=1\n\
 \n\
+   BINDIR          - The directory where final oscam binary would be put. The\n\
+                     default is: $(BINDIR)\n\
+\n\
    OSCAM_BIN=text  - This variable controls how the oscam binary will be named.\n\
                      Default OSCAM_BIN value is:\n\
-                     '$(OSCAM_BIN)'\n\
+                      'BINDIR/oscam-VERSVN_REV-TARGET'\n\
+                     Once the variables (BINDIR, VER, SVN_REV and TARGET) are\n\
+                     replaced, the resulting filename can look like this:\n\
+                      'Distribution/oscam-1.20-unstable_svn7404-i486-slackware-linux-static'\n\
                      For example you can run: 'make OSCAM_BIN=my-oscam'\n\
-\n\
- Extra build variables:\n\
-   These variables add text to build variables. They are useful if you want\n\
-   to add additional options to already set variables without overwriting them\n\
-   Currently defined EXTRA_xxx variables are:\n\
-\n\
-   EXTRA_CC_OPTS  - Add text to CC_OPTS.\n\
-                    Example: 'make EXTRA_CC_OPTS=-Os'\n\
-\n\
-   EXTRA_CC_WARN  - Add text to CC_WARN.\n\
-                    Example: 'make EXTRA_CC_WARN=-Wshadow'\n\
-\n\
-   EXTRA_TARGET   - Add text to TARGET.\n\
-                    Example: 'make EXTRA_TARGET=-private'\n\
-\n\
-   EXTRA_CFLAGS   - Add text to CFLAGS (affects compilation).\n\
-                    Example: 'make EXTRA_CFLAGS=\"-DBLAH=1 -I/opt/local\"'\n\
-\n\
-   EXTRA_LDLAGS   - Add text to LDLAGS (affects linking).\n\
-                    Example: 'make EXTRA_LDLAGS=-Llibdir'\n\
-\n\
-   EXTRA_FLAGS    - Add text to both EXTRA_CFLAGS and EXTRA_LDFLAGS.\n\
-                    Example: 'make EXTRA_FLAGS=-DWEBIF=1'\n\
-\n\
-   EXTRA_LIBS     - Add text to LIBS (affects linking).\n\
-                    Example: 'make EXTRA_LIBS=\"-L./stapi -loscam_stapi\"'\n\
 \n\
  Config targets:\n\
    make config        - Start configuration utility.\n\
@@ -613,27 +638,54 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
    make defconfig     - Restore default configuration options.\n\
 \n\
  Cleaning targets:\n\
-   make clean     - Remove $(LIBDIR)/ directory which contains built object files.\n\
+   make clean     - Remove '$(LIBDIR)' directory which contains compiled\n\
+                    object files.\n\
    make distclean - Executes clean target and also removes binary files\n\
-                    located in $(BINDIR)/ directory.\n\
+                    located in '$(BINDIR)' directory.\n\
 \n\
  Build system files:\n\
    config.sh      - OSCam configuration. Run 'config.sh --help' to see\n\
                     available parameters or 'make config' to start GUI\n\
                     configuratior.\n\
    Makefile       - Main build system file.\n\
-   Makefile.extra - Contains predefined targets.\n\
+   Makefile.extra - Contains predefined targets. You can use this file\n\
+                    as example on how to use the build system.\n\
    Makefile.local - This file is included in Makefile and allows creation\n\
                     of local build system targets. See Makefile.extra for\n\
                     examples.\n\
-   CMakeLists.txt - These files are used by 'cmake' build system.\n\
+\n\
+ Here are some of the interesting predefined targets in Makefile.extra.\n\
+ To use them run 'make target ...' where ... can be any extra flag. For\n\
+ example if you want to compile OSCam for Dreambox (DM500) but do not\n\
+ have the compilers in the path, you can run:\n\
+    make dm500 CROSS_DIR=/opt/cross/dm500/cdk/bin/\n\
+\n\
+ Predefined targets in Makefile.extra:\n\
+\n\
+    make libusb        - Builds OSCam with libusb support\n\
+    make pcsc          - Builds OSCam with PCSC support\n\
+    make pcsc-libusb   - Builds OSCam with PCSC and libusb support\n\
+    make dm500         - Builds OSCam for Dreambox (DM500)\n\
+    make sh4           - Builds OSCam for SH4 boxes\n\
+    make azbox         - Builds OSCam for AZBox STBs\n\
+    make coolstream    - Builds OSCam for Coolstream\n\
+    make dockstar      - Builds OSCam for Dockstar\n\
+    make opensolaris   - Builds OSCam for OpenSolaris\n\
+\n\
+ Predefined targets for static builds:\n\
+    make static        - Builds OSCam statically\n\
+    make static-libusb - Builds OSCam with libusb linked statically\n\
+    make static-libcrypto - Builds OSCam with libcrypto linked statically\n\
+    make static-ssl    - Builds OSCam with SSL support linked statically\n\
 \n\
  Examples:\n\
+   Build OSCam with debugging information:\n\
+     make DEBUG=1\n\n\
    Build OSCam for SH4 (the compilers are in the path):\n\
      make CROSS=sh4-linux-\n\n\
    Build OSCam for SH4 (the compilers are in not in the path):\n\
-     make sh4 CROSS_DIR=/opt/STM/STLinux-2.3/devkit/sh4/bin/\n\n\
-     make CROSS_DIR=/opt/STM/STLinux-2.3/devkit/sh4/bin/ CROSS=sh4-linux-\n\n\
+     make sh4 CROSS_DIR=/opt/STM/STLinux-2.3/devkit/sh4/bin/\n\
+     make CROSS_DIR=/opt/STM/STLinux-2.3/devkit/sh4/bin/ CROSS=sh4-linux-\n\
      make CROSS=/opt/STM/STLinux-2.3/devkit/sh4/bin/sh4-linux-\n\n\
    Build OSCam for SH4 with STAPI:\n\
      make CROSS=sh4-linux- USE_STAPI=1\n\n\
@@ -646,9 +698,11 @@ OSCam ver: $(VER) rev: $(SVN_REV)\n\
    Build OSCam with libusb and PCSC:\n\
      make USE_LIBUSB=1 USE_PCSC=1\n\n\
    Build OSCam with static libusb:\n\
-     make USE_LIBUSB=1 LIBUSB_LIB=\"-Llibusb-directory -llibusb.a\"\n\n\
+     make USE_LIBUSB=1 LIBUSB_LIB=\"/usr/lib/libusb-1.0.a\"\n\n\
    Build OSCam with static libcrypto:\n\
-     make USE_LIBCRYPTO=1 LIBCRYPTO_LIB=\"-Lopenssl-build -llibcrypto.a\"\n\n\
+     make USE_LIBCRYPTO=1 LIBCRYPTO_LIB=\"/usr/lib/libcrypto.a\"\n\n\
+   Build OSCam with static libssl and libcrypto:\n\
+     make USE_SSL=1 SSL_LIB=\"/usr/lib/libssl.a\" LIBCRYPTO_LIB=\"/usr/lib/libcrypto.a\"\n\n\
    Build with verbose messages and size optimizations:\n\
      make V=1 CC_OPTS=-Os\n\n\
    Build and set oscam file name:\n\

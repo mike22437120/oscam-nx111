@@ -171,14 +171,9 @@ maximum time CWs resist in cache after 1st client request, the time must be 2 se
 maximum CWs in cache, default:1000
 .RE
 .PP
-\fBcacheexwaittime\fP = \fBmilli-seconds\fP
-.RS 3n
-cache waiting time in milli-seconds for cache exchange, default:50
-.RE
-.PP
 \fBcacheexwaittime\fP = \fBdelay\fP
 .RS 3n
-maximum wait time for a cache exchange entry in milli-seconds, default:50
+wait time for a cache exchange entry in milli-seconds, default:50
 .RE
 .PP
 \fBcacheexenablestats\fP = \fB0|1\fP
@@ -406,7 +401,7 @@ unsecured monitor connection, default:none
 .PP
 \fBaulow\fP = \fBminutes\fP
 .RS 3n
-time no EMM occurs so that client is set to low, default:30
+time no EMM occurs so that client is set to low, switch from status "active" to "on", default:30
 .RE
 .PP
 \fBmonlevel\fP = \fB0\fP|\fB1\fP|\fB2\fP|\fB3\fP|\fB4\fP

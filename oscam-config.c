@@ -13,449 +13,43 @@
 #include <net/if.h>
 #endif
 
-#ifdef CS_WITH_BOXKEYS
-#  include "oscam-boxkeys.np"
-#endif
+#include "oscam-conf.h"
+#include "oscam-conf-chk.h"
 
-#define CONFVARWIDTH 30
 #define MAXLINESIZE 16384
 #define CCCAMCFGREADER    1
 #define CCCAMCFGUSER      2
 
+#define cs_conf				"oscam.conf"
+#define cs_user				"oscam.user"
+#define cs_srvr				"oscam.server"
+#define cs_srid				"oscam.srvid"
+#define cs_trid				"oscam.tiers"
+#define cs_l4ca				"oscam.guess"
+#define cs_sidt				"oscam.services"
+#define cs_ac				"oscam.ac"
+#define cs_whitelist		"oscam.whitelist"
+#define cs_cacheex_matcher	"oscam.cacheex"
+#define cs_provid			"oscam.provid"
+#define cs_ird				"oscam.ird"
+
 void * read_cccamcfg(int32_t mode);
+extern  uint8_t cs_http_use_utf8;
 
-static const char *cs_conf="oscam.conf";
-static const char *cs_user="oscam.user";
-static const char *cs_srvr="oscam.server";
-static const char *cs_srid="oscam.srvid";
-static const char *cs_trid="oscam.tiers";
-static const char *cs_l4ca="oscam.guess";
-static const char *cs_cert="oscam.cert";
-static const char *cs_sidt="oscam.services";
-#ifdef CS_ANTICASC
-static const char *cs_ac="oscam.ac";
-#endif
-
-//Todo #ifdef CCCAM
-static const char *cs_provid="oscam.provid";
-
-#ifdef IRDETO_GUESSING
-static const char *cs_ird="oscam.ird";
-#endif
 uint32_t cfg_sidtab_generation = 1;
 
-typedef enum cs_proto_type
-{
-	TAG_GLOBAL,	// must be first !
-	TAG_MONITOR,	// monitor
-	TAG_CAMD33,	// camd 3.3x
-	TAG_CAMD35,	// camd 3.5x UDP
-	TAG_NEWCAMD,	// newcamd
-	TAG_RADEGAST,	// radegast
-	TAG_SERIAL,	// serial (static)
-	TAG_CS357X,	// camd 3.5x UDP
-	TAG_CS378X,	// camd 3.5x TCP
-	TAG_GBOX,	// gbox
-#ifdef MODULE_CCCAM
-	TAG_CCCAM,	// cccam
-#endif
-#ifdef MODULE_PANDORA
-	TAG_PANDORA,	// pandora
-#endif
-#ifdef CS_CACHEEX
-	TAG_CSP,	// CSP
-#endif
-	TAG_CONSTCW,	// constcw
-	TAG_DVBAPI,	// dvbapi
-	TAG_WEBIF,	// webif
-	TAG_ANTICASC,	// anti-cascading
-	TAG_LCD		// LCD
-} cs_proto_type_t;
-
-static const char *cctag[]={"global", "monitor", "camd33", "camd35", "newcamd", "radegast", "serial",
-		      "cs357x", "cs378x", "gbox",
-#ifdef MODULE_CCCAM
-		      "cccam",
-#endif
-#ifdef MODULE_PANDORA
-		      "pandora",
-#endif
-#ifdef CS_CACHEEX
-		      "csp",
-#endif
-		      "constcw", "dvbapi", "webif", "anticasc",
-#ifdef LCDSUPPORT
-		      "lcd",
-#endif
-		      NULL};
-
-
-/* Returns the default value if string length is zero, otherwise atoi is called*/
-static int32_t strToIntVal(char *value, int32_t defaultvalue){
-	if (strlen(value) == 0) return defaultvalue;
-	errno = 0; // errno should be set to 0 before calling strtol
-	int32_t i = strtol(value, NULL, 10);
-	return (errno == 0) ? i : defaultvalue;
-}
-
-/* Returns the default value if string length is zero, otherwise strtoul is called*/
-static uint32_t strToUIntVal(char *value, uint32_t defaultvalue){
-	if (strlen(value) == 0) return defaultvalue;
-	errno = 0; // errno should be set to 0 before calling strtoul
-	uint32_t i = strtoul(value, NULL, 10);
-	return (errno == 0) ? i : defaultvalue;
-}
-
- /* Replacement of fprintf which adds necessary whitespace to fill up the varname to a fixed width.
-   If varname is longer than CONFVARWIDTH, no whitespace is added*/
-static void fprintf_conf(FILE *f, const char *varname, const char *fmtstring, ...){
-	int32_t varlen = strlen(varname);
-	int32_t max = (varlen > CONFVARWIDTH) ? varlen : CONFVARWIDTH;
-	char varnamebuf[max + 3];
-	char *ptr = varnamebuf + varlen;
-	va_list argptr;
-
-	cs_strncpy(varnamebuf, varname, sizeof(varnamebuf));
-	while(varlen < CONFVARWIDTH){
-		ptr[0] = ' ';
-		++ptr;
-		++varlen;
-	}
-	cs_strncpy(ptr, "= ", sizeof(varnamebuf)-(ptr-varnamebuf));
-	if (fwrite(varnamebuf, sizeof(char), strlen(varnamebuf), f)){
-		if(strlen(fmtstring) > 0){
-			va_start(argptr, fmtstring);
-			vfprintf(f, fmtstring, argptr);
-			va_end(argptr);
-		}
-	}
-}
-
-
-#ifdef DEBUG_SIDTAB
-static void show_sidtab(struct s_sidtab *sidtab)
-{
-  for (; sidtab; sidtab=sidtab->next)
-  {
-    int32_t i;
-    char buf[1024];
-    char *saveptr = buf;
-    cs_log("label=%s", sidtab->label);
-    snprintf(buf, sizeof(buf), "caid(%d)=", sidtab->num_caid);
-    for (i=0; i<sidtab->num_caid; i++)
-      snprintf(buf+strlen(buf), 1024-(buf-saveptr), "%04X ", sidtab->caid[i]);
-    cs_log("%s", buf);
-    snprintf(buf, sizeof(buf), "provider(%d)=", sidtab->num_provid);
-    for (i=0; i<sidtab->num_provid; i++)
-      snprintf(buf+strlen(buf), 1024-(buf-saveptr), "%08X ", sidtab->provid[i]);
-    cs_log("%s", buf);
-    snprintf(buf, sizeof(buf), "services(%d)=", sidtab->num_srvid);
-    for (i=0; i<sidtab->num_srvid; i++)
-      snprintf(buf+strlen(buf), 1024-(buf-saveptr), "%04X ", sidtab->srvid[i]);
-    cs_log("%s", buf);
-  }
-}
-#endif
-
-static void chk_iprange(char *value, struct s_ip **base)
-{
-	int32_t i = 0;
-	char *ptr1, *ptr2, *saveptr1 = NULL;
-	struct s_ip *fip, *lip, *cip;
-
-	cs_malloc(&cip, sizeof(struct s_ip), SIGINT);
-	fip = cip;
-
-	for (ptr1=strtok_r(value, ",", &saveptr1); ptr1; ptr1=strtok_r(NULL, ",", &saveptr1)) {
-			if (i == 0)
-				++i;
-		else {
-			cs_malloc(&cip, sizeof(struct s_ip), SIGINT);
-			lip->next = cip;
-		}
-
-		if( (ptr2=strchr(trim(ptr1), '-')) ) {
-			*ptr2++ ='\0';
-			cs_inet_addr(trim(ptr1), &cip->ip[0]);
-			cs_inet_addr(trim(ptr2), &cip->ip[1]);
-		} else {
-			cs_inet_addr(ptr1, &cip->ip[0]);
-			IP_ASSIGN(cip->ip[1], cip->ip[0]);
-		}
-		lip = cip;
-	}
-	lip = *base;
-	*base = fip;
-	clear_sip(&lip);
-}
-
-static void chk_caidtab(char *caidasc, CAIDTAB *ctab)
-{
-	int32_t i;
-	char *ptr1, *ptr2, *ptr3, *saveptr1 = NULL;
-	CAIDTAB newctab;
-	memset(&newctab, 0, sizeof(CAIDTAB));
-	for (i = 1; i < CS_MAXCAIDTAB; newctab.mask[i++] = 0xffff);
-
-	for (i = 0, ptr1 = strtok_r(caidasc, ",", &saveptr1); (i < CS_MAXCAIDTAB) && (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1)) {
-		uint32_t caid, mask, cmap;
-		if( (ptr3 = strchr(trim(ptr1), ':')) )
-			*ptr3++ = '\0';
-		else
-			ptr3 = "";
-
-		if( (ptr2 = strchr(trim(ptr1), '&')) )
-			*ptr2++ = '\0';
-		else
-			ptr2 = "";
-
-		if (((caid = a2i(ptr1, 2)) | (mask = a2i(ptr2,-2)) | (cmap = a2i(ptr3, 2))) < 0x10000) {
-			newctab.caid[i] = caid;
-			newctab.mask[i] = mask;
-			newctab.cmap[i++] = cmap;
-		}
-	}
-	memcpy(ctab, &newctab, sizeof(CAIDTAB));
-}
-
-#ifdef WITH_LB
-static void chk_caidvaluetab(char *lbrlt, CAIDVALUETAB *tab, int32_t minvalue)
-{
-		int32_t i;
-		char *ptr1, *ptr2, *saveptr1 = NULL;
-		CAIDVALUETAB newtab;
-		memset(&newtab, 0, sizeof(CAIDVALUETAB));
-
-		for (i = 0, ptr1 = strtok_r(lbrlt, ",", &saveptr1); (i < CS_MAX_CAIDVALUETAB) && (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1)) {
-				int32_t caid, value;
-
-				if( (ptr2 = strchr(trim(ptr1), ':')) )
-						*ptr2++ = '\0';
-				else
-						ptr2 = "";
-
-				if (((caid = a2i(ptr1, 2)) < 0xFFFF) | ((value = atoi(ptr2)) < 10000)) {
-						newtab.caid[i] = caid;
-						if (value < minvalue) value = minvalue;
-						newtab.value[i] = value;
-						newtab.n = ++i;
-				}
-		}
-		memcpy(tab, &newtab, sizeof(CAIDVALUETAB));
-}
-#endif
-
-static void chk_tuntab(char *tunasc, TUNTAB *ttab)
-{
-	int32_t i;
-	char *ptr1, *ptr2, *ptr3, *saveptr1 = NULL;
-	TUNTAB newttab;
-	memset(&newttab, 0 , sizeof(TUNTAB));
-
-	for (i = 0, ptr1 = strtok_r(tunasc, ",", &saveptr1); (i < CS_MAXTUNTAB) && (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1)) {
-		uint32_t bt_caidfrom, bt_caidto, bt_srvid;
-		if( (ptr3 = strchr(trim(ptr1), ':')) )
-			*ptr3++ = '\0';
-		else
-			ptr3 = "";
-
-		if( (ptr2 = strchr(trim(ptr1), '.')) )
-			*ptr2++ = '\0';
-		else
-			ptr2 = "";
-
-		if ((bt_caidfrom = a2i(ptr1, 2)) | (bt_srvid = a2i(ptr2,-2)) | (bt_caidto = a2i(ptr3, 2))) {
-			newttab.bt_caidfrom[i] = bt_caidfrom;
-			newttab.bt_caidto[i] = bt_caidto;
-			newttab.bt_srvid[i++] = bt_srvid;
-			newttab.n = i;
-		}
-	}
-	memcpy(ttab, &newttab, sizeof(TUNTAB));
-}
-
-static void chk_services(char *labels, SIDTABBITS *sidok, SIDTABBITS *sidno)
-{
-	int32_t i;
-	char *ptr, *saveptr1 = NULL;
-	SIDTAB *sidtab;
-	SIDTABBITS newsidok, newsidno;
-	newsidok = newsidno = 0;
-	for (ptr=strtok_r(labels, ",", &saveptr1); ptr; ptr=strtok_r(NULL, ",", &saveptr1)) {
-		for (trim(ptr), i = 0, sidtab = cfg.sidtab; sidtab; sidtab = sidtab->next, i++) {
-			if (!strcmp(sidtab->label, ptr)) newsidok|=((SIDTABBITS)1<<i);
-			if ((ptr[0]=='!') && (!strcmp(sidtab->label, ptr+1))) newsidno|=((SIDTABBITS)1<<i);
-		}
-	}
-	*sidok = newsidok;
-	*sidno = newsidno;
-}
-
-static void chk_ftab(char *zFilterAsc, FTAB *ftab, const char *zType, const char *zName, const char *zFiltName)
-{
-	int32_t i, j;
-	char *ptr1, *ptr2, *ptr3, *saveptr1 = NULL;
-	char *ptr[CS_MAXFILTERS] = {0};
-	FTAB newftab;
-	memset(&newftab, 0, sizeof(FTAB));
-
-	for( i = 0, ptr1 = strtok_r(zFilterAsc, ";", &saveptr1); (i < CS_MAXFILTERS) && (ptr1); ptr1 = strtok_r(NULL, ";", &saveptr1), i++ ) {
-		ptr[i] = ptr1;
-		if( (ptr2 = strchr(trim(ptr1), ':')) ) {
-			*ptr2++ ='\0';
-			newftab.filts[i].caid = (uint16_t)a2i(ptr1, 4);
-			ptr[i] = ptr2;
-		}
-		else if (zFiltName && zFiltName[0] == 'c') {
-			cs_log("PANIC: CAID field not found in CHID parameter!");
-			return;
-		}
-		newftab.nfilts++;
-	}
-
-	if( newftab.nfilts ) {
-	    cs_debug_mask(D_CLIENT, "%s '%s' %s filter(s):", zType, zName, zFiltName);
-	}
-	for( i = 0; i < newftab.nfilts; i++ ) {
-		cs_debug_mask(D_CLIENT, "CAID #%d: %04X", i, newftab.filts[i].caid);
-		for( j = 0, ptr3 = strtok_r(ptr[i], ",", &saveptr1); (j < CS_MAXPROV) && (ptr3); ptr3 = strtok_r(NULL, ",", &saveptr1), j++ ) {
-			newftab.filts[i].prids[j] = a2i(ptr3,6);
-			newftab.filts[i].nprids++;
-			cs_debug_mask(D_CLIENT, "%s #%d: %06X", zFiltName, j, newftab.filts[i].prids[j]);
-		}
-	}
-	memcpy(ftab, &newftab, sizeof(FTAB));
-}
-
-static void chk_cltab(char *classasc, CLASSTAB *clstab)
-{
-	int32_t i;
-	char *ptr1, *saveptr1 = NULL;
-	CLASSTAB newclstab;
-	memset(&newclstab, 0, sizeof(newclstab));
-	newclstab.an = newclstab.bn = 0;
-	for( i = 0, ptr1 = strtok_r(classasc, ",", &saveptr1); (i < CS_MAXCAIDTAB) && (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1) ) {
-		ptr1 = trim(ptr1);
-		if( ptr1[0] == '!' )
-			newclstab.bclass[newclstab.bn++] = (uchar)a2i(ptr1+1, 2);
-		else
-			newclstab.aclass[newclstab.an++] = (uchar)a2i(ptr1, 2);
-	}
-	memcpy(clstab, &newclstab, sizeof(CLASSTAB));
-}
-
-static void chk_port_tab(char *portasc, PTAB *ptab)
-{
-	int32_t i, j, nfilts, ifilt, iport;
-	PTAB *newptab;
-	char *ptr1, *ptr2, *ptr3, *saveptr1 = NULL;
-	char *ptr[CS_MAXPORTS] = {0};
-	int32_t port[CS_MAXPORTS] = {0};
-	if(!cs_malloc(&newptab, sizeof(PTAB), -1)) return;
-
-	for (nfilts = i = 0, ptr1 = strtok_r(portasc, ";", &saveptr1); (i < CS_MAXPORTS) && (ptr1); ptr1 = strtok_r(NULL, ";", &saveptr1), i++) {
-		ptr[i] = ptr1;
-		if( (ptr2=strchr(trim(ptr1), '@')) ) {
-			*ptr2++ ='\0';
-			newptab->ports[i].s_port = atoi(ptr1);
-
-			//checking for des key for port
-			newptab->ports[i].ncd_key_is_set = 0;   //default to 0
-			if( (ptr3=strchr(trim(ptr1), '{')) ) {
-				*ptr3++='\0';
-				if (key_atob_l(ptr3, newptab->ports[i].ncd_key, 28))
-					fprintf(stderr, "newcamd: error in DES Key for port %s -> ignored\n", ptr1);
-				else
-					newptab->ports[i].ncd_key_is_set = 1;
-			}
-
-			ptr[i] = ptr2;
-			port[i] = newptab->ports[i].s_port;
-			newptab->nports++;
-		}
-		nfilts++;
-	}
-
-	if( nfilts == 1 && strlen(portasc) < 6 && newptab->ports[0].s_port == 0 ) {
-		newptab->ports[0].s_port = atoi(portasc);
-		newptab->nports = 1;
-	}
-
-	iport = ifilt = 0;
-	for (i=0; i<nfilts; i++) {
-		if( port[i] != 0 )
-			iport = i;
-		for (j = 0, ptr3 = strtok_r(ptr[i], ",", &saveptr1); (j < CS_MAXPROV) && (ptr3); ptr3 = strtok_r(NULL, ",", &saveptr1), j++) {
-			if( (ptr2=strchr(trim(ptr3), ':')) ) {
-				*ptr2++='\0';
-				newptab->ports[iport].ftab.nfilts++;
-				ifilt = newptab->ports[iport].ftab.nfilts-1;
-				newptab->ports[iport].ftab.filts[ifilt].caid = (uint16_t)a2i(ptr3, 4);
-				newptab->ports[iport].ftab.filts[ifilt].prids[j] = a2i(ptr2, 6);
-			} else {
-				newptab->ports[iport].ftab.filts[ifilt].prids[j] = a2i(ptr3, 6);
-			}
-			newptab->ports[iport].ftab.filts[ifilt].nprids++;
-		}
-	}
-	memcpy(ptab, newptab, sizeof(PTAB));
-	free(newptab);
-}
-
-#ifdef MODULE_CCCAM
-static void chk_cccam_ports(char *value)
-{
-	int32_t i;
-	char *ptr, *saveptr1 = NULL;
-	uint16_t newcc_port[CS_MAXPORTS];
-	memset(newcc_port, 0, sizeof(newcc_port));
-
-	for (i=0, ptr=strtok_r(value, ",", &saveptr1); ptr && i<CS_MAXPORTS; ptr=strtok_r(NULL, ",", &saveptr1)) {
-		newcc_port[i] = atoi(ptr);
-		if (newcc_port[i]) i++;
-	}
-	memcpy(cfg.cc_port, newcc_port, sizeof(cfg.cc_port));
-}
-#endif
-
-#ifdef NOTUSED
-static void chk_srvip(char *value, in_addr_t *ip)
-{
-	int32_t i;
-	char *ptr, *saveptr1 = NULL;
-	for (i=0, ptr=strtok_r(value, ",", &saveptr1); ptr; ptr=strtok_r(NULL, ",", &saveptr1))
-		if (i<8) ip[i++] = inet_addr(ptr);
-}
-#endif
-
-void chk_t_global(const char *token, char *value)
-{
-	char *saveptr1 = NULL;
-
-#if defined(QBOXHD) || defined(__arm__)
-	if (!strcmp(token, "enableled")) {
-		cfg.enableled = strToIntVal(value, 0);
-		return;
-	}
-#endif
-
-	if (!strcmp(token, "disablelog")) {
+static void disablelog_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
 		cs_disable_log(strToIntVal(value, 0));
 		return;
 	}
-
-	if (!strcmp(token, "disableuserfile")) {
-		cfg.disableuserfile = strToIntVal(value, 1);
-		return;
-	}
-
-	if (!strcmp(token, "disablemail")) {
-		cfg.disablemail = strToIntVal(value, 1);
-		return;
-	}
+	if (cfg.disablelog || cfg.http_full_cfg)
+		fprintf_conf(f, token, "%d\n", cfg.disablelog);
+}
 
 #if defined(WEBIF) || defined(MODULE_MONITOR)
-	if (!strcmp(token, "loghistorysize")) {
+static void loghistorysize_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
 		uint32_t newsize = strToUIntVal(value, 4096);
 		if (newsize < 1024 && newsize != 0) {
 			fprintf(stderr, "WARNING: loghistorysize is too small, adjusted to 1024\n");
@@ -464,19 +58,44 @@ void chk_t_global(const char *token, char *value)
 		cs_reinit_loghist(newsize);
 		return;
 	}
+	if (cfg.loghistorysize != 4096 || cfg.http_full_cfg)
+		fprintf_conf(f, token, "%u\n", cfg.loghistorysize);
+}
 #endif
 
-	if (!strcmp(token, "serverip")) {
+static void serverip_fn(const char *token, char *value, void *setting, FILE *f) {
+	IN_ADDR_T srvip = *(IN_ADDR_T *)setting;
+	if (value) {
 		if (strlen(value) == 0) {
-			set_null_ip(&cfg.srvip);
-			return;
+			set_null_ip((IN_ADDR_T *)setting);
 		} else {
-			cs_inet_addr(value, &cfg.srvip);
-			return;
+			cs_inet_addr(value, (IN_ADDR_T *)setting);
 		}
+		return;
 	}
+	if (IP_ISSET(srvip) || cfg.http_full_cfg)
+		fprintf_conf(f, token, "%s\n", cs_inet_ntoa(srvip));
+}
 
-	if (!strcmp(token, "logfile")) {
+void iprange_fn(const char *token, char *value, void *setting, FILE *f) {
+	struct s_ip **ip = setting;
+	if (value) {
+		if(strlen(value) == 0) {
+			clear_sip(ip);
+		} else {
+			chk_iprange(value, ip);
+		}
+		return;
+	}
+	value = mk_t_iprange(*ip);
+	if (strlen(value) > 0 || cfg.http_full_cfg)
+		fprintf_conf(f, token, "%s\n", value);
+	free_mk_t(value);
+}
+
+static void logfile_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		char *saveptr1 = NULL;
 		cfg.logtostdout = 0;
 		cfg.logtosyslog = 0;
 		NULLFREE(cfg.logfile);
@@ -499,1374 +118,712 @@ void chk_t_global(const char *token, char *value)
 		}
 		return;
 	}
-
-	if (!strcmp(token, "usrfile")) {
-		NULLFREE(cfg.usrfile);
-		if (strlen(value) > 0) {
-			if(!cs_malloc(&(cfg.usrfile), strlen(value) + 1, -1)) return;
-			memcpy(cfg.usrfile, value, strlen(value) + 1);
-		} else cfg.disableuserfile = 1;
-		return;
+	if (cfg.logfile || cfg.logtostdout == 1 || cfg.logtosyslog == 1 || cfg.http_full_cfg) {
+		value = mk_t_logfile();
+		fprintf_conf(f, token, "%s\n", value);
+		free_mk_t(value);
 	}
+}
 
-	if (!strcmp(token, "mailfile")) {
-		NULLFREE(cfg.mailfile);
-		if (strlen(value) > 0) {
-			if(!cs_malloc(&(cfg.mailfile), strlen(value) + 1, -1)) return;
-			memcpy(cfg.mailfile, value, strlen(value) + 1);
-		} else cfg.disablemail = 1;
-		return;
-	}
-
-	if (!strcmp(token, "cwlogdir")) {
-		NULLFREE(cfg.cwlogdir);
-		if (strlen(value) > 0) {
-			if(!cs_malloc(&(cfg.cwlogdir), strlen(value) + 1, -1)) return;
-			memcpy(cfg.cwlogdir, value, strlen(value) + 1);
-		}
-		return;
-	}
-
-	if (!strcmp(token, "emmlogdir")) {
-		NULLFREE(cfg.emmlogdir);
-		if (strlen(value) > 0) {
-			if(!cs_malloc(&(cfg.emmlogdir), strlen(value) + 1, -1)) return;
-			memcpy(cfg.emmlogdir, value, strlen(value) + 1);
-		}
-		return;
-	}
-
-	if (!strcmp(token, "usrfileflag")) {
-		cfg.usrfileflag = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "clienttimeout")) {
-		cfg.ctimeout = strToUIntVal(value, CS_CLIENT_TIMEOUT);
-		if (cfg.ctimeout < 100) cfg.ctimeout *= 1000;
-		return;
-	}
-
-	if (!strcmp(token, "fallbacktimeout")) {
-		cfg.ftimeout = strToUIntVal(value, (CS_CLIENT_TIMEOUT / 2));
-		if (cfg.ftimeout < 100) cfg.ftimeout *= 1000;
-		return;
-	}
-
-	if (!strcmp(token, "clientmaxidle")) {
-		cfg.cmaxidle = strToUIntVal(value, CS_CLIENT_MAXIDLE);
-		return;
-	}
-
-	if (!strcmp(token, "cachedelay")) {
-		cfg.delay = strToUIntVal(value, CS_DELAY);
-		return;
-	}
-
-	if (!strcmp(token, "bindwait")) {
-		cfg.bindwait = strToIntVal(value, CS_BIND_TIMEOUT);
-		return;
-	}
-
-	if (!strcmp(token, "netprio")) {
-		cfg.netprio = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "sleep")) {
-		cfg.tosleep = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "unlockparental")) {
-		cfg.ulparent = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "nice")) {
-		if (strlen(value) == 0) {
-			cfg.nice = 99;
-			return;
-		} else {
-			cfg.nice = atoi(value);
-			if ((cfg.nice<-20) || (cfg.nice>20)) cfg.nice = 99;
-			if (cfg.nice != 99) cs_setpriority(cfg.nice);  // ignore errors
-			return;
-		}
-	}
-
-	if (!strcmp(token, "serialreadertimeout")) {
-		if (cfg.srtimeout < 100)
-			cfg.srtimeout = strtoul(value, NULL, 10) * 1000;
+static void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f) {
+	CAIDTAB *caid_table = setting;
+	if (value) {
+		if (strlen(value) == 0)
+			clear_caidtab(caid_table);
 		else
-			cfg.srtimeout = strtoul(value, NULL, 10);
-		if (cfg.srtimeout <= 0)
-			cfg.srtimeout = 1500;
+			chk_caidtab(value, caid_table);
 		return;
 	}
-
-	if (!strcmp(token, "maxlogsize")) {
-		cfg.max_log_size = strToIntVal(value, 10);
-		if(cfg.max_log_size != 0 && cfg.max_log_size <= 10) cfg.max_log_size = 10;
-		return;
+	if (caid_table->caid[0] || cfg.http_full_cfg) {
+		value = mk_t_caidtab(caid_table);
+		fprintf_conf(f, token, "%s\n", value);
+		free_mk_t(value);
 	}
-
-	if( !strcmp(token, "waitforcards")) {
-		cfg.waitforcards = strToIntVal(value, 1);
-		return;
-	}
-
-	if( !strcmp(token, "waitforcards_extra_delay")) {
-		cfg.waitforcards_extra_delay = strToIntVal(value, 0);
-		return;
-	}
-
-	if( !strcmp(token, "preferlocalcards")) {
-		cfg.preferlocalcards = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "readerrestartseconds")) {
-		cfg.reader_restart_seconds = strToIntVal(value, 5);
-		return;
-	}
-
-	if (!strcmp(token, "dropdups")) {
-		cfg.dropdups = strToIntVal(value, 0);
-		return;
-	}
-
-#ifdef CS_CACHEEX
-	if (!strcmp(token, "cacheexwaittime")) {
-			cfg.cacheex_wait_time = strToIntVal(value, DEFAULT_CACHEEX_WAIT_TIME);
-			return;
-		}
-
-	if (!strcmp(token, "cacheexenablestats")) {
-			cfg.cacheex_enable_stats = strToIntVal(value, 0);
-			return;
-		}
-#endif
-
-	if (!strcmp(token, "block_same_ip")) {
-		cfg.block_same_ip = strToIntVal(value, 1);
-		return;
-	}
-
-	if (!strcmp(token, "block_same_name")) {
-		cfg.block_same_name = strToIntVal(value, 1);
-		return;
-	}
+}
 
 #ifdef WITH_LB
-	if (!strcmp(token, "readerautoloadbalance") || !strcmp(token, "lb_mode")) {
-		cfg.lb_mode = strToIntVal(value, DEFAULT_LB_MODE);
+static void caidvaluetab_fn(const char *token, char *value, void *setting, FILE *f) {
+	CAIDVALUETAB *caid_value_table = setting;
+	int limit = streq(token, "lb_retrylimits") ? 50 : 1;
+	if (value) {
+		chk_caidvaluetab(value, caid_value_table, limit);
 		return;
 	}
-
-	if (!strcmp(token, "readerautoloadbalance_save") || !strcmp(token, "lb_save")) {
-		cfg.lb_save = strToIntVal(value, 0);
-		if (cfg.lb_save  > 0 && cfg.lb_save  < 100) {
-			cfg.lb_save = 100;
-			fprintf(stderr, "Warning: '%s' corrected to the minimum -> 100\n", token);
-		}
-		return;
+	if (caid_value_table->n > 0 || cfg.http_full_cfg) {
+		value = mk_t_caidvaluetab(caid_value_table);
+		fprintf_conf(f, token, "%s\n", value);
+		free_mk_t(value);
 	}
-
-	if (!strcmp(token, "lb_nbest_readers")) {
-		cfg.lb_nbest_readers = strToIntVal(value, DEFAULT_NBEST);
-		if (cfg.lb_nbest_readers < 2)
-			cfg.lb_nbest_readers = DEFAULT_NBEST;
-		return;
-	}
-
-	if (!strcmp(token, "lb_nfb_readers")) {
-		cfg.lb_nfb_readers = strToIntVal(value, DEFAULT_NFB);
-		return;
-	}
-
-	if (!strcmp(token, "lb_min_ecmcount")) {
-		cfg.lb_min_ecmcount = strToIntVal(value, DEFAULT_MIN_ECM_COUNT);
-		return;
-	}
-
-	if (!strcmp(token, "lb_max_ecmcount")) {
-		cfg.lb_max_ecmcount = strToIntVal(value, DEFAULT_MAX_ECM_COUNT);
-		return;
-	}
-
-	if (!strcmp(token, "lb_reopen_seconds")) {
-		cfg.lb_reopen_seconds = strToIntVal(value, DEFAULT_REOPEN_SECONDS);
-		return;
-	}
-
-	if (!strcmp(token, "lb_retrylimit")) {
-		cfg.lb_retrylimit = strToIntVal(value, DEFAULT_RETRYLIMIT);
-		return;
-	}
-
-	if (!strcmp(token, "lb_retrylimits")) {
-		chk_caidvaluetab(value, &cfg.lb_retrylimittab, 50);
-		return;
-	}
-
-	if (!strcmp(token, "lb_nbest_percaid")) {
-		chk_caidvaluetab(value, &cfg.lb_nbest_readers_tab, 1);
-		return;
-	}
-
-	if (!strcmp(token, "lb_noproviderforcaid")) {
-		if(strlen(value) == 0)
-        		clear_caidtab(&cfg.lb_noproviderforcaid);
-		else
-			chk_caidtab(value, &cfg.lb_noproviderforcaid);
-		return;
-	}
-
-	if (!strcmp(token, "lb_savepath")) {
-		NULLFREE(cfg.lb_savepath);
-		cfg.lb_savepath = strnew(value);
-		return;
-	}
-
-	if (!strcmp(token, "lb_stat_cleanup")) {
-		cfg.lb_stat_cleanup = strToIntVal(value, DEFAULT_LB_STAT_CLEANUP);
-		return;
-	}
-
-	if (!strcmp(token, "lb_reopen_mode")) {
-		cfg.lb_reopen_mode = strToIntVal(value, DEFAULT_LB_REOPEN_MODE);
-		return;
-	}
-
-	if (!strcmp(token, "lb_max_readers")) {
-		cfg.lb_max_readers = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "lb_auto_betatunnel")) {
-		cfg.lb_auto_betatunnel = strToIntVal(value, DEFAULT_LB_AUTO_BETATUNNEL);
-		return;
-	}
-
-	if (!strcmp(token, "lb_auto_betatunnel_prefer_beta")) {
-		cfg.lb_auto_betatunnel_prefer_beta = strToIntVal(value, DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA);
-		return;
-	}
+}
 #endif
 
-	if (!strcmp(token, "ecmfmt")) {
-		strncpy(cfg.ecmfmt, value, sizeof(cfg.ecmfmt));
-		return;
-	}
-
-	if (!strcmp(token, "resolvegethostbyname")) {
-		cfg.resolve_gethostbyname = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "failbantime")) {
-		cfg.failbantime = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "failbancount")) {
-		cfg.failbancount = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "suppresscmd08")) {
-		cfg.c35_suppresscmd08 = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "double_check")) {
-		cfg.double_check = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "double_check_caid")) {
-		if(strlen(value) == 0)
-	        	clear_caidtab(&cfg.double_check_caid);
-		else
-			chk_caidtab(value, &cfg.double_check_caid);
-		return;
-	}
-
-	if (!strcmp(token, "max_cache_time")) {
-		cfg.max_cache_time = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "max_cache_count")) {
-		cfg.max_cache_count = strToIntVal(value, 0);
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in global section not recognized\n", token);
+void global_fixups_fn(void *UNUSED(var)) {
+	if (!cfg.usrfile) cfg.disableuserfile = 1;
+	if (!cfg.mailfile) cfg.disablemail = 1;
+	if (cfg.ctimeout < 100) cfg.ctimeout *= 1000;
+	if (cfg.ftimeout < 100) cfg.ftimeout *= 1000;
+	if (cfg.nice < -20 || cfg.nice > 20) cfg.nice = 99;
+	if (cfg.nice != 99) cs_setpriority(cfg.nice);
+	if (cfg.srtimeout <= 0) cfg.srtimeout = 1500;
+	if (cfg.srtimeout < 100) cfg.srtimeout *= 1000;
+	if (cfg.max_log_size != 0 && cfg.max_log_size <= 10) cfg.max_log_size = 10;
+	if (cfg.ftimeout >= cfg.ctimeout) cfg.ftimeout = cfg.ctimeout - 100;
+	if (cfg.ftimeout < cfg.srtimeout) cfg.ftimeout = cfg.srtimeout + 100;
+	if (cfg.ctimeout < cfg.srtimeout) cfg.ctimeout = cfg.srtimeout + 100;
+	if (cfg.max_cache_time < (cfg.ctimeout / 1000 + 1)) cfg.max_cache_time = cfg.ctimeout / 1000 + 2;
+#ifdef WITH_LB
+	if (cfg.lb_save > 0 && cfg.lb_save < 100) cfg.lb_save = 100;
+	if (cfg.lb_nbest_readers < 2) cfg.lb_nbest_readers = DEFAULT_NBEST;
+#endif
 }
+
+#define OFS(X) \
+	offsetof(struct s_config, X)
+
+#define SIZEOF(X) \
+	sizeof(((struct s_config *)0)->X)
+
+static const struct config_list global_opts[] = {
+	DEF_OPT_FIXUP_FUNC(global_fixups_fn),
+#if defined(QBOXHD) || defined(__arm__)
+	DEF_OPT_INT("enableled"					, OFS(enableled),			0 ),
+#endif
+	DEF_OPT_FUNC("disablelog"				, OFS(disablelog),			disablelog_fn ),
+#if defined(WEBIF) || defined(MODULE_MONITOR)
+	DEF_OPT_FUNC("loghistorysize"			, OFS(loghistorysize),		loghistorysize_fn ),
+#endif
+	DEF_OPT_FUNC("serverip"					, OFS(srvip),				serverip_fn ),
+	DEF_OPT_FUNC("logfile"					, OFS(logfile),				logfile_fn ),
+	DEF_OPT_INT("disableuserfile"			, OFS(disableuserfile),		1 ),
+	DEF_OPT_INT("disablemail"				, OFS(disablemail),			1 ),
+	DEF_OPT_INT("usrfileflag"				, OFS(usrfileflag),			0 ),
+	DEF_OPT_UINT("clienttimeout"			, OFS(ctimeout),			CS_CLIENT_TIMEOUT ),
+	DEF_OPT_UINT("fallbacktimeout"			, OFS(ftimeout),			CS_CLIENT_TIMEOUT / 2 ),
+	DEF_OPT_UINT("clientmaxidle"			, OFS(cmaxidle),			CS_CLIENT_MAXIDLE ),
+	DEF_OPT_UINT("cachedelay"				, OFS(delay),				CS_DELAY ),
+	DEF_OPT_INT("bindwait"					, OFS(bindwait),			CS_BIND_TIMEOUT ),
+	DEF_OPT_UINT("netprio"					, OFS(netprio),				0 ),
+	DEF_OPT_INT("sleep"						, OFS(tosleep),				0 ),
+	DEF_OPT_INT("unlockparental"			, OFS(ulparent),			0 ),
+	DEF_OPT_INT("nice"						, OFS(nice),				99 ),
+	DEF_OPT_UINT("serialreadertimeout"		, OFS(srtimeout),			1500 ),
+	DEF_OPT_INT("maxlogsize"				, OFS(max_log_size),		10 ),
+	DEF_OPT_INT("waitforcards"				, OFS(waitforcards),		1 ),
+	DEF_OPT_INT("waitforcards_extra_delay"	, OFS(waitforcards_extra_delay), 500 ),
+	DEF_OPT_INT("preferlocalcards"			, OFS(preferlocalcards),	0 ),
+	DEF_OPT_INT("readerrestartseconds"		, OFS(reader_restart_seconds), 5 ),
+	DEF_OPT_INT("dropdups"					, OFS(dropdups),			0 ),
+#ifdef CS_CACHEEX
+	DEF_OPT_UINT("cacheexwaittime"			, OFS(cacheex_wait_time),	DEFAULT_CACHEEX_WAIT_TIME ),
+	DEF_OPT_INT("cacheexenablestats"		, OFS(cacheex_enable_stats), 0 ),
+#endif
+	DEF_OPT_INT("block_same_ip"				, OFS(block_same_ip),		1 ),
+	DEF_OPT_INT("block_same_name"			, OFS(block_same_name),		1 ),
+	DEF_OPT_STR("usrfile"					, OFS(usrfile),				NULL ),
+	DEF_OPT_STR("mailfile"					, OFS(mailfile),			NULL ),
+	DEF_OPT_STR("cwlogdir"					, OFS(cwlogdir),			NULL ),
+	DEF_OPT_STR("emmlogdir"					, OFS(emmlogdir),			NULL ),
+#ifdef WITH_LB
+	DEF_OPT_INT("lb_mode"					, OFS(lb_mode),				DEFAULT_LB_MODE ),
+	DEF_OPT_INT("lb_save"					, OFS(lb_save),				0 ),
+	DEF_OPT_INT("lb_nbest_readers"			, OFS(lb_nbest_readers),	DEFAULT_NBEST ),
+	DEF_OPT_INT("lb_nfb_readers"			, OFS(lb_nfb_readers),		DEFAULT_NFB ),
+	DEF_OPT_INT("lb_min_ecmcount"			, OFS(lb_min_ecmcount),		DEFAULT_MIN_ECM_COUNT ),
+	DEF_OPT_INT("lb_max_ecmcount"			, OFS(lb_max_ecmcount),		DEFAULT_MAX_ECM_COUNT ),
+	DEF_OPT_INT("lb_reopen_seconds"			, OFS(lb_reopen_seconds),	DEFAULT_REOPEN_SECONDS ),
+	DEF_OPT_INT("lb_retrylimit"				, OFS(lb_retrylimit),		DEFAULT_RETRYLIMIT ),
+	DEF_OPT_INT("lb_stat_cleanup"			, OFS(lb_stat_cleanup),		DEFAULT_LB_STAT_CLEANUP ),
+	DEF_OPT_INT("lb_reopen_mode"			, OFS(lb_reopen_mode),		DEFAULT_LB_REOPEN_MODE ),
+	DEF_OPT_INT("lb_max_readers"			, OFS(lb_max_readers),		0 ),
+	DEF_OPT_INT("lb_auto_betatunnel"		, OFS(lb_auto_betatunnel),	DEFAULT_LB_AUTO_BETATUNNEL ),
+	DEF_OPT_INT("lb_auto_betatunnel_prefer_beta"	, OFS(lb_auto_betatunnel_prefer_beta), DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA ),
+	DEF_OPT_STR("lb_savepath"				, OFS(lb_savepath),			NULL ),
+	DEF_OPT_FUNC("lb_retrylimits"			, OFS(lb_retrylimittab), caidvaluetab_fn ),
+	DEF_OPT_FUNC("lb_nbest_percaid"			, OFS(lb_nbest_readers_tab), caidvaluetab_fn ),
+	DEF_OPT_FUNC("lb_noproviderforcaid"		, OFS(lb_noproviderforcaid), check_caidtab_fn ),
+#endif
+	DEF_OPT_FUNC("double_check_caid"		, OFS(double_check_caid),	check_caidtab_fn ),
+	DEF_OPT_STR("ecmfmt"					, OFS(ecmfmt),				NULL ),
+	DEF_OPT_INT("resolvegethostbyname"		, OFS(resolve_gethostbyname), 0 ),
+	DEF_OPT_INT("failbantime"				, OFS(failbantime),			0 ),
+	DEF_OPT_INT("failbancount"				, OFS(failbancount),		0 ),
+	DEF_OPT_INT("suppresscmd08"				, OFS(c35_suppresscmd08),	0 ),
+	DEF_OPT_INT("double_check"				, OFS(double_check),		0 ),
+	DEF_OPT_UINT("max_cache_time"			, OFS(max_cache_time),		DEFAULT_MAX_CACHE_TIME ),
+	DEF_OPT_UINT("max_cache_count"			, OFS(max_cache_count),		DEFAULT_MAX_CACHE_COUNT ),
+	DEF_LAST_OPT
+};
 
 #ifdef CS_ANTICASC
-void chk_t_ac(char *token, char *value)
-{
-	if (!strcmp(token, "enabled")) {
-		cfg.ac_enabled = strToIntVal(value, 0);
-		if( cfg.ac_enabled > 0 )
-			cfg.ac_enabled = 1;
-		return;
-	}
-
-	if (!strcmp(token, "numusers")) {
-		cfg.ac_users = strToIntVal(value, 0);
-		if ( cfg.ac_users < 0 )
-			cfg.ac_users = 0;
-		return;
-	}
-
-	if (!strcmp(token, "sampletime")) {
-		cfg.ac_stime = strToIntVal(value, 2);
-		if( cfg.ac_stime < 0 )
-			cfg.ac_stime = 2;
-		return;
-	}
-
-	if (!strcmp(token, "samples")) {
-		cfg.ac_samples = strToIntVal(value, 10);
-		if( cfg.ac_samples < 2 || cfg.ac_samples > 10)
-			cfg.ac_samples = 10;
-		return;
-	}
-
-	if (!strcmp(token, "penalty")) {
-		cfg.ac_penalty = strToIntVal(value, 0);
-		if( cfg.ac_penalty < 0  || cfg.ac_penalty > 3 )
-			cfg.ac_penalty = 0;
-		return;
-	}
-
-	if (!strcmp(token, "aclogfile")) {
-		cs_strncpy(cfg.ac_logfile, value, sizeof(cfg.ac_logfile));
-		return;
-	}
-
-	if( !strcmp(token, "fakedelay") ) {
-		cfg.ac_fakedelay = strToIntVal(value, 3000);
-		if( cfg.ac_fakedelay < 100 || cfg.ac_fakedelay > 3000 )
-			cfg.ac_fakedelay = 1000;
-		return;
-	}
-
-	if( !strcmp(token, "denysamples") ) {
-		cfg.ac_denysamples = strToIntVal(value, 8);
-		if( cfg.ac_denysamples < 2 || cfg.ac_denysamples > cfg.ac_samples - 1 )
-			cfg.ac_denysamples=cfg.ac_samples-1;
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in anticascading section not recognized\n",token);
+static void anticasc_fixups_fn(void *UNUSED(var)) {
+	if (cfg.ac_users < 0) cfg.ac_users = 0;
+	if (cfg.ac_stime < 0) cfg.ac_stime = 2;
+	if (cfg.ac_samples < 2 || cfg.ac_samples > 10) cfg.ac_samples = 10;
+	if (cfg.ac_penalty < 0 || cfg.ac_penalty > 3) cfg.ac_penalty = 0;
+	if (cfg.ac_fakedelay < 100 || cfg.ac_fakedelay > 3000) cfg.ac_fakedelay = 1000;
+	if (cfg.ac_denysamples < 2 || cfg.ac_denysamples > cfg.ac_samples - 1) cfg.ac_denysamples = cfg.ac_samples - 1;
+	if (cfg.ac_denysamples + 1 > cfg.ac_samples) cfg.ac_denysamples = cfg.ac_samples - 1;
 }
+
+static bool anticasc_should_save_fn(void *UNUSED(var)) { return cfg.ac_enabled; }
+
+static const struct config_list anticasc_opts[] = {
+	DEF_OPT_SAVE_FUNC(anticasc_should_save_fn),
+	DEF_OPT_FIXUP_FUNC(anticasc_fixups_fn),
+	DEF_OPT_INT("enabled"					, OFS(ac_enabled),				0 ),
+	DEF_OPT_INT("numusers"					, OFS(ac_users),				0 ),
+	DEF_OPT_INT("sampletime"				, OFS(ac_stime),				2 ),
+	DEF_OPT_INT("samples"					, OFS(ac_samples),				10 ),
+	DEF_OPT_INT("penalty"					, OFS(ac_penalty),				0 ),
+	DEF_OPT_STR("aclogfile"					, OFS(ac_logfile),				NULL ),
+	DEF_OPT_INT("fakedelay"					, OFS(ac_fakedelay),			3000 ),
+	DEF_OPT_INT("denysamples"				, OFS(ac_denysamples),			8 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list anticasc_opts[] = { DEF_LAST_OPT };
 #endif
 
-void chk_t_monitor(char *token, char *value)
-{
-	if (!strcmp(token, "port")) {
-		cfg.mon_port = strToIntVal(value, 0);
-		return;
-	}
+#ifdef MODULE_MONITOR
+static bool monitor_should_save_fn(void *UNUSED(var)) { return cfg.mon_port; }
 
-	if (!strcmp(token, "serverip")) {
-		if(strlen(value) == 0) {
-			set_null_ip(&cfg.mon_srvip);
-			return;
-		} else {
-			cs_inet_addr(value, &cfg.mon_srvip);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "nocrypt")) {
-		if(strlen(value) == 0) {
-			clear_sip(&cfg.mon_allowed);
-			return;
-		} else {
-			chk_iprange(value, &cfg.mon_allowed);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "aulow")) {
-		cfg.mon_aulow = strToIntVal(value, 30);
-		return;
-	}
-
-	if (!strcmp(token, "monlevel")) {
-		cfg.mon_level = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "hideclient_to")) {
-		cfg.mon_hideclient_to = strToIntVal(value, 15);
-		return;
-	}
-
-	if (!strcmp(token, "appendchaninfo")) {
-		cfg.mon_appendchaninfo = strToIntVal(value, 0);
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in monitor section not recognized\n",token);
-}
+static const struct config_list monitor_opts[] = {
+	DEF_OPT_SAVE_FUNC(monitor_should_save_fn),
+	DEF_OPT_INT("port"						, OFS(mon_port),				0 ),
+	DEF_OPT_FUNC("serverip"					, OFS(mon_srvip),				serverip_fn ),
+	DEF_OPT_FUNC("nocrypt"					, OFS(mon_allowed),				iprange_fn ),
+	DEF_OPT_INT("aulow"						, OFS(aulow),					30 ),
+	DEF_OPT_INT("monlevel"					, OFS(mon_level),				2 ),
+	DEF_OPT_INT("hideclient_to"				, OFS(hideclient_to),			15 ),
+	DEF_OPT_INT("appendchaninfo"			, OFS(appendchaninfo),			0 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list monitor_opts[] = { DEF_LAST_OPT };
+#endif
 
 #ifdef WEBIF
-void chk_t_webif(char *token, char *value)
-{
-	if (!strcmp(token, "httpport")) {
-		if(strlen(value) == 0) {
-			cfg.http_port = 0;
-			return;
-		} else {
-			if (value[0]=='+') {
-#ifdef WITH_SSL
-				cfg.http_use_ssl=1;
-#else
-				fprintf(stderr, "Warning: OSCam compiled without SSL support.\n");
-#endif
-				cfg.http_port = atoi(value+1);
+static void http_port_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		cfg.http_port = 0;
+		if (value[0]) {
+			if (value[0] == '+') {
+				if (config_WITH_SSL()) {
+					cfg.http_use_ssl = 1;
+				} else {
+					fprintf(stderr, "Warning: OSCam compiled without SSL support.\n");
+				}
+				cfg.http_port = strtoul(value + 1, NULL, 10);
 			} else {
-				cfg.http_port = atoi(value);
-			}
-			return;
-		}
-	}
-
-	if (!strcmp(token, "httpuser")) {
-		cs_strncpy(cfg.http_user, value, sizeof(cfg.http_user));
-		return;
-	}
-
-	if (!strcmp(token, "httppwd")) {
-		cs_strncpy(cfg.http_pwd, value, sizeof(cfg.http_pwd));
-		return;
-	}
-
-	if (!strcmp(token, "httpcss")) {
-		cs_strncpy(cfg.http_css, value, sizeof(cfg.http_css));
-		return;
-	}
-
-	if (!strcmp(token, "http_prepend_embedded_css")) {
-		cfg.http_prepend_embedded_css = strToIntVal(value, 0);
-		return;
-	}
-	if (!strcmp(token, "httpjscript")) {
-		cs_strncpy(cfg.http_jscript, value, sizeof(cfg.http_jscript));
-		return;
-	}
-
-	if (!strcmp(token, "httpscript")) {
-		cs_strncpy(cfg.http_script, value, sizeof(cfg.http_script));
-		return;
-	}
-
-	if (!strcmp(token, "httphelplang")) {
-		cs_strncpy(cfg.http_help_lang, value, sizeof(cfg.http_help_lang));
-		return;
-	}
-	if (!strcmp(token, "httputf8")) {
-		cs_http_use_utf8=atoi(value);
-		return;
-	}
-
-	if (!strcmp(token, "httpcert")) {
-		cs_strncpy(cfg.http_cert, value, sizeof(cfg.http_cert));
-		return;
-	}
-
-	if (!strcmp(token, "httptpl")) {
-		cfg.http_tpl[0] = '\0';
-		cs_strncpy(cfg.http_tpl, value, sizeof(cfg.http_tpl));
-		if(strlen(value) != 0) {
-			if(strlen(cfg.http_tpl) < (sizeof(cfg.http_tpl)-2) && cfg.http_tpl[strlen(cfg.http_tpl)-1] != '/') {
-				cfg.http_tpl[strlen(cfg.http_tpl)] = '/';
-				cfg.http_tpl[strlen(cfg.http_tpl)] = '\0';
+				cfg.http_port = strtoul(value, NULL, 10);
 			}
 		}
 		return;
 	}
+	fprintf_conf(f, token, "%s%d\n", cfg.http_use_ssl ? "+" : "", cfg.http_port);
+}
 
-	if (!strcmp(token, "httprefresh")) {
-		cfg.http_refresh = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "httphideidleclients")) {
-		cfg.http_hide_idle_clients = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "httpshowpicons")) {
-		cfg.http_showpicons = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "httpallowed")) {
-		if(strlen(value) == 0) {
-			clear_sip(&cfg.http_allowed);
-			return;
-		} else {
-			chk_iprange(value, &cfg.http_allowed);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "httpreadonly")) {
-		cfg.http_readonly = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "httpdyndns")) {
-		int32_t i;
+static void http_dyndns_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	int i;
+	if (value) {
 		char *ptr, *saveptr1 = NULL;
-
 		for (i = 0, ptr = strtok_r(value, ",", &saveptr1); (i < MAX_HTTP_DYNDNS) && (ptr); ptr = strtok_r(NULL, ",", &saveptr1), i++) {
 			trim(ptr);
 			cs_strncpy((char *)cfg.http_dyndns[i], ptr, sizeof(cfg.http_dyndns[i]));
 		}
 		return;
 	}
-
-	if (!strcmp(token, "httpsavefullcfg")) {
-		cfg.http_full_cfg = strToIntVal(value, 0);
-		return;
+	if (strlen((const char *)(cfg.http_dyndns[0])) > 0 || cfg.http_full_cfg) {
+		fprintf_conf(f, token, "%s", "");
+		for (i = 0; i < MAX_HTTP_DYNDNS; i++) {
+			if (cfg.http_dyndns[i][0]) {
+				fprintf(f, "%s%s", i > 0 ? "," : "", cfg.http_dyndns[i]);
+			}
+		}
+		fprintf(f, "\n");
 	}
-
-#ifdef WITH_SSL
-	if (!strcmp(token, "httpforcesslv3")) {
-		cfg.http_force_sslv3 = strToIntVal(value, 0);
-		return;
-	}
-#endif
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in webif section not recognized\n",token);
 }
+static void httputf8_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		if (value[0]) {
+			if (value[0] == '+') {
+				cfg.http_use_utf8 = strtoul(value + 1, NULL, 10);
+			} else {
+				cfg.http_use_utf8 = strtoul(value, NULL, 10);
+			}
+			cfg.http_use_utf8 = cs_http_use_utf8 ? 1:cfg.http_use_utf8;
+		}
+		return;
+	}
+
+	if(cfg.http_use_utf8 !=1 || cfg.http_full_cfg)
+		fprintf_conf(f, token, "%d\n", cfg.http_use_utf8);
+}
+
+static bool webif_should_save_fn(void *UNUSED(var)) { return cfg.http_port; }
+
+static const struct config_list webif_opts[] = {
+	DEF_OPT_SAVE_FUNC(webif_should_save_fn),
+	DEF_OPT_FUNC("httpport"					, OFS(http_port),				http_port_fn ),
+	DEF_OPT_STR("httpuser"					, OFS(http_user),				NULL ),
+	DEF_OPT_STR("httppwd"					, OFS(http_pwd),				NULL ),
+	DEF_OPT_STR("httpcss"					, OFS(http_css),				NULL ),
+	DEF_OPT_STR("httpjscript"				, OFS(http_jscript),			NULL ),
+	DEF_OPT_STR("httpscript"				, OFS(http_script),				NULL ),
+	DEF_OPT_STR("httptpl"					, OFS(http_tpl),				NULL ),
+	DEF_OPT_STR("httphelplang"				, OFS(http_help_lang),			"en" ),
+	DEF_OPT_FUNC("httputf8"					, OFS(http_use_utf8),			httputf8_fn ),
+	DEF_OPT_STR("httpcert"					, OFS(http_cert),				NULL ),
+	DEF_OPT_INT("http_prepend_embedded_css"	, OFS(http_prepend_embedded_css), 0 ),
+	DEF_OPT_INT("httprefresh"				, OFS(http_refresh),			0 ),
+	DEF_OPT_INT("httphideidleclients"		, OFS(http_hide_idle_clients),	0 ),
+	DEF_OPT_INT("httpshowpicons"			, OFS(http_showpicons),			0 ),
+	DEF_OPT_FUNC("httpallowed"				, OFS(http_allowed),			iprange_fn ),
+	DEF_OPT_INT("httpreadonly"				, OFS(http_readonly),			0 ),
+	DEF_OPT_INT("httpsavefullcfg"			, OFS(http_full_cfg),			0 ),
+	DEF_OPT_INT("httpforcesslv3"			, OFS(http_force_sslv3),		0 ),
+	DEF_OPT_FUNC("httpdyndns"				, OFS(http_dyndns),				http_dyndns_fn ),
+	DEF_OPT_INT("aulow"						, OFS(aulow),					30 ),
+	DEF_OPT_INT("hideclient_to"				, OFS(hideclient_to),			15 ),
+	DEF_OPT_INT("appendchaninfo"			, OFS(appendchaninfo),			0 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list webif_opts[] = { DEF_LAST_OPT };
 #endif
 
-
-void chk_t_camd33(char *token, char *value)
-{
-	if (!strcmp(token, "port")) {
-		cfg.c33_port = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "serverip")) {
-		if(strlen(value) == 0) {
-			set_null_ip(&cfg.c33_srvip);
-			return;
-		} else {
-			cs_inet_addr(value, &cfg.c33_srvip);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "nocrypt")) {
-		if(strlen(value) == 0) {
-			clear_sip(&cfg.c33_plain);
-			return;
-		} else {
-			chk_iprange(value, &cfg.c33_plain);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "passive")) {
-		cfg.c33_passive = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "key")) {
-		if(strlen(value) == 0) {
+#ifdef MODULE_CAMD33
+static void camd33_key_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		cfg.c33_crypted = 1;
+		if (!strlen(value))
 			cfg.c33_crypted = 0;
-			return;
-		}
-		if (key_atob_l(value, cfg.c33_key, 32)) {
-			fprintf(stderr, "Configuration camd3.3x: Error in Key\n");
+		else if (key_atob_l(value, cfg.c33_key, 32)) {
 			cfg.c33_crypted = 0;
 			memset(cfg.c33_key, 0, sizeof(cfg.c33_key));
-			return;
+			fprintf(stderr, "ERROR: camd3.3 config error in 'key'.\n");
 		}
-		cfg.c33_crypted=1;
 		return;
 	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in camd33 section not recognized\n",token);
+	unsigned int i;
+	fprintf_conf_n(f, token);
+	for (i = 0; i < sizeof(cfg.c33_key); i++) {
+		fprintf(f, "%02X", cfg.c33_key[i]);
+	}
+	fprintf(f, "\n");
 }
 
-#ifdef CS_CACHEEX
-void chk_t_csp(char *token, char *value)
-{
-	if (!strcmp(token, "port")) {
-		cfg.csp_port = strToIntVal(value, 0);
-		return;
-	}
+static bool camd33_should_save_fn(void *UNUSED(var)) { return cfg.c33_port; }
 
-	if (!strcmp(token, "serverip")) {
-		if(strlen(value) == 0) {
-			set_null_ip(&cfg.csp_srvip);
-			return;
-		} else {
-			cs_inet_addr(value, &cfg.csp_srvip);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "wait_time")) {
-		cfg.csp_wait_time = strToIntVal(value, 0);
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in csp section not recognized\n", token);
-}
+static const struct config_list camd33_opts[] = {
+	DEF_OPT_SAVE_FUNC(camd33_should_save_fn),
+	DEF_OPT_INT("port"						, OFS(c33_port),				0 ),
+	DEF_OPT_FUNC("serverip"					, OFS(c33_srvip),				serverip_fn ),
+	DEF_OPT_FUNC("nocrypt"					, OFS(c33_plain),				iprange_fn ),
+	DEF_OPT_INT("passive"					, OFS(c33_passive),				0 ),
+	DEF_OPT_FUNC("key"						, OFS(c33_key),					camd33_key_fn ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list camd33_opts[] = { DEF_LAST_OPT };
 #endif
 
-void chk_t_camd35(char *token, char *value)
-{
-	if (!strcmp(token, "port")) {
-		cfg.c35_port = strToIntVal(value, 0);
-		return;
-	}
+#ifdef CS_CACHEEX
+static bool csp_should_save_fn(void *UNUSED(var)) { return cfg.csp_port; }
 
-	if (!strcmp(token, "serverip")) {
+static const struct config_list csp_opts[] = {
+	DEF_OPT_SAVE_FUNC(csp_should_save_fn),
+	DEF_OPT_INT("port"						, OFS(csp_port),				0 ),
+	DEF_OPT_FUNC("serverip"					, OFS(csp_srvip),				serverip_fn ),
+	DEF_OPT_UINT("wait_time"				, OFS(csp_wait_time),			0 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list csp_opts[] = { DEF_LAST_OPT };
+#endif
+
+#ifdef MODULE_CAMD35
+static bool camd35_should_save_fn(void *UNUSED(var)) { return cfg.c35_port; }
+
+static const struct config_list camd35_opts[] = {
+	DEF_OPT_SAVE_FUNC(camd35_should_save_fn),
+	DEF_OPT_INT("port"						, OFS(c35_port),				0 ),
+	DEF_OPT_FUNC("serverip"					, OFS(c35_srvip),				serverip_fn ),
+	DEF_OPT_INT("suppresscmd08"				, OFS(c35_udp_suppresscmd08),	0 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list camd35_opts[] = { DEF_LAST_OPT };
+#endif
+
+#ifdef MODULE_CAMD35_TCP
+static void porttab_cs378x_fn(const char *token, char *value, void *setting, FILE *f) {
+	PTAB *ptab = setting;
+	if (value) {
 		if(strlen(value) == 0) {
-			set_null_ip(&cfg.c35_srvip);
-			return;
+			clear_ptab(ptab);
 		} else {
-			cs_inet_addr(value, &cfg.c35_srvip);
-			return;
+			chk_port_tab(value, ptab);
 		}
-	}
-
-	if (!strcmp(token, "suppresscmd08")) {
-		cfg.c35_udp_suppresscmd08 = strToIntVal(value, 0);
 		return;
 	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in camd35 section not recognized\n", token);
+	value = mk_t_camd35tcp_port();
+	fprintf_conf(f, token, "%s\n", value);
+	free_mk_t(value);
 }
 
-void chk_t_camd35_tcp(char *token, char *value)
-{
-	if (!strcmp(token, "port")) {
-		if(strlen(value) == 0) {
-			clear_ptab(&cfg.c35_tcp_ptab);
-			return;
-		} else {
-			chk_port_tab(value, &cfg.c35_tcp_ptab);
-			return;
-		}
-	}
+static bool cs378x_should_save_fn(void *UNUSED(var)) { return cfg.c35_tcp_ptab.nports && cfg.c35_tcp_ptab.ports[0].s_port; }
 
-	if (!strcmp(token, "serverip")) {
-		if(strlen(value) == 0) {
-			set_null_ip(&cfg.c35_tcp_srvip);
-			return;
-		} else {
-			cs_inet_addr(value, &cfg.c35_tcp_srvip);
-			return;
-		}
-	}
+static const struct config_list cs378x_opts[] = {
+	DEF_OPT_SAVE_FUNC(cs378x_should_save_fn),
+	DEF_OPT_FUNC("port"						, OFS(c35_tcp_ptab),			porttab_cs378x_fn ),
+	DEF_OPT_FUNC("serverip"					, OFS(c35_tcp_srvip),			serverip_fn ),
+	DEF_OPT_INT("suppresscmd08"				, OFS(c35_tcp_suppresscmd08),	0 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list cs378x_opts[] = { DEF_LAST_OPT };
+#endif
 
-	if (!strcmp(token, "suppresscmd08")) {
-		cfg.c35_tcp_suppresscmd08 = strToIntVal(value, 0);
+#ifdef MODULE_NEWCAMD
+static void porttab_newcamd_fn(const char *token, char *value, void *setting, FILE *f) {
+	PTAB *ptab = setting;
+	if (value) {
+		if(strlen(value) == 0) {
+			clear_ptab(ptab);
+		} else {
+			chk_port_tab(value, ptab);
+		}
 		return;
 	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in CSP section not recognized\n", token);
+	value = mk_t_newcamd_port();
+	fprintf_conf(f, token, "%s\n", value);
+	free_mk_t(value);
 }
 
-void chk_t_newcamd(char *token, char *value)
-{
-	if (!strcmp(token, "port")) {
-		if(strlen(value) == 0) {
-			clear_ptab(&cfg.ncd_ptab);
-			return;
-		} else {
-			chk_port_tab(value, &cfg.ncd_ptab);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "serverip")) {
-		if(strlen(value) == 0) {
-			set_null_ip(&cfg.ncd_srvip);
-			return;
-		} else {
-			cs_inet_addr(value, &cfg.ncd_srvip);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "allowed")) {
-		if(strlen(value) == 0) {
-			clear_sip(&cfg.ncd_allowed);
-			return;
-		} else {
-			chk_iprange(value, &cfg.ncd_allowed);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "key")) {
-		if(strlen(value) == 0){
+static void newcamd_key_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		if (strlen(value) == 0) {
 			memset(cfg.ncd_key, 0, sizeof(cfg.ncd_key));
-			return;
-		}
-		if (key_atob_l(value, cfg.ncd_key, 28)) {
+		} else if (key_atob_l(value, cfg.ncd_key, 28)) {
 			fprintf(stderr, "Configuration newcamd: Error in Key\n");
 			memset(cfg.ncd_key, 0, sizeof(cfg.ncd_key));
 		}
 		return;
 	}
-
-	if (!strcmp(token, "keepalive")) {
-		cfg.ncd_keepalive = strToIntVal(value, DEFAULT_NCD_KEEPALIVE);
-		return;
+	fprintf_conf_n(f, token);
+	unsigned int i;
+	for (i = 0; i < 14; i++) {
+		fprintf(f,"%02X", cfg.ncd_key[i]);
 	}
-
-	if (!strcmp(token, "mgclient")) {
-		cfg.ncd_mgclient = strToIntVal(value, 0);
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in newcamd section not recognized\n", token);
+	fprintf(f,"\n");
 }
 
+static bool newcamd_should_save_fn(void *UNUSED(var)) { return cfg.ncd_ptab.nports && cfg.ncd_ptab.ports[0].s_port; }
+
+static const struct config_list newcamd_opts[] = {
+	DEF_OPT_SAVE_FUNC(newcamd_should_save_fn),
+	DEF_OPT_FUNC("port"						, OFS(ncd_ptab),			porttab_newcamd_fn ),
+	DEF_OPT_FUNC("serverip"					, OFS(ncd_srvip),			serverip_fn ),
+	DEF_OPT_FUNC("allowed"					, OFS(ncd_allowed),			iprange_fn ),
+	DEF_OPT_FUNC("key"						, OFS(ncd_key),				newcamd_key_fn ),
+	DEF_OPT_INT("keepalive"					, OFS(ncd_keepalive),		DEFAULT_NCD_KEEPALIVE ),
+	DEF_OPT_INT("mgclient"					, OFS(ncd_mgclient),		0 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list newcamd_opts[] = { DEF_LAST_OPT };
+#endif
+
 #ifdef MODULE_CCCAM
-void chk_t_cccam(char *token, char *value)
-{
-	if (!strcmp(token, "port")) {
-		chk_cccam_ports(value);
+static void cccam_port_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		int i;
+		char *ptr, *saveptr1 = NULL;
+		memset(cfg.cc_port, 0, sizeof(cfg.cc_port));
+		for (i = 0, ptr = strtok_r(value, ",", &saveptr1); ptr && i < CS_MAXPORTS; ptr = strtok_r(NULL, ",", &saveptr1)) {
+			cfg.cc_port[i] = strtoul(ptr, NULL, 10);
+			if (cfg.cc_port[i])
+				i++;
+		}
 		return;
 	}
-	//if (!strcmp(token, "serverip")) { cfg.cc_srvip=cs_inet_addr(value); return; }
+	value = mk_t_cccam_port();
+	fprintf_conf(f, token, "%s\n", value);
+	free_mk_t(value);
+}
 
-	if (!strcmp(token, "reshare")) {
-		cfg.cc_reshare = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "stealth")) {
-		cfg.cc_stealth = strToIntVal(value, 1);
-		return;
-	}
-
-	if (!strcmp(token, "nodeid")) {
-		int8_t i, valid=0;
+static void cccam_nodeid_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		int i, valid = 0;
 		memset(cfg.cc_fixed_nodeid, 0, 8);
-		for (i=0;i<8 && value[i] != 0;i++) {
+		for (i = 0; i < 8 && value[i] != 0; i++) {
 			cfg.cc_fixed_nodeid[i] = gethexval(value[i*2]) << 4 | gethexval(value[i*2+1]);
 			if (cfg.cc_fixed_nodeid[i])
-				valid=1;
+				valid = 1;
 		}
 		cfg.cc_use_fixed_nodeid = valid && i == 8;
 		return;
 	}
-
-	if (!strcmp(token, "reshare_mode")) {
-		cfg.cc_reshare_services = strToIntVal(value, 0);
-		return;
+	if (cfg.cc_use_fixed_nodeid || cfg.http_full_cfg) {
+		fprintf_conf(f, token, "%02X%02X%02X%02X%02X%02X%02X%02X\n",
+			cfg.cc_fixed_nodeid[0], cfg.cc_fixed_nodeid[1], cfg.cc_fixed_nodeid[2], cfg.cc_fixed_nodeid[3],
+			cfg.cc_fixed_nodeid[4], cfg.cc_fixed_nodeid[5], cfg.cc_fixed_nodeid[6], cfg.cc_fixed_nodeid[7]);
 	}
-
-	if (!strcmp(token, "ignorereshare")) {
-		cfg.cc_ignore_reshare = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "forward_origin_card")) {
-		cfg.cc_forward_origin_card = strToIntVal(value, 0);
-		return;
-	}
-
-	// cccam version
-	if (!strcmp(token, "version")) {
-		memset(cfg.cc_version, 0, sizeof(cfg.cc_version));
-		if (strlen(value) > sizeof(cfg.cc_version) - 1) {
-			fprintf(stderr, "cccam config: version too long\n");
-		} else
-			cs_strncpy((char*)cfg.cc_version, value, sizeof(cfg.cc_version));
-		return;
-	}
-	// cccam: Update cards interval
-	if (!strcmp(token, "updateinterval")) {
-		if (value[0] == '-')
-			cfg.cc_update_interval = DEFAULT_UPDATEINTERVAL;
-		else
-			cfg.cc_update_interval = strToIntVal(value, DEFAULT_UPDATEINTERVAL);
-		return;
-	}
-
-	// cccam: Kind of card updates
-	if (!strcmp(token, "minimizecards")) {
-		cfg.cc_minimize_cards = strToIntVal(value, 0);
-		return;
-	}
-
-	// cccam: keep clients connected
-	if (!strcmp(token, "keepconnected")) {
-		cfg.cc_keep_connected = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "cccamcfgfile")) {
-		NULLFREE(cfg.cc_cfgfile);
-		if (strlen(value) > 0) {
-			if(cs_malloc(&(cfg.cc_cfgfile), strlen(value) + 1, SIGINT))
-				memcpy(cfg.cc_cfgfile, value, strlen(value) + 1);
-			else
-				fprintf(stderr, "Error allocating string for cfg.cc_cfgfile\n");
-		}
-		return;
-	}
-
-	if (!strcmp(token,"autosidblock")){
-		cfg.cc_autosidblock = strToIntVal(value,1);
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in cccam section not recognized\n",token);
 }
+
+static bool cccam_should_save_fn(void *UNUSED(var)) { return cfg.cc_port[0]; }
+
+static const struct config_list cccam_opts[] = {
+	DEF_OPT_SAVE_FUNC(cccam_should_save_fn),
+	DEF_OPT_FUNC("port"						, OFS(cc_port),				cccam_port_fn ),
+	DEF_OPT_FUNC("nodeid"					, OFS(cc_fixed_nodeid),		cccam_nodeid_fn ),
+	DEF_OPT_SSTR("version"					, OFS(cc_version),			"", SIZEOF(cc_version) ),
+	DEF_OPT_INT("reshare"					, OFS(cc_reshare),			10 ),
+	DEF_OPT_INT("reshare_mode"				, OFS(cc_reshare_services),	0 ),
+	DEF_OPT_INT("ignorereshare"				, OFS(cc_ignore_reshare),	0 ),
+	DEF_OPT_INT("forward_origin_card"		, OFS(cc_forward_origin_card), 0 ),
+	DEF_OPT_INT("stealth"					, OFS(cc_stealth),			0 ),
+	DEF_OPT_INT("updateinterval"			, OFS(cc_update_interval),	DEFAULT_UPDATEINTERVAL ),
+	DEF_OPT_INT("minimizecards"				, OFS(cc_minimize_cards),	0 ),
+	DEF_OPT_INT("keepconnected"				, OFS(cc_keep_connected),	1 ),
+	DEF_OPT_STR("cccamcfgfile"				, OFS(cc_cfgfile),		NULL ),
+	DEF_OPT_INT("autosidblock"				, OFS(cc_autosidblock),		1),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list cccam_opts[] = { DEF_LAST_OPT };
 #endif
 
 #ifdef MODULE_PANDORA
-void chk_t_pandora(char *token, char *value)
-{
-	if (!strcmp(token, "pand_skip_send_dw")) {
-		cfg.pand_skip_send_dw = strToIntVal(value, 0);
-		return;
-	}
+static bool pandora_should_save_fn(void *UNUSED(var)) { return cfg.pand_port; }
 
-	if (!strcmp(token, "pand_allowed")) {
-		if (strlen(value) == 0) {
-			clear_sip(&cfg.pand_allowed);
-			return;
-		} else {
-			chk_iprange(value, &cfg.pand_allowed);
-			return;
-		}
-	}
-
-	if (!strcmp(token, "pand_usr")) {
-		cs_strncpy(cfg.pand_usr, value, sizeof(cfg.pand_usr));
-		return;
-	}
-
-	if (!strcmp(token, "pand_pass")) {
-		cs_strncpy(cfg.pand_pass, value, sizeof(cfg.pand_pass));
-		return;
-	}
-
-	if (!strcmp(token, "pand_ecm")) {
-		cfg.pand_ecm = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "pand_port")) {
-		cfg.pand_port = strToIntVal(value, 0);
-		return;
-	}
-
-	if(!strcmp(token, "pand_srvid")) {
-		cs_inet_addr(token, &cfg.pand_srvip);
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in pandora section not recognized\n",token);
-}
+static const struct config_list pandora_opts[] = {
+	DEF_OPT_SAVE_FUNC(pandora_should_save_fn),
+	DEF_OPT_INT("pand_port"					, OFS(pand_port),			0 ),
+	DEF_OPT_FUNC("pand_srvid"				, OFS(pand_srvip),			serverip_fn ),
+	DEF_OPT_STR("pand_usr"					, OFS(pand_usr),			NULL ),
+	DEF_OPT_STR("pand_pass"					, OFS(pand_pass),			NULL ),
+	DEF_OPT_INT("pand_ecm"					, OFS(pand_ecm),			0 ),
+	DEF_OPT_INT("pand_skip_send_dw"			, OFS(pand_skip_send_dw),	0 ),
+	DEF_OPT_FUNC("pand_allowed"				, OFS(pand_allowed),		iprange_fn ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list pandora_opts[] = { DEF_LAST_OPT };
 #endif
 
-void chk_t_radegast(char *token, char *value)
-{
-	if (!strcmp(token, "port")) {
-		cfg.rad_port = strToIntVal(value, 0);
-		return;
-	}
+#ifdef MODULE_RADEGAST
+static bool radegast_should_save_fn(void *UNUSED(var)) { return cfg.rad_port; }
 
-	if (!strcmp(token, "serverip")) {
-		if(strlen(value) == 0) {
-			set_null_ip(&cfg.rad_srvip);
-			return;
-		} else {
-			cs_inet_addr(value, &cfg.rad_srvip);
-			return;
-		}
-	}
+static const struct config_list radegast_opts[] = {
+	DEF_OPT_SAVE_FUNC(radegast_should_save_fn),
+	DEF_OPT_INT("port"						, OFS(rad_port),			0 ),
+	DEF_OPT_FUNC("serverip"					, OFS(rad_srvip),			serverip_fn ),
+	DEF_OPT_FUNC("allowed"					, OFS(rad_allowed),			iprange_fn ),
+	DEF_OPT_STR("user"						, OFS(rad_usr),				NULL ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list radegast_opts[] = { DEF_LAST_OPT };
+#endif
 
-	if (!strcmp(token, "allowed")) {
-		if(strlen(value) == 0) {
-			clear_sip(&cfg.rad_allowed);
-			return;
-		} else {
-			chk_iprange(value, &cfg.rad_allowed);
-			return;
-		}
-	}
+#ifdef MODULE_SERIAL
+static bool serial_should_save_fn(void *UNUSED(var)) { return cfg.ser_device != NULL; }
 
-	if (!strcmp(token, "user")) {
-		cs_strncpy(cfg.rad_usr, value, sizeof(cfg.rad_usr));
-		return;
-	}
+static const struct config_list serial_opts[] = {
+	DEF_OPT_SAVE_FUNC(serial_should_save_fn),
+	DEF_OPT_STR("device"						, OFS(ser_device),		NULL ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list serial_opts[] = { DEF_LAST_OPT };
+#endif
 
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in radegast section not recognized\n", token);
-}
+#ifdef MODULE_GBOX
+static bool gbox_should_save_fn(void *UNUSED(var)) { return cfg.gbox_port; }
 
-void chk_t_serial(char *token, char *value)
-{
-	if (!strcmp(token, "device")) {
-		cs_strncpy(cfg.ser_device, value, sizeof(cfg.ser_device));
-		return;
-	}
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in serial section not recognized\n", token);
-}
-
-void chk_t_gbox(char *token, char *value)
-{
-	if (!strcmp(token, "gsmsfile")) {
-		memset(cfg.gbox_gsms_path, 0, sizeof(cfg.gbox_gsms_path));
-		cs_strncpy(cfg.gbox_gsms_path, value, sizeof(cfg.gbox_gsms_path) - 1);
-		return;
-	}
-
-	if (!strcmp(token, "hostname")) {
-		memset(cfg.gbox_hostname, 0, sizeof(cfg.gbox_hostname));
-		cs_strncpy(cfg.gbox_hostname, value, sizeof(cfg.gbox_hostname) - 1);
-		return;
-	}
-
-	if (!strcmp(token, "password")) {
-		memset(cfg.gbox_key, 0, sizeof(cfg.gbox_key));
-		cs_strncpy(cfg.gbox_key, value, sizeof(cfg.gbox_key) - 1);
-		return;
-	}
-
-	if (!strcmp(token, "port")) {
-		cfg.gbox_port = strToIntVal(value, 0);
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in gbox section not recognized\n",token);
-}
+static const struct config_list gbox_opts[] = {
+	DEF_OPT_SAVE_FUNC(gbox_should_save_fn),
+	DEF_OPT_INT("port"						, OFS(gbox_port),			0 ),
+	DEF_OPT_STR("gsmsfile"					, OFS(gbox_gsms_path),		NULL ),
+	DEF_OPT_STR("hostname"					, OFS(gbox_hostname),		NULL ),
+	DEF_OPT_STR("password"					, OFS(gbox_key),			NULL ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list gbox_opts[] = { DEF_LAST_OPT };
+#endif
 
 #ifdef HAVE_DVBAPI
-void chk_t_dvbapi(char *token, char *value)
-{
-	if (!strcmp(token, "enabled")) {
-		cfg.dvbapi_enabled = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "au")) {
-		cfg.dvbapi_au = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "pmt_mode")) {
-		cfg.dvbapi_pmtmode = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "ecm_infomode")) {
-		if(strlen(value) == 0) {
-			cfg.dvbapi_ecm_infomode = 0;
-		} else {
-			cfg.dvbapi_ecm_infomode = atoi(value);
-			if(cfg.dvbapi_ecm_infomode > 1)
-				cfg.dvbapi_ecm_infomode = 0;
-		}
-		return;
-	}
-	if (!strcmp(token, "request_mode")) {
-		cfg.dvbapi_requestmode = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "boxtype")) {
-		int32_t i;
-		for (i=1;i<=BOXTYPES;i++) {
-			if (strcmp(value, boxdesc[i])==0) {
-				cfg.dvbapi_boxtype=i;
-				return;
+static void dvbapi_boxtype_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		int i;
+		cfg.dvbapi_boxtype = 0;
+		for (i = 1; i <= BOXTYPES; i++) {
+			if (streq(value, boxdesc[i])) {
+				cfg.dvbapi_boxtype = i;
+				break;
 			}
 		}
-
-		cfg.dvbapi_boxtype=0;
 		return;
 	}
+	if (cfg.dvbapi_boxtype)
+		fprintf_conf(f, token, "%s\n", boxdesc[cfg.dvbapi_boxtype]);
+}
 
-	if (!strcmp(token, "user")) {
-		cs_strncpy(cfg.dvbapi_usr, value, sizeof(cfg.dvbapi_usr));
-		return;
-	}
-
-	if(!strcmp(token, "services")) {
+static void dvbapi_services_fn(const char *UNUSED(token), char *value, void *UNUSED(setting), FILE *UNUSED(f)) {
+	if (value)
 		chk_services(value, &cfg.dvbapi_sidtabok, &cfg.dvbapi_sidtabno);
-		return;
-	}
-
-	//obsolete
-	if (!strcmp(token, "priority")) {
-		dvbapi_chk_caidtab(value, 'p');
-		return;
-	}
-
-	if (!strcmp(token, "ignore")) {
-		dvbapi_chk_caidtab(value, 'i');
-		return;
-	}
-
-	if (!strcmp(token, "cw_delay")) {
-		dvbapi_chk_caidtab(value, 'd');
-		return;
-	}
-
-	if (!strcmp(token, "reopenonzap")) {
-		cfg.dvbapi_reopenonzap = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "delayer")) {
-		cfg.dvbapi_delayer = strToIntVal(value, 0);
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in dvbapi section not recognized\n",token);
+	// THIS OPTION IS NOT SAVED
 }
+
+static void dvbapi_caidtab_fn(const char *token, char *value, void *UNUSED(setting), FILE *UNUSED(f)) {
+	char cmd = ' ';
+	if (streq(token, "priority")) cmd = 'p';
+	if (streq(token, "ignore"))   cmd = 'i';
+	if (streq(token, "cw_delay")) cmd = 'd';
+	if (value && cmd != ' ')
+		dvbapi_chk_caidtab(value, cmd);
+	// THIS OPTION IS NOT SAVED
+}
+
+static bool dvbapi_should_save_fn(void *UNUSED(var)) { return cfg.dvbapi_enabled; }
+
+static const struct config_list dvbapi_opts[] = {
+	DEF_OPT_SAVE_FUNC(dvbapi_should_save_fn),
+	DEF_OPT_INT("enabled"					, OFS(dvbapi_enabled),		0 ),
+	DEF_OPT_INT("au"						, OFS(dvbapi_au),			0 ),
+	DEF_OPT_INT("pmt_mode"					, OFS(dvbapi_pmtmode),		0 ),
+	DEF_OPT_INT("request_mode"				, OFS(dvbapi_requestmode),	0 ),
+	DEF_OPT_INT("request_mode"				, OFS(dvbapi_requestmode),	0 ),
+	DEF_OPT_INT("reopenonzap"				, OFS(dvbapi_reopenonzap),	0 ),
+	DEF_OPT_INT("delayer"					, OFS(dvbapi_delayer),		0 ),
+	DEF_OPT_STR("user"						, OFS(dvbapi_usr),			NULL ),
+	DEF_OPT_FUNC("boxtype"					, OFS(dvbapi_boxtype),		dvbapi_boxtype_fn ),
+	DEF_OPT_FUNC("services"					, OFS(dvbapi_sidtabok),		dvbapi_services_fn ),
+	// OBSOLETE OPTIONS
+	DEF_OPT_FUNC("priority"					, 0,						dvbapi_caidtab_fn ),
+	DEF_OPT_FUNC("ignore"					, 0,						dvbapi_caidtab_fn ),
+	DEF_OPT_FUNC("cw_delay"					, 0,						dvbapi_caidtab_fn ),
+	DEF_OPT_INT("ecm_infomode"				, OFS(dvbapi_ecm_infomode),	0 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list dvbapi_opts[] = { DEF_LAST_OPT };
 #endif
 
 #ifdef LCDSUPPORT
-void chk_t_lcd(char *token, char *value)
-{
-	if (!strcmp(token, "enablelcd")) {
-		cfg.enablelcd = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "lcd_outputpath")) {
-		NULLFREE(cfg.lcd_output_path);
-		if (strlen(value) > 0) {
-			if(!cs_malloc(&(cfg.lcd_output_path), strlen(value) + 1, -1)) return;
-			memcpy(cfg.lcd_output_path, value, strlen(value) + 1);
-		}
-		return;
-	}
-
-	if (!strcmp(token, "lcd_hideidle")) {
-		cfg.lcd_hide_idle = strToIntVal(value, 0);
-		return;
-	}
-
-	if (!strcmp(token, "lcd_writeintervall")) {
-		cfg.lcd_write_intervall = strToIntVal(value, 10);
-		if (cfg.lcd_write_intervall < 5)
-			cfg.lcd_write_intervall = 5;
-		return;
-	}
-
-	if (token[0] != '#')
-		fprintf(stderr, "Warning: keyword '%s' in lcd section not recognized\n",token);
-}
-#endif
-
-static void chk_token(char *token, char *value, int32_t tag)
-{
-	switch(tag) {
-		case TAG_GLOBAL  : chk_t_global(token, value); break;
-		case TAG_MONITOR : chk_t_monitor(token, value); break;
-		case TAG_CAMD33  : chk_t_camd33(token, value); break;
-		case TAG_CAMD35  :
-		case TAG_CS357X  : chk_t_camd35(token, value); break;
-		case TAG_NEWCAMD : chk_t_newcamd(token, value); break;
-		case TAG_RADEGAST: chk_t_radegast(token, value); break;
-		case TAG_SERIAL  : chk_t_serial(token, value); break;
-		case TAG_CS378X  : chk_t_camd35_tcp(token, value); break;
-#ifdef MODULE_CCCAM
-		case TAG_CCCAM   : chk_t_cccam(token, value); break;
-#endif
-#ifdef MODULE_PANDORA
-		case TAG_PANDORA : chk_t_pandora(token, value); break;
-#endif
-#ifdef CS_CACHEEX
-		case TAG_CSP     : chk_t_csp(token, value); break;
-#endif
-		case TAG_GBOX    : chk_t_gbox(token, value); break;
-
-#ifdef HAVE_DVBAPI
-		case TAG_DVBAPI  : chk_t_dvbapi(token, value); break;
-#else
-		case TAG_DVBAPI  : fprintf(stderr, "OSCam compiled without DVB API support. Parameter %s ignored\n", token); break;
-#endif
-
-
-#ifdef WEBIF
-		case TAG_WEBIF   : chk_t_webif(token, value); break;
-#else
-		case TAG_WEBIF   : fprintf(stderr, "OSCam compiled without Webinterface support. Parameter %s ignored\n", token); break;
-#endif
-
-
-#ifdef CS_ANTICASC
-		case TAG_ANTICASC: chk_t_ac(token, value); break;
-#else
-		case TAG_ANTICASC: fprintf(stderr, "OSCam compiled without Anticascading support. Parameter %s ignored\n", token); break;
-#endif
-
-#ifdef LCDSUPPORT
-		case TAG_LCD: chk_t_lcd(token, value); break;
-#else
-		case TAG_LCD: fprintf(stderr, "OSCam compiled without LCD support. Parameter %s ignored\n", token); break;
-#endif
-
-	}
+static void lcd_fixups_fn(void *UNUSED(var)) {
+	if (cfg.lcd_write_intervall < 5) cfg.lcd_write_intervall = 5;
 }
 
-void init_len4caid(void)
-{
-	int32_t nr;
-	FILE *fp;
-	char *value, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return;
+static bool lcd_should_save_fn(void *UNUSED(var)) { return cfg.enablelcd; }
 
-	memset(len4caid, 0, sizeof(uint16_t)<<8);
-	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_l4ca);
-	if (!(fp = fopen(token, "r"))){
-		free(token);
-		return;
-	}
-	for(nr = 0; fgets(token, MAXLINESIZE, fp);) {
-		int32_t i, c;
-		char *ptr;
-		if (!(value=strchr(token, ':')))
-			continue;
-		*value++ ='\0';
-		if( (ptr = strchr(value, '#')) )
-			*ptr = '\0';
-		if (strlen(trim(token)) != 2)
-			continue;
-		if (strlen(trim(value)) != 4)
-			continue;
-		if ((i = byte_atob(token)) < 0)
-			continue;
-		if ((c = word_atob(value)) < 0)
-			continue;
-		len4caid[i] = c;
-		nr++;
-	}
-	free(token);
-	fclose(fp);
-	cs_log("%d lengths for caid guessing loaded", nr);
-	return;
-}
-
-int32_t search_boxkey(uint16_t caid, char *key)
-{
-	int32_t i, rc = 0;
-	FILE *fp;
-	char c_caid[512];
-
-	snprintf(c_caid, sizeof(c_caid), "%s%s", cs_confdir, cs_cert);
-	fp = fopen(c_caid, "r");
-	if (fp) {
-		for (; (!rc) && fgets(c_caid, sizeof(c_caid), fp);) {
-			char *c_provid, *c_key;
-
-			c_provid = strchr(c_caid, '#');
-			if (c_provid)
-				*c_provid = '\0';
-			if (!(c_provid = strchr(c_caid, ':')))
-				continue;
-			*c_provid++ ='\0';
-			if (!(c_key = strchr(c_provid, ':')))
-				continue;
-			*c_key++ ='\0';
-			if (word_atob(trim(c_caid))!=caid)
-				continue;
-			if ((i=(strlen(trim(c_key))>>1)) > 256)
-				continue;
-			if (cs_atob((uchar *)key, c_key, i) < 0) {
-				cs_log("wrong key in \"%s\"", cs_cert);
-				continue;
-			}
-			rc = 1;
-		}
-		fclose(fp);
-	}
-#ifdef OSCAM_INBUILD_KEYS
-	for(i=0; (!rc) && (npkey[i].keylen); i++)
-		if (rc=((caid==npkey[i].caid) && (npkey[i].provid==0)))
-			memcpy(key, npkey[i].key, npkey[i].keylen);
+static const struct config_list lcd_opts[] = {
+	DEF_OPT_SAVE_FUNC(lcd_should_save_fn),
+	DEF_OPT_FIXUP_FUNC(lcd_fixups_fn),
+	DEF_OPT_INT("enablelcd"					, OFS(enablelcd),			0 ),
+	DEF_OPT_STR("lcd_outputpath"			, OFS(lcd_output_path),		NULL ),
+	DEF_OPT_INT("lcd_hideidle"				, OFS(lcd_hide_idle),		0 ),
+	DEF_OPT_INT("lcd_writeintervall"		, OFS(lcd_write_intervall),	10 ),
+	DEF_LAST_OPT
+};
+#else
+static const struct config_list lcd_opts[] = { DEF_LAST_OPT };
 #endif
-	return(rc);
+
+static const struct config_sections oscam_conf[] = {
+	{ "global",   global_opts }, // *** MUST BE FIRST ***
+	{ "anticasc", anticasc_opts },
+	{ "csp",      csp_opts },
+	{ "lcd",      lcd_opts },
+	{ "camd33",   camd33_opts },
+	{ "cs357x",   camd35_opts },
+	{ "cs378x",   cs378x_opts },
+	{ "newcamd",  newcamd_opts },
+	{ "radegast", radegast_opts },
+	{ "serial",   serial_opts },
+	{ "gbox",     gbox_opts },
+	{ "cccam",    cccam_opts },
+	{ "pandora",  pandora_opts },
+	{ "dvbapi",   dvbapi_opts },
+	{ "monitor",  monitor_opts },
+	{ "webif",    webif_opts },
+	{ NULL, NULL }
+};
+
+void config_set(char *section, const char *token, char *value) {
+	config_set_value(oscam_conf, section, token, value, &cfg);
 }
 
 int32_t init_config(void)
 {
-	int32_t tag=TAG_GLOBAL;
-	FILE *fp;
-	char *value=NULL, *token;
+	FILE *fp = open_config_file_or_die(cs_conf);
+
+	const struct config_sections *cur_section = oscam_conf; // Global
+	char *token;
+
 	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;
 
-	cfg.nice = 99;
-	cfg.ctimeout = CS_CLIENT_TIMEOUT;
-	cfg.ftimeout = CS_CLIENT_TIMEOUT / 2;
-	cfg.cmaxidle = CS_CLIENT_MAXIDLE;
-	cfg.delay = CS_DELAY;
-	cfg.bindwait = CS_BIND_TIMEOUT;
-	cfg.mon_level = 2;
-	cfg.mon_hideclient_to = 15;
-	cfg.srtimeout = 1500;
-	cfg.ulparent = 0;
-	cfg.logfile = NULL;
-	cfg.usrfile = NULL;
-	cfg.mailfile = NULL;
-	cfg.max_log_size = 10;
-	cfg.disableuserfile = 1;
-	cfg.disablemail = 1;
-#if defined(WEBIF) || defined(MODULE_MONITOR)
-	cfg.loghistorysize = 0;
-	cs_reinit_loghist(4096);
-#endif
-	cfg.cwlogdir = NULL;
-	cfg.emmlogdir = NULL;
-	cfg.reader_restart_seconds = 5;
-	cfg.waitforcards = 1;
-	cfg.waitforcards_extra_delay = 500;
+	config_sections_set_defaults(oscam_conf, &cfg);
+	cfg.http_use_utf8 = 1;
 
-#ifdef WEBIF
-	cs_strncpy(cfg.http_user, "", sizeof(cfg.http_user));
-	cs_strncpy(cfg.http_pwd, "", sizeof(cfg.http_pwd));
-	cs_strncpy(cfg.http_css, "", sizeof(cfg.http_css));
-	cs_strncpy(cfg.http_help_lang, "en", sizeof(cfg.http_help_lang));
-	cfg.http_refresh = 0;
-	cfg.http_hide_idle_clients = 0;
-	cs_strncpy(cfg.http_tpl, "", sizeof(cfg.http_tpl));
-#endif
-	cfg.ncd_keepalive = DEFAULT_NCD_KEEPALIVE;
-#ifdef CS_ANTICASC
-	cfg.ac_enabled = 0;
-	cfg.ac_users = 0;
-	cfg.ac_stime = 2;
-	cfg.ac_samples = 10;
-	cfg.ac_denysamples = 8;
-	cfg.ac_fakedelay = 1000;
-	cs_strncpy(cfg.ac_logfile, "./oscam_ac.log", sizeof(cfg.ac_logfile));
-#endif
-#ifdef MODULE_CCCAM
-	cfg.cc_update_interval = DEFAULT_UPDATEINTERVAL;
-	cfg.cc_keep_connected = 1;
-	cfg.cc_cfgfile = NULL;
-	cfg.cc_reshare = 10;
-	cfg.cc_autosidblock = 1;
-#endif
-
-#ifdef WITH_LB
-	//loadbalancer defaults:
-	cfg.lb_mode = DEFAULT_LB_MODE;
-	cfg.lb_nbest_readers = DEFAULT_NBEST;
-	cfg.lb_nfb_readers = DEFAULT_NFB;
-	cfg.lb_min_ecmcount = DEFAULT_MIN_ECM_COUNT;
-	cfg.lb_max_ecmcount = DEFAULT_MAX_ECM_COUNT;
-	cfg.lb_reopen_seconds = DEFAULT_REOPEN_SECONDS;
-	cfg.lb_retrylimit = DEFAULT_RETRYLIMIT;
-	cfg.lb_stat_cleanup = DEFAULT_LB_STAT_CLEANUP;
-	cfg.lb_auto_betatunnel = DEFAULT_LB_AUTO_BETATUNNEL;
-	cfg.lb_auto_betatunnel_prefer_beta = DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA;
-	//end loadbalancer defaults
-#endif
-#ifdef CS_CACHEEX
-	cfg.cacheex_wait_time = DEFAULT_CACHEEX_WAIT_TIME;
-	cfg.cacheex_enable_stats = 0;
-#endif
-	cfg.block_same_ip = 1;
-	cfg.block_same_name = 1;
-
-#ifdef LCDSUPPORT
-	cfg.lcd_hide_idle = 0;
-	cfg.lcd_write_intervall = 10;
-#endif
-
-	cfg.max_cache_time = DEFAULT_MAX_CACHE_TIME;
-	cfg.max_cache_count = DEFAULT_MAX_CACHE_COUNT;
-
-	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_conf);
-	if (!(fp = fopen(token, "r"))) {
-		fprintf(stderr, "Cannot open config file '%s' (errno=%d %s)\n", token, errno, strerror(errno));
-		exit(1);
-	}
+	int line = 0;
+	int valid_section = 1;
 	while (fgets(token, MAXLINESIZE, fp)) {
-		int32_t i, l;
-		//void *ptr;
-		if ((l = strlen(trim(token))) < 3)
+		++line;
+		int len = strlen(trim(token));
+		if (len < 3) // a=b or [a] are at least 3 chars
 			continue;
-		if ((token[0] == '[') && (token[l-1] == ']')) {
-			for (token[l-1] = 0, tag = -1, i = TAG_GLOBAL; cctag[i]; i++)
-				if (!strcmp(cctag[i], strtolower(token+1)))
-					tag = i;
+		if (token[0] == '#') // Skip comments
+			continue;
+		if (token[0] == '[' && token[len - 1] == ']') {
+			token[len - 1] = '\0';
+			valid_section = 0;
+			const struct config_sections *newconf = config_find_section(oscam_conf, token + 1);
+			if (config_section_is_active(newconf)) {
+				config_list_apply_fixups(cur_section->config, &cfg);
+				cur_section = newconf;
+				valid_section = 1;
+			}
+			if (!newconf) {
+				fprintf(stderr, "WARNING: %s line %d unknown section [%s].\n",
+					cs_conf, line, token + 1);
+				continue;
+			}
+			if (!config_section_is_active(newconf)) {
+				fprintf(stderr, "WARNING: %s line %d section [%s] is ignorred (support not compiled in).\n",
+					cs_conf, line, newconf->section);
+			}
 			continue;
 		}
-		if (!(value=strchr(token, '=')))
+		if (!valid_section)
+			continue;
+		char *value = strchr(token, '=');
+		if (!value) // No = found, well go on
 			continue;
 		*value++ ='\0';
-		chk_token(trim(strtolower(token)), trim(value), tag);
+		char *tvalue = trim(value);
+		char *ttoken = trim(strtolower(token));
+		if (!config_list_parse(cur_section->config, ttoken, tvalue, &cfg)) {
+			fprintf(stderr, "WARNING: %s line %d section [%s] contains unknown setting '%s=%s'\n",
+				cs_conf, line, cur_section->section, ttoken, tvalue);
+		}
 	}
 	free(token);
 	fclose(fp);
-
-	if (!cfg.logfile && cfg.logtostdout == 0 && cfg.logtosyslog == 0) {
-		if(cs_malloc(&(cfg.logfile), strlen(CS_LOGFILE) + 1, -1))
-			memcpy(cfg.logfile, CS_LOGFILE, strlen(CS_LOGFILE) + 1);
-		else cfg.logtostdout = 1;
-	}
-	if(cfg.usrfile == NULL) cfg.disableuserfile = 1;
-	if(cfg.mailfile == NULL) cfg.disablemail = 1;
-
-	cs_init_log();
-	cs_init_statistics();
-	if (cfg.ftimeout >= cfg.ctimeout) {
-		cfg.ftimeout = cfg.ctimeout - 100;
-		cs_log("WARNING: fallbacktimeout adjusted to %u ms (must be smaller than clienttimeout (%u ms))", cfg.ftimeout, cfg.ctimeout);
-	}
-	if(cfg.ftimeout < cfg.srtimeout) {
-		cfg.ftimeout = cfg.srtimeout + 100;
-		cs_log("WARNING: fallbacktimeout adjusted to %u ms (must be greater than serialreadertimeout (%u ms))", cfg.ftimeout, cfg.srtimeout);
-	}
-	if(cfg.ctimeout < cfg.srtimeout) {
-		cfg.ctimeout = cfg.srtimeout + 100;
-		cs_log("WARNING: clienttimeout adjusted to %u ms (must be greater than serialreadertimeout (%u ms))", cfg.ctimeout, cfg.srtimeout);
-	}
-	if (cfg.max_cache_time < (cfg.ctimeout/1000+1))
-		cfg.max_cache_time = cfg.ctimeout/1000+2;
-
-#ifdef CS_ANTICASC
-	if( cfg.ac_denysamples+1 > cfg.ac_samples ) {
-		cfg.ac_denysamples = cfg.ac_samples - 1;
-		cs_log("WARNING: DenySamples adjusted to %d", cfg.ac_denysamples);
-	}
-#endif
+	config_list_apply_fixups(cur_section->config, &cfg);
 	return 0;
+}
+
+int32_t write_config(void)
+{
+	FILE *f = create_config_file(cs_conf);
+	if (!f)
+		return 1;
+	config_sections_save(oscam_conf, f, &cfg);
+	return flush_config_file(f, cs_conf);
 }
 
 void chk_account(const char *token, char *value, struct s_auth *account)
@@ -2148,24 +1105,11 @@ void chk_account(const char *token, char *value, struct s_auth *account)
 int32_t write_services(void)
 {
 	int32_t i;
-	FILE *f;
 	struct s_sidtab *sidtab = cfg.sidtab;
-	char tmpfile[256];
-	char destfile[256];
-	char bakfile[256];
 	char *ptr;
-
-	snprintf(destfile, sizeof(destfile),"%s%s", cs_confdir, cs_sidt);
-	snprintf(tmpfile, sizeof(tmpfile), "%s%s.tmp", cs_confdir, cs_sidt);
-	snprintf(bakfile, sizeof(bakfile),"%s%s.bak", cs_confdir, cs_sidt);
-
-	if (!(f=fopen(tmpfile, "w"))){
-		cs_log("Cannot open file \"%s\" (errno=%d %s)", tmpfile, errno, strerror(errno));
-		return(1);
-	}
-	setvbuf(f, NULL, _IOFBF, 16*1024);
-	fprintf(f,"# oscam.services generated automatically by Streamboard OSCAM %s build #%s\n", CS_VERSION, CS_SVN_VERSION);
-	fprintf(f,"# Read more: http://streamboard.de.vu/svn/oscam/trunk/Distribution/doc/txt/oscam.services.txt\n\n");
+	FILE *f = create_config_file(cs_sidt);
+	if (!f)
+		return 1;
 
 	while(sidtab != NULL){
 		ptr = sidtab->label;
@@ -2174,19 +1118,19 @@ int32_t write_services(void)
 			ptr++;
 		}
 		fprintf(f,"[%s]\n", sidtab->label);
-		fprintf_conf(f, "caid", "");
+		fprintf_conf_n(f, "caid");
 		for (i=0; i<sidtab->num_caid; i++){
 			if (i==0) fprintf(f,"%04X", sidtab->caid[i]);
 			else fprintf(f,",%04X", sidtab->caid[i]);
 		}
 		fputc((int)'\n', f);
-		fprintf_conf(f, "provid", "");
+		fprintf_conf_n(f, "provid");
 		for (i=0; i<sidtab->num_provid; i++){
 			if (i==0) fprintf(f,"%06X", sidtab->provid[i]);
 			else fprintf(f,",%06X", sidtab->provid[i]);
 		}
 		fputc((int)'\n', f);
-		fprintf_conf(f, "srvid", "");
+		fprintf_conf_n(f, "srvid");
 		for (i=0; i<sidtab->num_srvid; i++){
 			if (i==0) fprintf(f,"%04X", sidtab->srvid[i]);
 			else fprintf(f,",%04X", sidtab->srvid[i]);
@@ -2195,543 +1139,16 @@ int32_t write_services(void)
 		sidtab=sidtab->next;
 	}
 
-	fclose(f);
-	return(safe_overwrite_with_bak(destfile, tmpfile, bakfile, 0));
-}
-
-int32_t write_config(void)
-{
-	int32_t i;
-	FILE *f;
-	char *value, *saveptr1 = NULL;
-	char tmpfile[256];
-	char destfile[256];
-	char bakfile[256];
-
-	snprintf(destfile, sizeof(destfile),"%s%s", cs_confdir, cs_conf);
-	snprintf(tmpfile, sizeof(tmpfile), "%s%s.tmp", cs_confdir, cs_conf);
-	snprintf(bakfile, sizeof(bakfile),"%s%s.bak", cs_confdir, cs_conf);
-
-	if (!(f=fopen(tmpfile, "w"))){
-		cs_log("Cannot open file \"%s\" (errno=%d %s)", tmpfile, errno, strerror(errno));
-		return(1);
-	}
-	setvbuf(f, NULL, _IOFBF, 16*1024);
-	fprintf(f,"# oscam.conf generated automatically by Streamboard OSCAM %s build #%s\n", CS_VERSION, CS_SVN_VERSION);
-	fprintf(f,"# Read more: http://streamboard.de.vu/svn/oscam/trunk/Distribution/doc/txt/oscam.conf.txt\n\n");
-
-	/*global settings*/
-	fprintf(f,"[global]\n");
-	if (IP_ISSET(cfg.srvip) || cfg.http_full_cfg)
-		fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.srvip));
-	if (cfg.usrfile != NULL || cfg.http_full_cfg)
-		fprintf_conf(f, "usrfile", "%s\n", cfg.usrfile?cfg.usrfile:"");
-	if (cfg.mailfile != NULL || cfg.http_full_cfg)
-		fprintf_conf(f, "mailfile", "%s\n", cfg.mailfile?cfg.mailfile:"");
-	if (cfg.logfile || cfg.logtostdout == 1 || cfg.logtosyslog == 1 || cfg.http_full_cfg){
-		value = mk_t_logfile();
-		fprintf_conf(f, "logfile", "%s\n", value);
-		free_mk_t(value);
-	}
-	if (cfg.cwlogdir != NULL || cfg.http_full_cfg)
-		fprintf_conf(f, "cwlogdir", "%s\n", cfg.cwlogdir?cfg.cwlogdir:"");
-	if (cfg.emmlogdir != NULL || cfg.http_full_cfg)
-		fprintf_conf(f, "emmlogdir", "%s\n", cfg.emmlogdir?cfg.emmlogdir:"");
-	if (cfg.disablelog || cfg.http_full_cfg)
-		fprintf_conf(f, "disablelog", "%d\n", cfg.disablelog);
-	if ((cfg.usrfile && cfg.disableuserfile == 0) || cfg.http_full_cfg)
-		fprintf_conf(f, "disableuserfile", "%d\n", cfg.usrfile?cfg.disableuserfile:1);
-	if ((cfg.mailfile && cfg.disablemail == 0) || cfg.http_full_cfg)
-		fprintf_conf(f, "disablemail", "%d\n", cfg.mailfile?cfg.disablemail:1);
-#if defined(WEBIF) || defined(MODULE_MONITOR)
-	if ((cfg.loghistorysize != 4096) || cfg.http_full_cfg)
-		fprintf_conf(f, "loghistorysize", "%u\n", cfg.loghistorysize);
-#endif
-	if (cfg.usrfileflag || cfg.http_full_cfg)
-		fprintf_conf(f, "usrfileflag", "%d\n", cfg.usrfileflag);
-	if (cfg.ctimeout != CS_CLIENT_TIMEOUT || cfg.http_full_cfg)
-		fprintf_conf(f, "clienttimeout", "%u\n", cfg.ctimeout);
-	if ((cfg.ftimeout && cfg.ftimeout != (CS_CLIENT_TIMEOUT /2)) || cfg.http_full_cfg)
-		fprintf_conf(f, "fallbacktimeout", "%u\n", cfg.ftimeout);
-	if (cfg.cmaxidle != CS_CLIENT_MAXIDLE || cfg.http_full_cfg)
-		fprintf_conf(f, "clientmaxidle", "%u\n", cfg.cmaxidle);
-	if (cfg.failbantime || cfg.http_full_cfg)
-		fprintf_conf(f, "failbantime", "%d\n", cfg.failbantime);
-	if (cfg.failbancount || cfg.http_full_cfg)
-		fprintf_conf(f, "failbancount", "%d\n", cfg.failbancount);
-	if (cfg.delay != CS_DELAY || cfg.http_full_cfg)
-		fprintf_conf(f, "cachedelay", "%u\n", cfg.delay); //deprecated
-	if (cfg.bindwait != CS_BIND_TIMEOUT || cfg.http_full_cfg)
-		fprintf_conf(f, "bindwait", "%d\n", cfg.bindwait);
-	if (cfg.netprio || cfg.http_full_cfg)
-		fprintf_conf(f, "netprio", "%ld\n", cfg.netprio);
-	if (cfg.tosleep || cfg.http_full_cfg)
-		fprintf_conf(f, "sleep", "%d\n", cfg.tosleep);
-	if (cfg.ulparent || cfg.http_full_cfg)
-		fprintf_conf(f, "unlockparental", "%d\n", cfg.ulparent);
-	if (cfg.nice != 99 || cfg.http_full_cfg)
-		fprintf_conf(f, "nice", "%d\n", cfg.nice);
-	if (cfg.srtimeout != 1500 || cfg.http_full_cfg)
-		fprintf_conf(f, "serialreadertimeout", "%u\n", cfg.srtimeout);
-	if (cfg.c35_suppresscmd08 || cfg.http_full_cfg)
-		fprintf_conf(f, "suppresscmd08", "%d\n", cfg.c35_suppresscmd08);
-	if (cfg.max_log_size != 10 || cfg.http_full_cfg)
-		fprintf_conf(f, "maxlogsize", "%d\n", cfg.max_log_size);
-	if (!cfg.waitforcards || cfg.http_full_cfg)
-		fprintf_conf(f, "waitforcards", "%d\n", cfg.waitforcards);
-	if (cfg.waitforcards_extra_delay != 500 || cfg.http_full_cfg)
-		fprintf_conf(f, "waitforcards_extra_delay", "%d\n", cfg.waitforcards_extra_delay);
-	if (cfg.preferlocalcards || cfg.http_full_cfg)
-		fprintf_conf(f, "preferlocalcards", "%d\n", cfg.preferlocalcards);
-	if (cfg.reader_restart_seconds != 5 || cfg.http_full_cfg)
-		fprintf_conf(f, "readerrestartseconds", "%d\n", cfg.reader_restart_seconds);
-	if (cfg.dropdups || cfg.http_full_cfg)
-		fprintf_conf(f, "dropdups", "%d\n", cfg.dropdups);
-#ifdef CS_CACHEEX
-	if (cfg.cacheex_wait_time != DEFAULT_CACHEEX_WAIT_TIME || cfg.http_full_cfg)
-		fprintf_conf(f, "cacheexwaittime", "%d\n", cfg.cacheex_wait_time);
-	if (cfg.cacheex_enable_stats != 0 || cfg.http_full_cfg)
-		fprintf_conf(f, "cacheexenablestats", "%d\n", cfg.cacheex_enable_stats);
-#endif
-	if (cfg.block_same_ip == 0 || cfg.http_full_cfg)
-		fprintf_conf(f, "block_same_ip", "%d\n", cfg.block_same_ip);
-	if (cfg.block_same_name == 0 || cfg.http_full_cfg)
-		fprintf_conf(f, "block_same_name", "%d\n", cfg.block_same_name);
-
-#if defined(QBOXHD) || defined(__arm__)
-	if (cfg.enableled || cfg.http_full_cfg)
-		fprintf_conf(f, "enableled", "%d\n", cfg.enableled);
-#endif
-
-#ifdef WITH_LB
-	if (cfg.lb_mode != DEFAULT_LB_MODE || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_mode", "%d\n", cfg.lb_mode);
-	if (cfg.lb_save || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_save", "%d\n", cfg.lb_save);
-	if (cfg.lb_nbest_readers != DEFAULT_NBEST || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_nbest_readers", "%d\n", cfg.lb_nbest_readers);
-	if (cfg.lb_nfb_readers != DEFAULT_NFB || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_nfb_readers", "%d\n", cfg.lb_nfb_readers);
-	if (cfg.lb_min_ecmcount != DEFAULT_MIN_ECM_COUNT || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_min_ecmcount", "%d\n", cfg.lb_min_ecmcount);
-	if (cfg.lb_max_ecmcount != DEFAULT_MAX_ECM_COUNT || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_max_ecmcount", "%d\n", cfg.lb_max_ecmcount);
-	if (cfg.lb_reopen_seconds != DEFAULT_REOPEN_SECONDS || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_reopen_seconds", "%d\n", cfg.lb_reopen_seconds);
-	if (cfg.lb_retrylimit != DEFAULT_RETRYLIMIT || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_retrylimit", "%d\n", cfg.lb_retrylimit);
-	if (cfg.lb_retrylimittab.n > 0 || cfg.http_full_cfg) {
-		char *value = mk_t_caidvaluetab(&cfg.lb_retrylimittab);
-		fprintf_conf(f, "lb_retrylimits", "%s\n", value);
-		free_mk_t(value);
-	}
-	if (cfg.lb_nbest_readers_tab.n > 0 || cfg.http_full_cfg) {
-		char *value = mk_t_caidvaluetab(&cfg.lb_nbest_readers_tab);
-		fprintf_conf(f, "lb_nbest_percaid", "%s\n", value);
-		free_mk_t(value);
-	}
-
-	if (cfg.lb_noproviderforcaid.caid[0] || cfg.http_full_cfg) {
-		value = mk_t_caidtab(&cfg.lb_noproviderforcaid);
-		fprintf_conf(f, "lb_noproviderforcaid", "%s\n", value);
-		free_mk_t(value);
-	}
-	
-	
-
-	if ((cfg.lb_savepath && strlen(cfg.lb_savepath) > 0) || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_savepath", "%s\n", cfg.lb_savepath?cfg.lb_savepath:"");
-	if (cfg.lb_stat_cleanup != DEFAULT_LB_STAT_CLEANUP || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_stat_cleanup", "%d\n", cfg.lb_stat_cleanup);
-	if (cfg.lb_reopen_mode != DEFAULT_LB_REOPEN_MODE || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_reopen_mode", "%d\n", cfg.lb_reopen_mode);
-	if (cfg.lb_max_readers || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_max_readers", "%d\n", cfg.lb_max_readers);
-	if (cfg.lb_auto_betatunnel != DEFAULT_LB_AUTO_BETATUNNEL || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_auto_betatunnel", "%d\n", cfg.lb_auto_betatunnel);
-	if (cfg.lb_auto_betatunnel_prefer_beta != DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA || cfg.http_full_cfg)
-		fprintf_conf(f, "lb_auto_betatunnel_prefer_beta", "%d\n", cfg.lb_auto_betatunnel_prefer_beta);
-#endif
-
-	if (cfg.ecmfmt[0] || cfg.http_full_cfg)
-		fprintf_conf(f, "ecmfmt", "%s\n", cfg.ecmfmt);
-	if (cfg.resolve_gethostbyname || cfg.http_full_cfg)
-		fprintf_conf(f, "resolvegethostbyname", "%d\n", cfg.resolve_gethostbyname);
-
-	if (cfg.double_check ||(!cfg.double_check && cfg.http_full_cfg))
-		fprintf_conf(f, "double_check", "%d\n", cfg.double_check);
-
-	if (cfg.double_check_caid.caid[0] || cfg.http_full_cfg) {
-		value = mk_t_caidtab(&cfg.double_check_caid);
-		fprintf_conf(f, "double_check_caid", "%s\n", value);
-		free_mk_t(value);
-	}
-
-	if (cfg.max_cache_time != DEFAULT_MAX_CACHE_TIME || cfg.http_full_cfg)
-		fprintf_conf(f, "max_cache_time", "%d\n", cfg.max_cache_time);
-	if (cfg.max_cache_count != DEFAULT_MAX_CACHE_COUNT || cfg.http_full_cfg)
-		fprintf_conf(f, "max_cache_count", "%d\n", cfg.max_cache_count);
-
-	fputc((int)'\n', f);
-
-	/*monitor settings*/
-	if(cfg.mon_port || cfg.mon_appendchaninfo || cfg.mon_hideclient_to != 15 || cfg.mon_aulow != 30) {
-		fprintf(f,"[monitor]\n");
-		if (cfg.mon_port != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "port", "%d\n", cfg.mon_port);
-		if (IP_ISSET(cfg.mon_srvip) || cfg.http_full_cfg)
-			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.mon_srvip));
-		value = mk_t_iprange(cfg.mon_allowed);
-		if(strlen(value) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "nocrypt", "%s\n", value);
-		free_mk_t(value);
-		if((cfg.mon_aulow > 0 && cfg.mon_aulow != 30) || cfg.http_full_cfg)
-			fprintf_conf(f, "aulow", "%d\n", cfg.mon_aulow);
-		if(cfg.mon_hideclient_to != 15 || cfg.http_full_cfg)
-			fprintf_conf(f, "hideclient_to", "%d\n", cfg.mon_hideclient_to);
-		if(cfg.mon_level != 2 || cfg.http_full_cfg)
-			fprintf_conf(f, "monlevel", "%d\n", cfg.mon_level);
-		if(cfg.mon_appendchaninfo != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "appendchaninfo", "%d\n", cfg.mon_appendchaninfo);
-		fputc((int)'\n', f);
-	}
-
-	/*newcamd*/
-	if ((cfg.ncd_ptab.nports > 0) && (cfg.ncd_ptab.ports[0].s_port > 0)){
-
-		fprintf(f,"[newcamd]\n");
-
-		value = mk_t_newcamd_port();
-		fprintf_conf(f, "port", "%s\n", value);
-		free_mk_t(value);
-
-		if (IP_ISSET(cfg.ncd_srvip))
-			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.ncd_srvip));
-		fprintf_conf(f, "key", "");
-		for (i = 0; i < 14; i++) fprintf(f,"%02X", cfg.ncd_key[i]);
-		fprintf(f,"\n");
-		value = mk_t_iprange(cfg.ncd_allowed);
-		if(strlen(value) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "allowed", "%s\n", value);
-		free_mk_t(value);
-		if(cfg.ncd_keepalive != DEFAULT_NCD_KEEPALIVE || cfg.http_full_cfg)
-			fprintf_conf(f, "keepalive", "%d\n", cfg.ncd_keepalive);
-		if(cfg.ncd_mgclient != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "mgclient", "%d\n", cfg.ncd_mgclient);
-		fprintf(f,"\n");
-	}
-
-	/*camd3.3*/
-	if ( cfg.c33_port > 0) {
-		fprintf(f,"[camd33]\n");
-		fprintf_conf(f, "port", "%d\n", cfg.c33_port);
-		if (IP_ISSET(cfg.c33_srvip))
-			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.c33_srvip));
-		if(cfg.c33_passive != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "passive", "%d\n", cfg.c33_passive);
-		fprintf_conf(f, "key", ""); for (i = 0; i < (int) sizeof(cfg.c33_key); ++i) fprintf(f,"%02X", cfg.c33_key[i]); fputc((int)'\n', f);
-		value = mk_t_iprange(cfg.c33_plain);
-		if(strlen(value) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "nocrypt", "%s\n", value);
-		free_mk_t(value);
-		fprintf(f,"\n");
-	}
-
-	/*camd3.5*/
-#ifdef CS_CACHEEX
-	if ( cfg.csp_port > 0) {
-		fprintf(f,"[csp]\n");
-		fprintf_conf(f, "port", "%d\n", cfg.csp_port);
-		if (IP_ISSET(cfg.csp_srvip))
-			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.csp_srvip));
-		if (cfg.csp_wait_time > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "wait_time", "%d\n", cfg.csp_wait_time);
-		fprintf(f,"\n");
-	}
-#endif
-
-	/*camd3.5*/
-	if ( cfg.c35_port > 0) {
-		fprintf(f,"[cs357x]\n");
-		fprintf_conf(f, "port", "%d\n", cfg.c35_port);
-		if (IP_ISSET(cfg.c35_srvip))
-			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.c35_srvip));
-		if (cfg.c35_udp_suppresscmd08 || cfg.http_full_cfg)
-			fprintf_conf(f, "suppresscmd08", "%d\n", cfg.c35_udp_suppresscmd08);
-		fprintf(f,"\n");
-	}
-
-	/*camd3.5 TCP*/
-	if ((cfg.c35_tcp_ptab.nports > 0) && (cfg.c35_tcp_ptab.ports[0].s_port > 0)) {
-		fprintf(f,"[cs378x]\n");
-
-		value = mk_t_camd35tcp_port();
-		fprintf_conf(f, "port", "%s\n", value);
-		free_mk_t(value);
-
-		if (IP_ISSET(cfg.c35_tcp_srvip))
-			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.c35_tcp_srvip));
-		if (cfg.c35_tcp_suppresscmd08 || cfg.http_full_cfg)
-			fprintf_conf(f, "suppresscmd08", "%d\n", cfg.c35_tcp_suppresscmd08);
-		fputc((int)'\n', f);
-	}
-
-	/*Radegast*/
-	if ( cfg.rad_port > 0) {
-		fprintf(f,"[radegast]\n");
-		fprintf_conf(f, "port", "%d\n", cfg.rad_port);
-		if (IP_ISSET(cfg.rad_srvip))
-			fprintf_conf(f, "serverip", "%s\n", cs_inet_ntoa(cfg.rad_srvip));
-		fprintf_conf(f, "user", "%s\n", cfg.rad_usr);
-		value = mk_t_iprange(cfg.rad_allowed);
-		if(strlen(value) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "allowed", "%s\n", value);
-		free_mk_t(value);
-		fprintf(f,"\n");
-	}
-
-	/*serial*/
-	if (cfg.ser_device[0]){
-		fprintf(f,"[serial]\n");
-		char sdevice[512];
-		cs_strncpy(sdevice, cfg.ser_device, sizeof(sdevice));
-		char *ptr;
-		char delimiter[2]; delimiter[0] = 1; delimiter[1] = '\0';
-
-		for(ptr = strtok_r(sdevice, delimiter, &saveptr1); ptr != NULL; ptr = strtok_r(NULL, delimiter, &saveptr1)) {
-			fprintf_conf(f, "device", "%s\n", ptr);
-		}
-		fprintf(f,"\n");
-	}
-
-	/*gbox*/
-	if ( cfg.gbox_port > 0) {
-		fprintf(f,"[gbox]\n");
-		fprintf_conf(f, "hostname", "%s\n", cfg.gbox_hostname);
-		fprintf_conf(f, "port", "%d\n", cfg.gbox_port);
-		fprintf_conf(f, "password", "%s\n", cfg.gbox_key);
-		fprintf(f,"\n");
-	}
-
-#ifdef MODULE_CCCAM
-	/*cccam*/
-	if ( cfg.cc_port[0] > 0) {
-		fprintf(f,"[cccam]\n");
-		value = mk_t_cccam_port();
-		fprintf_conf(f, "port", "%s\n", value);
-		free_mk_t(value);
-
-		if(cfg.cc_reshare != 10 || cfg.http_full_cfg)
-			fprintf_conf(f, "reshare", "%d\n", cfg.cc_reshare);
-		if(cfg.cc_ignore_reshare != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "ignorereshare", "%d\n", cfg.cc_ignore_reshare);
-		if(cfg.cc_forward_origin_card != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "forward_origin_card", "%d\n", cfg.cc_forward_origin_card);
-		if(cfg.cc_version || cfg.http_full_cfg)
-			fprintf_conf(f, "version", "%s\n", cfg.cc_version);
-		if(cfg.cc_update_interval != DEFAULT_UPDATEINTERVAL || cfg.http_full_cfg)
-			fprintf_conf(f, "updateinterval", "%d\n", cfg.cc_update_interval);
-		if(cfg.cc_minimize_cards != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "minimizecards", "%d\n", cfg.cc_minimize_cards);
-		if(cfg.cc_keep_connected != 1 || cfg.http_full_cfg)
-			fprintf_conf(f, "keepconnected", "%d\n", cfg.cc_keep_connected);
-		if(cfg.cc_stealth != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "stealth", "%d\n", cfg.cc_stealth);
-		if(cfg.cc_use_fixed_nodeid || cfg.http_full_cfg)
-			fprintf_conf(f, "nodeid", "%02X%02X%02X%02X%02X%02X%02X%02X\n",
-				cfg.cc_fixed_nodeid[0], cfg.cc_fixed_nodeid[1], cfg.cc_fixed_nodeid[2], cfg.cc_fixed_nodeid[3],
-				cfg.cc_fixed_nodeid[4], cfg.cc_fixed_nodeid[5], cfg.cc_fixed_nodeid[6], cfg.cc_fixed_nodeid[7]);
-		if(cfg.cc_reshare_services != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "reshare_mode", "%d\n", cfg.cc_reshare_services);
-		if(!cfg.cc_autosidblock)
-			fprintf_conf(f, "autosidblock","%d\n",cfg.cc_autosidblock);
-		if(cfg.cc_cfgfile && cfg.cc_cfgfile[0])
-			fprintf_conf(f, "cccamcfgfile","%s\n",cfg.cc_cfgfile);
-		fprintf(f,"\n");
-	}
-#endif
-
-#ifdef MODULE_PANDORA
-	/*pandora*/
-	if ( cfg.pand_port > 0) {
-		fprintf(f,"[pandora]\n");
-
-		if (cfg.pand_skip_send_dw || cfg.http_full_cfg)
-			fprintf_conf(f, "pand_skip_send_dw", "%d\n", cfg.pand_skip_send_dw);
-
-		value = mk_t_iprange(cfg.pand_allowed);
-		if(strlen(value) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "pand_allowed", "%s\n", value);
-		free_mk_t(value);
-
-		if (cfg.pand_usr[0] || cfg.http_full_cfg)
-			fprintf_conf(f, "pand_usr", "%s\n", cfg.pand_usr);
-
-		if (cfg.pand_pass[0] || cfg.http_full_cfg)
-			fprintf_conf(f, "pand_pass", "%s\n", cfg.pand_pass);
-
-		if (cfg.pand_ecm || cfg.http_full_cfg)
-			fprintf_conf(f, "pand_ecm", "%d\n", cfg.pand_ecm);
-
-		if (cfg.pand_port || cfg.http_full_cfg)
-			fprintf_conf(f, "pand_port", "%d\n", cfg.pand_port);
-
-		if (IP_ISSET(cfg.pand_srvip) || cfg.http_full_cfg)
-			fprintf_conf(f, "pand_srvip", "%s\n", cs_inet_ntoa(cfg.pand_srvip));
-
-		fprintf(f,"\n");
-	}
-#endif
-
-#ifdef HAVE_DVBAPI
-	/*dvb-api*/
-	if (cfg.dvbapi_enabled > 0) {
-		fprintf(f,"[dvbapi]\n");
-		fprintf_conf(f, "enabled", "%d\n", cfg.dvbapi_enabled);
-		if(cfg.dvbapi_au != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "au", "%d\n", cfg.dvbapi_au);
-		fprintf_conf(f, "boxtype", "%s\n", boxdesc[cfg.dvbapi_boxtype]);
-		fprintf_conf(f, "user", "%s\n", cfg.dvbapi_usr);
-		if(cfg.dvbapi_pmtmode != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "pmt_mode", "%d\n", cfg.dvbapi_pmtmode);
-		if(cfg.dvbapi_requestmode != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "request_mode", "%d\n", cfg.dvbapi_requestmode);
-		if(cfg.dvbapi_ecm_infomode)
-			fprintf_conf(f, "ecm_infomode", "%d\n", cfg.dvbapi_ecm_infomode);
-		if(cfg.dvbapi_reopenonzap != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "reopenonzap", "%d\n", cfg.dvbapi_reopenonzap);
-		if(cfg.dvbapi_delayer != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "delayer", "%d\n", cfg.dvbapi_delayer);
-		fputc((int)'\n', f);
-	}
-#endif
-
-#ifdef WEBIF
-	/*webinterface*/
-	if (cfg.http_port > 0) {
-		fprintf(f,"[webif]\n");
-#ifdef WITH_SSL
-		if (cfg.http_use_ssl) {
-			fprintf_conf(f, "httpport", "+%d\n", cfg.http_port);
-		} else
-#endif
-			fprintf_conf(f, "httpport", "%d\n", cfg.http_port);
-
-		if(strcmp(cfg.http_help_lang, "en") != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httphelplang", "%s\n", cfg.http_help_lang);
-		if(strlen(cfg.http_user) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httpuser", "%s\n", cfg.http_user);
-		if(strlen(cfg.http_pwd) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httppwd", "%s\n", cfg.http_pwd);
-		if(strlen(cfg.http_cert) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httpcert", "%s\n", cfg.http_cert);
-		if(cfg.http_prepend_embedded_css != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "http_prepend_embedded_css", "%d\n", cfg.http_prepend_embedded_css);
-		if(strlen(cfg.http_css) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httpcss", "%s\n", cfg.http_css);
-		if(strlen(cfg.http_jscript) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httpjscript", "%s\n", cfg.http_jscript);
-		if(strlen(cfg.http_tpl) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httptpl", "%s\n", cfg.http_tpl);
-		if(strlen(cfg.http_script) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httpscript", "%s\n", cfg.http_script);
-		if(cfg.http_refresh > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httprefresh", "%d\n", cfg.http_refresh);
-		value = mk_t_iprange(cfg.http_allowed);
-		if(strlen(value) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "httpallowed", "%s\n", value);
-		free_mk_t(value);
-		if(strlen((const char *) (cfg.http_dyndns[0])) > 0 || cfg.http_full_cfg){
-			fprintf_conf(f, "httpdyndns", "%s", "");
-			for(i = 0; i < MAX_HTTP_DYNDNS; i++){
-				if(cfg.http_dyndns[i][0]){
-					fprintf(f, "%s", i > 0 ? "," : "");
-					fprintf(f,  "%s", cfg.http_dyndns[i]);
-				}
-			}
-			fputc((int)'\n', f);
-		}
-		if(cfg.http_hide_idle_clients || cfg.http_full_cfg)
-			fprintf_conf(f, "httphideidleclients", "%d\n", cfg.http_hide_idle_clients);
-		if(cfg.http_showpicons || cfg.http_full_cfg)
-			fprintf_conf(f, "httpshowpicons", "%d\n", cfg.http_showpicons);
-		if(cfg.http_readonly || cfg.http_full_cfg)
-			fprintf_conf(f, "httpreadonly", "%d\n", cfg.http_readonly);
-		if(cfg.http_full_cfg)
-			fprintf_conf(f, "httpsavefullcfg", "%d\n", cfg.http_full_cfg);
-		if(cs_http_use_utf8)
-			fprintf_conf(f,"httputf8","%d\n",cs_http_use_utf8);
-#ifdef WITH_SSL	
-		if(cfg.http_force_sslv3 || cfg.http_full_cfg)
-			fprintf_conf(f, "httpforcesslv3", "%d\n", cfg.http_force_sslv3);
-#endif
-
-		fputc((int)'\n', f);
-	}
-#endif
-
-#ifdef CS_ANTICASC
-	if(cfg.ac_enabled) {
-		fprintf(f,"[anticasc]\n");
-		fprintf_conf(f, "enabled", "%d\n", cfg.ac_enabled);
-		if(cfg.ac_users != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "numusers", "%d\n", cfg.ac_users);
-		if(cfg.ac_stime != 2 || cfg.http_full_cfg)
-			fprintf_conf(f, "sampletime", "%d\n", cfg.ac_stime);
-		if(cfg.ac_samples != 10 || cfg.http_full_cfg)
-			fprintf_conf(f, "samples", "%d\n", cfg.ac_samples);
-		if(cfg.ac_penalty != 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "penalty", "%d\n", cfg.ac_penalty);
-		if(cfg.ac_logfile || cfg.http_full_cfg)
-			fprintf_conf(f, "aclogfile", "%s\n", cfg.ac_logfile);
-		if(cfg.ac_denysamples != 8 || cfg.http_full_cfg)
-			fprintf_conf(f, "denysamples", "%d\n", cfg.ac_denysamples);
-		if(cfg.ac_fakedelay != 1000 || cfg.http_full_cfg)
-			fprintf_conf(f, "fakedelay", "%d\n", cfg.ac_fakedelay);
-		fputc((int)'\n', f);
-	}
-#endif
-
-#ifdef LCDSUPPORT
-	fprintf(f,"[lcd]\n");
-	if (cfg.enablelcd || cfg.http_full_cfg)
-		fprintf_conf(f, "enablelcd", "%d\n", cfg.enablelcd);
-	if(cfg.lcd_output_path != NULL) {
-		if(strlen(cfg.lcd_output_path) > 0 || cfg.http_full_cfg)
-			fprintf_conf(f, "lcd_outputpath", "%s\n", cfg.lcd_output_path);
-	}
-	if(cfg.lcd_hide_idle != 0 || cfg.http_full_cfg)
-		fprintf_conf(f, "lcd_hideidle", "%d\n", cfg.lcd_hide_idle);
-	if(cfg.lcd_write_intervall != 10 || cfg.http_full_cfg)
-		fprintf_conf(f, "lcd_writeintervall", "%d\n", cfg.lcd_write_intervall);
-#endif
-
-	fclose(f);
-
-	return(safe_overwrite_with_bak(destfile, tmpfile, bakfile, 0));
+	return flush_config_file(f, cs_sidt);
 }
 
 int32_t write_userdb(void)
 {
-	FILE *f;
 	struct s_auth *account;
 	char *value;
-	char tmpfile[256];
-	char destfile[256];
-	char bakfile[256];
-
-	snprintf(destfile, sizeof(destfile),"%s%s", cs_confdir, cs_user);
-	snprintf(tmpfile, sizeof(tmpfile), "%s%s.tmp", cs_confdir, cs_user);
-	snprintf(bakfile, sizeof(bakfile),"%s%s.bak", cs_confdir, cs_user);
-
-  if (!(f=fopen(tmpfile, "w"))){
-    cs_log("Cannot open file \"%s\" (errno=%d %s)", tmpfile, errno, strerror(errno));
-    return(1);
-  }
-  setvbuf(f, NULL, _IOFBF, 16*1024);
-  fprintf(f,"# oscam.user generated automatically by Streamboard OSCAM %s build #%s\n", CS_VERSION, CS_SVN_VERSION);
-  fprintf(f,"# Read more: http://streamboard.de.vu/svn/oscam/trunk/Distribution/doc/txt/oscam.user.txt\n\n");
-
+	FILE *f = create_config_file(cs_user);
+	if (!f)
+		return 1;
   //each account
 	for (account=cfg.account; (account) ; account=account->next){
 		fprintf(f,"[account]\n");
@@ -2886,32 +1303,17 @@ int32_t write_userdb(void)
 #endif
 		fputc((int)'\n', f);
 	}
-  fclose(f);
 
-  return(safe_overwrite_with_bak(destfile, tmpfile, bakfile, 0));
+	return flush_config_file(f, cs_user);
 }
 
 int32_t write_server(void)
 {
 	int32_t j;
 	char *value;
-	FILE *f;
-
-	char tmpfile[256];
-	char destfile[256];
-	char bakfile[256];
-
-	snprintf(destfile, sizeof(destfile),"%s%s", cs_confdir, cs_srvr);
-	snprintf(tmpfile, sizeof(tmpfile), "%s%s.tmp", cs_confdir, cs_srvr);
-	snprintf(bakfile, sizeof(bakfile),"%s%s.bak", cs_confdir, cs_srvr);
-
-	if (!(f=fopen(tmpfile, "w"))){
-		cs_log("Cannot open file \"%s\" (errno=%d %s)", tmpfile, errno, strerror(errno));
-		return(1);
-	}
-	setvbuf(f, NULL, _IOFBF, 16*1024);
-	fprintf(f,"# oscam.server generated automatically by Streamboard OSCAM %s build #%s\n", CS_VERSION, CS_SVN_VERSION);
-	fprintf(f,"# Read more: http://streamboard.de.vu/svn/oscam/trunk/Distribution/doc/txt/oscam.server.txt\n\n");
+	FILE *f = create_config_file(cs_srvr);
+	if (!f)
+		return 1;
 
 	struct s_reader *rdr;
 	LL_ITER itr = ll_iter_create(configured_readers);
@@ -2948,7 +1350,7 @@ int32_t write_server(void)
 #endif
 
 			if (rdr->ncd_key[0] || rdr->ncd_key[13] || cfg.http_full_cfg) {
-				fprintf_conf(f, "key", "");
+				fprintf_conf_n(f, "key");
 				if(rdr->ncd_key[0] || rdr->ncd_key[13]){
 					for (j = 0; j < 14; j++) {
 						fprintf(f, "%02X", rdr->ncd_key[j]);
@@ -3061,7 +1463,7 @@ int32_t write_server(void)
 			}
 
 			if ((rdr->atr[0] || cfg.http_full_cfg) && isphysical) {
-				fprintf_conf(f, "atr", "");
+				fprintf_conf_n(f, "atr");
 				if(rdr->atr[0]){
 					for (j=0; j < rdr->atrlen/2; j++) {
 						fprintf(f, "%02X", rdr->atr[j]);
@@ -3223,7 +1625,7 @@ int32_t write_server(void)
 				fprintf_conf(f, "audisabled", "%d\n", rdr->audisabled);
 
 			if (rdr->auprovid)
-				fprintf_conf(f, "auprovid", "%06lX\n", rdr->auprovid);
+				fprintf_conf(f, "auprovid", "%06X\n", rdr->auprovid);
 			else if (cfg.http_full_cfg)
 				fprintf_conf(f, "auprovid", "\n");
 
@@ -3245,10 +1647,11 @@ int32_t write_server(void)
 			fprintf(f, "\n");
 		}
 	}
-	fclose(f);
 
-	return(safe_overwrite_with_bak(destfile, tmpfile, bakfile, 0));
+	return flush_config_file(f, cs_srvr);
 }
+
+
 
 #define write_conf(CONFIG_VAR, text) \
 	fprintf(fp, "%-27s %s\n", text ":", config_##CONFIG_VAR() ? "yes" : "no")
@@ -3340,11 +1743,9 @@ int32_t init_free_userdb(struct s_auth *ptr) {
 
 struct s_auth *init_userdb(void)
 {
+
 	struct s_auth *authptr = NULL;
-	int32_t tag = 0, nr = 0, expired = 0, disabled = 0;
-	int32_t checked=0;
-	//int32_t first=1;
-	FILE *fp;
+	int32_t tag = 0, nr = 0, expired = 0, disabled = 0, checked = 0;
 	char *value, *token;
 	struct s_auth *account = NULL;
 	struct s_auth *probe = NULL;
@@ -3355,11 +1756,8 @@ struct s_auth *init_userdb(void)
 	
 	for(account=authptr;account;account=account->next);
 
-	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_user);
-	if (!(fp = fopen(token, "r"))) {
-		cs_log("Cannot open file \"%s\" (errno=%d %s)", token, errno, strerror(errno));
-	}
-	else{
+	FILE *fp = open_config_file(cs_user);
+     if (fp){
 	while (fgets(token, MAXLINESIZE, fp)) {
 		int32_t i, l;
 		void *ptr;
@@ -3444,7 +1842,7 @@ struct s_auth *init_userdb(void)
 		}
 	    }
 	    fclose(fp);
-	}
+      }
 	free(token);
 	for(account = authptr; account; account = account->next){
 		if(account->expirationdate && account->expirationdate < time(NULL))
@@ -3535,21 +1933,42 @@ void init_free_sidtab(void) {
 		++cfg_sidtab_generation;
 }
 
+#ifdef DEBUG_SIDTAB
+static void show_sidtab(struct s_sidtab *sidtab)
+{
+  for (; sidtab; sidtab=sidtab->next)
+  {
+    int32_t i;
+    char buf[1024];
+    char *saveptr = buf;
+    cs_log("label=%s", sidtab->label);
+    snprintf(buf, sizeof(buf), "caid(%d)=", sidtab->num_caid);
+    for (i=0; i<sidtab->num_caid; i++)
+      snprintf(buf+strlen(buf), 1024-(buf-saveptr), "%04X ", sidtab->caid[i]);
+    cs_log("%s", buf);
+    snprintf(buf, sizeof(buf), "provider(%d)=", sidtab->num_provid);
+    for (i=0; i<sidtab->num_provid; i++)
+      snprintf(buf+strlen(buf), 1024-(buf-saveptr), "%08X ", sidtab->provid[i]);
+    cs_log("%s", buf);
+    snprintf(buf, sizeof(buf), "services(%d)=", sidtab->num_srvid);
+    for (i=0; i<sidtab->num_srvid; i++)
+      snprintf(buf+strlen(buf), 1024-(buf-saveptr), "%04X ", sidtab->srvid[i]);
+    cs_log("%s", buf);
+  }
+}
+#endif
+
 int32_t init_sidtab(void) {
+	FILE *fp = open_config_file(cs_sidt);
+	if (!fp)
+		return 1;
+
 	int32_t nr, nro, nrr;
-	FILE *fp;
 	char *value, *token;
 	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;
 	struct s_sidtab *ptr;
 	struct s_sidtab *sidtab=(struct s_sidtab *)0;
 
-	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_sidt);
-	if (!(fp=fopen(token, "r")))
-	{
-		cs_log("Cannot open file \"%s\" (errno=%d %s)", token, errno, strerror(errno));
-		free(token);
-		return(1);
-	}
 	for (nro=0, ptr=cfg.sidtab; ptr; nro++)
 	{
 		struct s_sidtab *ptr_next;
@@ -3603,18 +2022,15 @@ int32_t init_sidtab(void) {
 
 //Todo #ifdef CCCAM
 int32_t init_provid(void) {
+	FILE *fp = open_config_file(cs_provid);
+	if (!fp)
+		return 0;
+
 	int32_t nr;
-	FILE *fp;
 	char *payload, *saveptr1 = NULL, *token;
 	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
 	static struct s_provid *provid=(struct s_provid *)0;
-	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_provid);
 
-	if (!(fp=fopen(token, "r"))) {
-		cs_log("can't open file \"%s\" (err=%d %s), no provids's loaded", token, errno, strerror(errno));
-		free(token);
-		return(0);
-	}
 	nr=0;
 	while (fgets(token, MAXLINESIZE, fp)) {
 
@@ -3675,12 +2091,14 @@ int32_t init_provid(void) {
 
 int32_t init_srvid(void)
 {
+	FILE *fp = open_config_file(cs_srid);
+	if (!fp)
+		return 0;
+
 	int32_t nr = 0, i;
-	FILE *fp;
 	char *payload, *tmp, *saveptr1 = NULL, *token;
 	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
 	struct s_srvid *srvid=NULL, *new_cfg_srvid[16], *last_srvid[16];
-	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_srid);
 	// A cache for strings within srvids. A checksum is calculated which is the start point in the array (some kind of primitive hash algo).
 	// From this point, a sequential search is done. This greatly reduces the amount of string comparisons.
 	char **stringcache[1024];
@@ -3691,12 +2109,6 @@ int32_t init_srvid(void)
 
 	memset(last_srvid, 0, sizeof(last_srvid));
 	memset(new_cfg_srvid, 0, sizeof(new_cfg_srvid));
-
-	if (!(fp=fopen(token, "r"))) {
-		cs_log("can't open file \"%s\" (err=%d %s), no service-id's loaded", token, errno, strerror(errno));
-		free(token);
-		return(0);
-	}
 
 	while (fgets(token, MAXLINESIZE, fp)) {
 		int32_t l, j, len=0, len2, srvidtmp;
@@ -3838,18 +2250,14 @@ int32_t init_srvid(void)
 
 int32_t init_tierid(void)
 {
+	FILE *fp = open_config_file(cs_trid);
+	if (!fp)
+		return 0;
+
 	int32_t nr;
-	FILE *fp;
 	char *payload, *saveptr1 = NULL, *token;
 	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
 	static struct s_tierid *tierid=NULL, *new_cfg_tierid=NULL;
-	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_trid);
-
-	if (!(fp=fopen(token, "r"))) {
-		cs_log("can't open file \"%s\" (err=%d %s), no tier-id's loaded", token, errno, strerror(errno));
-		free(token);
-		return(0);
-	}
 
 	nr=0;
 	while (fgets(token, MAXLINESIZE, fp)) {
@@ -4934,9 +3342,12 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 #ifdef IRDETO_GUESSING
 int32_t init_irdeto_guess_tab(void)
 {
+  FILE *fp = open_config_file(cs_ird);
+  if (!fp)
+    return 1;
+
   int32_t i, j, skip;
   int32_t b47;
-  FILE *fp;
   char token[128], *ptr, *saveptr1 = NULL;
   char zSid[5];
   uchar b3;
@@ -4944,13 +3355,7 @@ int32_t init_irdeto_guess_tab(void)
   struct s_irdeto_quess *ird_row, *head;
 
   memset(cfg.itab, 0, sizeof(cfg.itab));
-  snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_ird);
-  if (!(fp=fopen(token, "r")))
-  {
-    cs_log("can't open file \"%s\" (errno=%d %s) irdeto guessing not loaded",
-           token, errno, strerror(errno));
-    return(1);
-  }
+
   while (fgets(token, sizeof(token), fp))
   {
     if( strlen(token)<20 ) continue;
@@ -5152,24 +3557,24 @@ void * read_cccamcfg(int32_t mode)
 		if((line[0] == 'C' || line[0] == 'L' || line[0] == 'N' || line[0] == 'R' ) && line[1] == ':' && (mode == CCCAMCFGREADER)){
 
 			int32_t paracount=0;
-			int32_t proto=0;
+			char * proto=0;
 			ret=0;
 			uchar ncd_key[13+sizeof(uint)];
 			memset(ncd_key,0,sizeof(ncd_key));
 			int32_t reshare=-1;
 			switch(line[0]){
 				case 'C':
-					proto = TAG_CCCAM;
+					proto = "cccam";
 					ret=sscanf(line,"%c:%s%d%s%s",&typ,host,&port,uname,upass);
 					paracount=5;
 					break;
 				case 'L':
-					proto = TAG_CAMD35;
+					proto = "camd35";
 					ret=sscanf(line,"%c:%s%d%s%s%x%x%d",&typ,host,&port,uname,upass,&caid,&prid,&reshare);
 					paracount=5;
 					break;
 				case 'N':
-					proto = TAG_NEWCAMD;
+					proto = "newcamd";
 					ret=sscanf(line,"%c:%s%d%s%s%x%x%x%x%x%x%x%x%x%x%x%x%x%x%d",&typ,host,&port,uname,upass,
 						(uint*) &ncd_key[0], (uint*) &ncd_key[1], (uint*) &ncd_key[2], (uint*) &ncd_key[3],(uint*) &ncd_key[4],
 						(uint*) &ncd_key[5], (uint*) &ncd_key[6], (uint*) &ncd_key[7], (uint*) &ncd_key[8],(uint*) &ncd_key[9],
@@ -5177,7 +3582,7 @@ void * read_cccamcfg(int32_t mode)
 					paracount=5;
 					break;
 				case 'R':
-					proto = TAG_RADEGAST;
+					proto = "radegast";
 					ret=sscanf(line,"%c:%s%d%x%x%d",&typ,host,&port,&caid,&prid,&reshare);
 					paracount=3;
 					break;
@@ -5230,7 +3635,7 @@ void * read_cccamcfg(int32_t mode)
 			rdr->ecmWhitelist = NULL;
 			for (i=1; i<CS_MAXCAIDTAB; rdr->ctab.mask[i++]=0xffff);
 
-			chk_reader("protocol",(char*)cctag[proto],rdr);
+			chk_reader("protocol",proto,rdr);
 			cs_strncpy(rdr->device,host,sizeof(rdr->device));
 			rdr->r_port = port;
 			cs_strncpy(rdr->r_usr,uname,sizeof(rdr->r_usr));
@@ -5344,9 +3749,9 @@ void free_reader(struct s_reader *rdr)
 int32_t init_readerdb(void)
 {
 	int32_t tag = 0;
-	int32_t checked=0;
-	FILE *fp;
 	char *value, *token;
+	int32_t checked = 0;
+
 	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;
 
 	if(!configured_readers)
@@ -5355,11 +3760,8 @@ int32_t init_readerdb(void)
 	if(cfg.cc_cfgfile)
 		read_cccamcfg(CCCAMCFGREADER);
 
-	snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_srvr);
-	if (!(fp=fopen(token, "r"))) {
-		cs_log("can't open file \"%s\" (errno=%d %s)\n", token, errno, strerror(errno));
-	}
-	else{
+	FILE *fp = open_config_file(cs_srvr);
+     if (fp){
 
 	struct s_reader *rdr;
 	cs_malloc(&rdr, sizeof(struct s_reader), SIGINT);
@@ -5459,20 +3861,13 @@ int32_t init_readerdb(void)
 #ifdef CS_ANTICASC
 void init_ac(void)
 {
+  FILE *fp = open_config_file(cs_ac);
+  if (!fp)
+    return;
+
   int32_t nr;
-  FILE *fp;
   char *saveptr1 = NULL, *token;
   if(!cs_malloc(&token, MAXLINESIZE, -1)) return;
-
-  snprintf(token, MAXLINESIZE, "%s%s", cs_confdir, cs_ac);
-  if (!(fp=fopen(token, "r")))
-  {
-    cs_log("can't open file \"%s\" (errno=%d %s) anti-cascading table not loaded",
-            token, errno, strerror(errno));
-    free(token);
-    return;
-  }
-
   struct s_cpmap *cur_cpmap, *first_cpmap = NULL, *last_cpmap = NULL;
 
   for(nr=0; fgets(token, MAXLINESIZE, fp);)
@@ -5567,593 +3962,6 @@ void init_ac(void)
 }
 #endif
 
-/*
- * Creates a string ready to write as a token into config or WebIf for CAIDs. You must free the returned value through free_mk_t().
- */
-char *mk_t_caidtab(CAIDTAB *ctab){
-	int32_t i = 0, needed = 1, pos = 0;
-	while(ctab->caid[i]){
-		if(ctab->mask[i]) needed += 10;
-		else needed += 5;
-		if(ctab->cmap[i]) needed += 5;
-		++i;
-	}
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed * sizeof(char), -1)) return "";
-	char *saveptr = value;
-	i = 0;
-	while(ctab->caid[i]) {
-
-		if (ctab->caid[i] < 0x0100) { //for "ignore provider for" option, caid-shortcut, just first 2 bytes:
-			if(i == 0) {
-				snprintf(value + pos, needed-(value-saveptr), "%02X", ctab->caid[i]);
-				pos += 2;
-			} else {
-				snprintf(value + pos, needed-(value-saveptr), ",%02X", ctab->caid[i]);
-				pos += 3;
-			}
-		} else {
-			if(i == 0) {
-				snprintf(value + pos, needed-(value-saveptr), "%04X", ctab->caid[i]);
-				pos += 4;
-			} else {
-				snprintf(value + pos, needed-(value-saveptr), ",%04X", ctab->caid[i]);
-				pos += 5;
-			}
-		}
-
-		if((ctab->mask[i]) && (ctab->mask[i] != 0xFFFF)){
-			snprintf(value + pos, needed-(value-saveptr), "&%04X", ctab->mask[i]);
-			pos += 5;
-		}
-		if(ctab->cmap[i]){
-			snprintf(value + pos, needed-(value-saveptr), ":%04X", ctab->cmap[i]);
-			pos += 5;
-		}
-		++i;
-	}
-	value[pos] = '\0';
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for TunTabs. You must free the returned value through free_mk_t().
- */
-char *mk_t_tuntab(TUNTAB *ttab){
-	int32_t i, needed = 1, pos = 0;
-	for (i=0; i<ttab->n; i++) {
-		if(ttab->bt_srvid[i]) needed += 10;
-		else needed += 5;
-		if(ttab->bt_caidto[i]) needed += 5;
-	}
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed * sizeof(char), -1)) return "";
-	char *saveptr = value;
-	for (i=0; i<ttab->n; i++) {
-		if(i == 0) {
-			snprintf(value + pos, needed-(value-saveptr), "%04X", ttab->bt_caidfrom[i]);
-			pos += 4;
-		} else {
-			snprintf(value + pos, needed-(value-saveptr), ",%04X", ttab->bt_caidfrom[i]);
-			pos += 5;
-		}
-		if(ttab->bt_srvid[i]){
-			snprintf(value + pos, needed-(value-saveptr), ".%04X", ttab->bt_srvid[i]);
-			pos += 5;
-		}
-		if(ttab->bt_caidto[i]){
-			snprintf(value + pos, needed-(value-saveptr), ":%04X", ttab->bt_caidto[i]);
-			pos += 5;
-		}
-	}
-	value[pos] = '\0';
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for groups. You must free the returned value through free_mk_t().
- */
-char *mk_t_group(uint64_t grp){
-	int32_t i = 0, needed = 1, pos = 0, dot = 0;
-
-	for(i = 0; i < 64; i++){
-		if (grp&((uint64_t)1<<i)){
-			needed += 2;
-			if(i > 9) needed += 1;
-		}
-	}
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed * sizeof(char), -1)) return "";
-	char * saveptr = value;
-	for(i = 0; i < 64; i++){
-		if (grp&((uint64_t)1<<i)){
-			if (dot == 0){
-				snprintf(value + pos, needed-(value-saveptr), "%d", i+1);
-				if (i > 8)pos += 2;
-				else pos += 1;
-				dot = 1;
-			} else {
-				snprintf(value + pos, needed-(value-saveptr), ",%d", i+1);
-				if (i > 8)pos += 3;
-				else pos += 2;
-			}
-		}
-	}
-	value[pos] = '\0';
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for FTabs (CHID, Ident). You must free the returned value through free_mk_t().
- */
-char *mk_t_ftab(FTAB *ftab){
-	int32_t i = 0, j = 0, needed = 1, pos = 0;
-
-	if (ftab->nfilts != 0) {
-		needed = ftab->nfilts * 5;
-		for (i = 0; i < ftab->nfilts; ++i)
-			needed += ftab->filts[i].nprids * 7;
-	}
-
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed * sizeof(char), -1)) return "";
-	char *saveptr = value;
-	char *dot="";
-	for (i = 0; i < ftab->nfilts; ++i){
-		snprintf(value + pos, needed-(value-saveptr), "%s%04X", dot, ftab->filts[i].caid);
-		pos += 4;
-		if (i > 0) pos += 1;
-		dot=":";
-		for (j = 0; j < ftab->filts[i].nprids; ++j) {
-			snprintf(value + pos, needed-(value-saveptr), "%s%06X", dot, ftab->filts[i].prids[j]);
-			pos += 7;
-			dot=",";
-		}
-		dot=";";
-	}
-
-	value[pos] = '\0';
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for the camd35 tcp ports. You must free the returned value through free_mk_t().
- */
-char *mk_t_camd35tcp_port(void){
-	int32_t i, j, pos = 0, needed = 1;
-
-	/* Precheck to determine how long the resulting string will maximally be (might be a little bit smaller but that shouldn't hurt) */
-	for(i = 0; i < cfg.c35_tcp_ptab.nports; ++i) {
-		/* Port is maximally 5 chars long, plus the @caid, plus the ";" between ports */
-		needed += 11;
-		if (cfg.c35_tcp_ptab.ports[i].ftab.filts[0].nprids > 1){
-			needed += cfg.c35_tcp_ptab.ports[i].ftab.filts[0].nprids * 7;
-		}
-	}
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed * sizeof(char), -1)) return "";
-	char *saveptr = value;
-	char *dot1 = "", *dot2;
-	for(i = 0; i < cfg.c35_tcp_ptab.nports; ++i) {
-
-		if (cfg.c35_tcp_ptab.ports[i].ftab.filts[0].caid){
-			pos += snprintf(value + pos, needed-(value-saveptr), "%s%d@%04X", dot1,
-					cfg.c35_tcp_ptab.ports[i].s_port,
-					cfg.c35_tcp_ptab.ports[i].ftab.filts[0].caid);
-
-			if (cfg.c35_tcp_ptab.ports[i].ftab.filts[0].nprids > 1) {
-				dot2 = ":";
-				for (j = 0; j < cfg.c35_tcp_ptab.ports[i].ftab.filts[0].nprids; ++j) {
-					pos += snprintf(value + pos, needed-(value-saveptr), "%s%X", dot2, cfg.c35_tcp_ptab.ports[i].ftab.filts[0].prids[j]);
-					dot2 = ",";
-				}
-			}
-			dot1=";";
-		} else {
-			pos += snprintf(value + pos, needed-(value-saveptr), "%d", cfg.c35_tcp_ptab.ports[i].s_port);
-		}
-	}
-	return value;
-}
-
-#ifdef MODULE_CCCAM
-/*
- * Creates a string ready to write as a token into config or WebIf for the cccam tcp ports. You must free the returned value through free_mk_t().
- */
-char *mk_t_cccam_port(void) {
-	int32_t i, pos = 0, needed = CS_MAXPORTS*6+8;
-
-	char *value;
-	if(!cs_malloc(&value, needed * sizeof(char), -1)) return "";
-	char *dot = "";
-	for(i = 0; i < CS_MAXPORTS; i++) {
-		if (!cfg.cc_port[i]) break;
-
-		pos += snprintf(value + pos, needed-pos, "%s%d", dot, cfg.cc_port[i]);
-		dot=",";
-	}
-	return value;
-}
-#endif
-
-
-/*
- * Creates a string ready to write as a token into config or WebIf for AESKeys. You must free the returned value through free_mk_t().
- */
-char *mk_t_aeskeys(struct s_reader *rdr){
-	AES_ENTRY *current = rdr->aes_list;
-	int32_t i, pos = 0, needed = 1, prevKeyid = 0, prevCaid = 0;
-	uint32_t prevIdent = 0;
-
-	/* Precheck for the approximate size that we will need; it's a bit overestimated but we correct that at the end of the function */
-	while(current) {
-		/* The caid, ident, "@" and the trailing ";" need to be output when they are changing */
-		if(prevCaid != current->caid || prevIdent != current->ident) needed += 12 + (current->keyid * 2);
-		/* "0" keys are not saved so we need to check for gaps */
-		else if(prevKeyid != current->keyid + 1) needed += (current->keyid - prevKeyid - 1) * 2;
-		/* The 32 byte key plus either the (heading) ":" or "," */
-		needed += 33;
-		prevCaid = current->caid;
-		prevIdent = current->ident;
-		prevKeyid = current->keyid;
-		current = current->next;
-	}
-
-	/* Set everything back and now create the string */
-	current = rdr->aes_list;
-	prevCaid = 0;
-	prevIdent = 0;
-	prevKeyid = 0;
-	char tmp[needed];
-	char dot;
-	if(needed == 1) tmp[0] = '\0';
-	char tmpkey[33];
-	while(current) {
-		/* A change in the ident or caid means that we need to output caid and ident */
-		if(prevCaid != current->caid || prevIdent != current->ident){
-			if(pos > 0) {
-				tmp[pos] = ';';
-				++pos;
-			}
-			pos += snprintf(tmp+pos, sizeof(tmp)-pos, "%04X@%06X", current->caid, current->ident);
-			prevKeyid = -1;
-			dot = ':';
-		} else dot = ',';
-		/* "0" keys are not saved so we need to check for gaps and output them! */
-		for (i = prevKeyid + 1; i < current->keyid; ++i) {
-			pos += snprintf(tmp+pos, sizeof(tmp)-pos, "%c0", dot);
-			dot = ',';
-		}
-		tmp[pos] = dot;
-		++pos;
-		for (i = 0; i < 16; ++i) snprintf(tmpkey + (i*2), sizeof(tmpkey) - (i*2), "%02X", current->plainkey[i]);
-		/* A key consisting of only FFs has a special meaning (just return what the card outputted) and can be specified more compact */
-		if(strcmp(tmpkey, "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") == 0) pos += snprintf(tmp+pos, sizeof(tmp)-pos, "FF");
-		else pos += snprintf(tmp+pos, sizeof(tmp)-pos, "%s", tmpkey);
-		prevCaid = current->caid;
-		prevIdent = current->ident;
-		prevKeyid = current->keyid;
-		current = current->next;
-	}
-
-	/* copy to result array of correct size */
-	char *value;
-	if(pos == 0 || !cs_malloc(&value, (pos + 1) * sizeof(char), -1)) return "";
-	memcpy(value, tmp, pos + 1);
-	return(value);
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for the Newcamd Port. You must free the returned value through free_mk_t().
- */
-char *mk_t_newcamd_port(void) {
-	int32_t i, j, k, pos = 0, needed = 1;
-
-	/* Precheck to determine how long the resulting string will maximally be (might be a little bit smaller but that shouldn't hurt) */
-	for(i = 0; i < cfg.ncd_ptab.nports; ++i){
-		/* Port is maximally 5 chars long, plus the @caid, plus the ";" between ports */
-		needed += 11;
-		if(cfg.ncd_ptab.ports[i].ncd_key_is_set) needed += 30;
-		if (cfg.ncd_ptab.ports[i].ftab.filts[0].nprids > 0){
-			needed += cfg.ncd_ptab.ports[i].ftab.filts[0].nprids * 7;
-		}
-	}
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed * sizeof(char), -1)) return "";
-	char *dot1 = "", *dot2;
-
-	for(i = 0; i < cfg.ncd_ptab.nports; ++i){
-		pos += snprintf(value + pos, needed-pos,  "%s%d", dot1, cfg.ncd_ptab.ports[i].s_port);
-
-		// separate DES Key for this port
-		if(cfg.ncd_ptab.ports[i].ncd_key_is_set){
-			pos += snprintf(value + pos, needed-pos, "{");
-			for (k = 0; k < 14; k++)
-				pos += snprintf(value + pos, needed-pos, "%02X", cfg.ncd_ptab.ports[i].ncd_key[k]);
-			pos += snprintf(value + pos, needed-pos, "}");
-		}
-
-		pos += snprintf(value + pos, needed-pos, "@%04X", cfg.ncd_ptab.ports[i].ftab.filts[0].caid);
-
-		if (cfg.ncd_ptab.ports[i].ftab.filts[0].nprids > 0){
-			dot2 = ":";
-			for (j = 0; j < cfg.ncd_ptab.ports[i].ftab.filts[0].nprids; ++j){
-				pos += snprintf(value + pos, needed-pos, "%s%06X", dot2, (int)cfg.ncd_ptab.ports[i].ftab.filts[0].prids[j]);
-				dot2 = ",";
-			}
-		}
-		dot1=";";
-	}
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for au readers. You must free the returned value through free_mk_t().
- */
-char *mk_t_aureader(struct s_auth *account){
-	int32_t pos = 0;
-	char *dot = "";
-
-	char *value;
-	if(ll_count(account->aureader_list) == 0 || !cs_malloc(&value, 256 * sizeof(char), -1)) return "";
-	value[0] = '\0';
-
-	struct s_reader *rdr;
-	LL_ITER itr = ll_iter_create(account->aureader_list);
-	while ((rdr = ll_iter_next(&itr))) {
-		pos += snprintf(value + pos, 256-pos, "%s%s", dot, rdr->label);
-		dot = ",";
-	}
-
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for blocknano and savenano. You must free the returned value through free_mk_t().
- * flag 0x01 for blocknano or 0x02 for savenano
- */
-char *mk_t_nano(struct s_reader *rdr, uchar flag){
-	int32_t i, pos = 0, needed = 0;
-	uint16_t nano = 0;
-
-	if (flag==0x01)
-		nano=rdr->b_nano;
-	else
-		nano=rdr->s_nano;
-
-	for (i=0; i<16; i++)
-		if ((1 << i) & nano)
-			needed++;
-
-	char *value;
-	if (nano == 0xFFFF) {
-		if(!cs_malloc(&value, (3 * sizeof(char)) + 1, -1)) return "";
-		snprintf(value, 4, "all");
-	} else {
-		if(needed == 0 || !cs_malloc(&value, (needed * 3 * sizeof(char)) + 1, -1)) return "";
-		value[0] = '\0';
-		for (i=0; i<16; i++) {
-			if ((1 << i) & nano)
-				pos += snprintf(value + pos, (needed*3)+1-pos, "%s%02x", pos ? "," : "", (i+0x80));
-		}
-	}
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for the sidtab. You must free the returned value through free_mk_t().
- */
-char *mk_t_service( uint64_t sidtabok, uint64_t sidtabno){
-	int32_t i, pos;
-	char *dot;
-	char *value;
-	struct s_sidtab *sidtab = cfg.sidtab;
-	if(!sidtab || (!sidtabok && !sidtabno) || !cs_malloc(&value, 1024, -1)) return "";
-	value[0] = '\0';
-
-	for (i=pos=0,dot=""; sidtab; sidtab=sidtab->next,i++){
-		if (sidtabok&((SIDTABBITS)1<<i)) {
-			pos += snprintf(value + pos, 1024 - pos, "%s%s", dot, sidtab->label);
-			dot = ",";
-		}
-		if (sidtabno&((SIDTABBITS)1<<i)) {
-			pos += snprintf(value + pos, 1024 - pos, "%s!%s", dot, sidtab->label);
-			dot = ",";
-		}
-	}
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for the logfile parameter. You must free the returned value through free_mk_t().
- */
-char *mk_t_logfile(void) {
-	int32_t pos = 0, needed = 1;
-	char *value, *dot = "";
-
-	if(cfg.logtostdout == 1) needed += 7;
-	if(cfg.logtosyslog == 1) needed += 7;
-	if(cfg.logfile) needed += strlen(cfg.logfile);
-	if(needed == 1 || !cs_malloc(&value, needed * sizeof(char), -1)) return "";
-
-	if(cfg.logtostdout == 1){
-		pos += snprintf(value + pos, needed - pos, "stdout");
-		dot = ";";
-	}
-	if(cfg.logtosyslog == 1){
-		pos += snprintf(value + pos, needed - pos, "%ssyslog", dot);
-		dot = ";";
-	}
-	if(cfg.logfile){
-		pos += snprintf(value + pos, needed - pos, "%s%s", dot, cfg.logfile);
-	}
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for the ecm whitelist. You must free the returned value through free_mk_t().
- */
-char *mk_t_ecmwhitelist(struct s_ecmWhitelist *whitelist){
-	int32_t needed = 1, pos = 0;
-	struct s_ecmWhitelist *cip;
-	struct s_ecmWhitelistIdent *cip2;
-	struct s_ecmWhitelistLen *cip3;
-	char *value, *dot = "", *dot2 = "";
-	for (cip = whitelist; cip; cip = cip->next){
-		needed += 7;
-		for (cip2 = cip->idents; cip2; cip2 = cip2->next){
-			needed +=7;
-			for (cip3 = cip2->lengths; cip3; cip3 = cip3->next) needed +=3;
-		}
-	}
-
-	char tmp[needed];
-
-	for (cip = whitelist; cip; cip = cip->next){
-		for (cip2 = cip->idents; cip2; cip2 = cip2->next){
-			if(cip2->lengths != NULL){
-				if(cip->caid != 0){
-					if(cip2->ident == 0)
-						pos += snprintf(tmp + pos, needed - pos, "%s%04X:", dot, cip->caid);
-					else
-						pos += snprintf(tmp + pos, needed - pos, "%s%04X@%06X:", dot, cip->caid, cip2->ident);
-				} else pos += snprintf(tmp + pos, needed - pos, "%s", dot);
-			}
-			dot2="";
-			for (cip3 = cip2->lengths; cip3; cip3 = cip3->next){
-				pos += snprintf(tmp + pos, needed - pos, "%s%02X", dot2, cip3->len);
-				dot2=",";
-			}
-			dot=";";
-		}
-	}
-	if(pos == 0 || !cs_malloc(&value, (pos + 1) * sizeof(char), -1)) return "";
-	memcpy(value, tmp, pos + 1);
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for an iprange. You must free the returned value through free_mk_t().
- */
-char *mk_t_iprange(struct s_ip *range){
-	struct s_ip *cip;
-	char *value, *dot = "";
-	int32_t needed = 1, pos = 0;
-	for (cip = range; cip; cip = cip->next) needed += 32;
-
-	char tmp[needed];
-
-	for (cip = range; cip; cip = cip->next){
-		pos += snprintf(tmp + pos, needed - pos, "%s%s", dot, cs_inet_ntoa(cip->ip[0]));
-		if (!IP_EQUAL(cip->ip[0], cip->ip[1]))	pos += snprintf(tmp + pos, needed - pos, "-%s", cs_inet_ntoa(cip->ip[1]));
-		dot=",";
-	}
-	if(pos == 0 || !cs_malloc(&value, (pos + 1) * sizeof(char), -1)) return "";
-	memcpy(value, tmp, pos + 1);
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf for the class attribute. You must free the returned value through free_mk_t().
- */
-char *mk_t_cltab(CLASSTAB *clstab){
-	char *value, *dot = "";
-	int32_t i, needed = 1, pos = 0;
-	for(i = 0; i < clstab->an; ++i) needed += 3;
-	for(i = 0; i < clstab->bn; ++i) needed += 4;
-
-	char tmp[needed];
-
-	for(i = 0; i < clstab->an; ++i) {
-		pos += snprintf(tmp + pos, needed - pos, "%s%02x", dot, (int32_t)clstab->aclass[i]);
-		dot=",";
-	}
-	for(i = 0; i < clstab->bn; ++i) {
-		pos += snprintf(tmp + pos, needed - pos, "%s!%02x", dot, (int32_t)clstab->bclass[i]);
-		dot=",";
-	}
-
-	if(pos == 0 || !cs_malloc(&value, (pos + 1) * sizeof(char), -1)) return "";
-	memcpy(value, tmp, pos + 1);
-	return value;
-}
-
-/*
- * Creates a string ready to write as a token into config or WebIf. You must free the returned value through free_mk_t().
- */
-char *mk_t_caidvaluetab(CAIDVALUETAB *tab)
-{
-		if (!tab->n) return "";
-		int32_t i, size = 2 + tab->n * (4 + 1 + 5 + 1); //caid + ":" + time + ","
-		char *buf = cs_malloc(&buf, size, SIGINT);
-		char *ptr = buf;
-
-		for (i = 0; i < tab->n; i++) {
-			if (tab->caid[i] < 0x0100) //Do not format 0D as 000D, its a shortcut for 0Dxx:
-				ptr += snprintf(ptr, size-(ptr-buf), "%s%02X:%d", i?",":"", tab->caid[i], tab->value[i]);
-			else
-				ptr += snprintf(ptr, size-(ptr-buf), "%s%04X:%d", i?",":"", tab->caid[i], tab->value[i]);
-		}
-		*ptr = 0;
-		return buf;
-}
-
-/*
- * returns string of comma separated values
- */
-char *mk_t_emmbylen(struct s_reader *rdr) {
-
-	char *value, *dot = "";
-	int32_t pos = 0, needed = 0;
-	int8_t i;
-
-	needed = (CS_MAXEMMBLOCKBYLEN * 4) +1;
-
-	if (!cs_malloc(&value, needed, -1)) return "";
-
-	for( i = 0; i < CS_MAXEMMBLOCKBYLEN; i++ ) {
-		if(rdr->blockemmbylen[i] != 0) {
-			pos += snprintf(value + pos, needed, "%s%d", dot, rdr->blockemmbylen[i]);
-			dot = ",";
-		}
-	}
-	return value;
-}
-
-/*
- * makes string from binary structure
- */
-char *mk_t_allowedprotocols(struct s_auth *account) {
-
-	if (!account->allowedprotocols)
-		return "";
-
-	int16_t i, tmp = 1, pos = 0, needed = 255, tagcnt;
-	char *tag[] = {"camd33", "camd35", "cs378x", "newcamd", "cccam", "gbox", "radegast", "dvbapi", "constcw", "serial"};
-	char *value, *dot = "";
-
-	if (!cs_malloc(&value, needed, -1))
-		return "";
-
-	tagcnt = sizeof(tag)/sizeof(char *);
-	for (i = 0; i < tagcnt; i++) {
-		if ((account->allowedprotocols & tmp) == tmp) {
-			pos += snprintf(value + pos, needed, "%s%s", dot, tag[i]);
-			dot = ",";
-		}
-		tmp = tmp << 1;
-	}
-	return value;
-}
-
-/*
- * mk_t-functions give back a constant empty string when allocation fails or when the result is an empty string.
- * This function thus checks the stringlength and only frees if necessary.
- */
-void free_mk_t(char *value){
-	if(strlen(value) > 0) free(value);
-}
-
 int32_t match_whitelist(ECM_REQUEST *er, struct s_global_whitelist *entry) {
 	return ((!entry->caid || entry->caid == er->caid)
 			&& (!entry->provid || entry->provid == er->prid)
@@ -6235,24 +4043,18 @@ int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line)
 //m:caid:prov:srvid:pid:chid:ecmlen caidto:provto
 
 static struct s_global_whitelist *global_whitelist_read_int(void) {
-	FILE *fp;
+	FILE *fp = open_config_file(cs_whitelist);
+	if (!fp)
+		return NULL;
+
 	char token[1024], str1[1024];
 	unsigned char type;
 	int32_t i, ret, count=0;
 	struct s_global_whitelist *new_whitelist = NULL, *entry, *last=NULL;
 	uint32_t line = 0;
 
-	const char *cs_whitelist="oscam.whitelist";
 	cfg.global_whitelist_use_l = 0;
 	cfg.global_whitelist_use_m = 0;
-
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_whitelist);
-	fp=fopen(token, "r");
-
-	if (!fp) {
-		cs_log("can't open whitelist file %s", token);
-		return NULL;
-	}
 
 	while (fgets(token, sizeof(token), fp)) {
 		line++;
@@ -6405,22 +4207,15 @@ struct s_cacheex_matcher *is_cacheex_matcher_matching(ECM_REQUEST *from_er, ECM_
 //validto: default=4000
 //valid time if found in cache
 static struct s_cacheex_matcher *cacheex_matcher_read_int(void) {
-	FILE *fp;
+	FILE *fp = open_config_file(cs_cacheex_matcher);
+	if (!fp)
+		return NULL;
+
 	char token[1024];
 	unsigned char type;
 	int32_t i, ret, count=0;
 	struct s_cacheex_matcher *new_cacheex_matcher = NULL, *entry, *last=NULL;
 	uint32_t line = 0;
-
-	const char *cs_cacheex_matcher="oscam.cacheex";
-
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_cacheex_matcher);
-	fp=fopen(token, "r");
-
-	if (!fp) {
-		cs_log("can't open cacheex-matcher file %s", token);
-		return NULL;
-	}
 
 	while (fgets(token, sizeof(token), fp)) {
 		line++;
@@ -6512,3 +4307,40 @@ void cacheex_matcher_read(void) {
 	}
 }
 #endif
+
+void init_len4caid(void)
+{
+	FILE *fp = open_config_file(cs_l4ca);
+	if (!fp)
+		return;
+
+	int32_t nr;
+	char *value, *token;
+
+	if(!cs_malloc(&token, MAXLINESIZE, -1)) return;
+
+	memset(len4caid, 0, sizeof(uint16_t)<<8);
+	for(nr = 0; fgets(token, MAXLINESIZE, fp);) {
+		int32_t i, c;
+		char *ptr;
+		if (!(value=strchr(token, ':')))
+			continue;
+		*value++ ='\0';
+		if( (ptr = strchr(value, '#')) )
+			*ptr = '\0';
+		if (strlen(trim(token)) != 2)
+			continue;
+		if (strlen(trim(value)) != 4)
+			continue;
+		if ((i = byte_atob(token)) < 0)
+			continue;
+		if ((c = word_atob(value)) < 0)
+			continue;
+		len4caid[i] = c;
+		nr++;
+	}
+	free(token);
+	fclose(fp);
+	cs_log("%d lengths for caid guessing loaded", nr);
+	return;
+}

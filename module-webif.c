@@ -206,28 +206,37 @@ static void setActiveSubMenu(struct templatevars *vars, int8_t active)
 	}
 }
 
-static char *send_oscam_config_global(struct templatevars *vars, struct uriparams *params) {
-	int32_t i;
+static void webif_save_config(char *section, struct templatevars *vars, struct uriparams *params) {
+	if (!streq(getParam(params, "action"), "execute"))
+		return;
+	if (cfg.http_readonly) {
+		tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
+		return;
+	}
+	int i;
+	int cnt = (*params).paramcount;
+	for (i = 0; i < cnt; i++) {
+		char *token = (*params).params[i];
+		char *value = (*params).values[i];
+		if (!streq(token, "part") && !streq(token, "action"))
+			config_set(section, token, value);
+	}
+	if (write_config() == 0) {
+		tpl_addMsg(vars, "Configuration was saved. You should restart OSCam now.");
+		enum refreshtypes ref_type = REFR_SERVER;
+		if (streq(getParam(params, "part"), "anticasc"))
+			ref_type = REFR_ANTICASC;
+		refresh_oscam(ref_type);
+	} else {
+		tpl_addMsg(vars, "ERROR: Failed to write config file!!!");
+	}
+}
 
+static char *send_oscam_config_global(struct templatevars *vars, struct uriparams *params) {
 	setActiveSubMenu(vars, MNU_CFG_GLOBAL);
 
-	if (strcmp(getParam(params, "action"), "execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_global((*params).params[i], (*params).values[i]);
-				}
-			}
-			if(cfg.usrfile == NULL) cfg.disableuserfile = 1;
-			if(cfg.mailfile == NULL) cfg.disablemail = 1;
-			tpl_addMsg(vars, "Configuration Global done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("global", vars, params);
+
 	if (IP_ISSET(cfg.srvip))
 	tpl_addVar(vars, TPLADD, "SERVERIP", cs_inet_ntoa(cfg.srvip));
 	tpl_printf(vars, TPLADD, "NICE", "%d", cfg.nice);
@@ -316,8 +325,6 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 
 #ifdef WITH_LB
 static char *send_oscam_config_loadbalancer(struct templatevars *vars, struct uriparams *params) {
-	int32_t i;
-
 	setActiveSubMenu(vars, MNU_CFG_LOADBAL);
 	
 	if(strlen(getParam(params, "button")) > 0){
@@ -352,21 +359,7 @@ static char *send_oscam_config_loadbalancer(struct templatevars *vars, struct ur
 		}
 	}
 
-	if (strcmp(getParam(params, "action"),"execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_global((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration Loadbalancer done.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("global", vars, params);
 
 	tpl_printf(vars, TPLADD, "TMP", "LBMODE%d", cfg.lb_mode);
 	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
@@ -409,21 +402,7 @@ static char *send_oscam_config_camd33(struct templatevars *vars, struct uriparam
 
 	setActiveSubMenu(vars, MNU_CFG_CAMD33);
 
-	if (strcmp(getParam(params, "action"), "execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_camd33((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration camd33 done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("camd33", vars, params);
 
 	if (cfg.c33_port) {
 		tpl_printf(vars, TPLADD, "PORT", "%d", cfg.c33_port);
@@ -442,25 +421,9 @@ static char *send_oscam_config_camd33(struct templatevars *vars, struct uriparam
 
 #ifdef MODULE_CAMD35
 static char *send_oscam_config_camd35(struct templatevars *vars, struct uriparams *params) {
-	int32_t i;
-
 	setActiveSubMenu(vars, MNU_CFG_CAMD35);
 
-	if ((strcmp(getParam(params, "action"),"execute") == 0) && (getParam(params, "port"))[0]) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_camd35((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration camd35 done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("cs357x", vars, params);
 
 	if (cfg.c35_port) {
 		tpl_printf(vars, TPLADD, "PORT", "%d", cfg.c35_port);
@@ -477,25 +440,9 @@ static char *send_oscam_config_camd35(struct templatevars *vars, struct uriparam
 
 #ifdef MODULE_CAMD35_TCP
 static char *send_oscam_config_camd35tcp(struct templatevars *vars, struct uriparams *params) {
-	int32_t i;
-
 	setActiveSubMenu(vars, MNU_CFG_CAMD35TCP);
 
-	if ((strcmp(getParam(params, "action"),"execute") == 0) && (getParam(params, "port"))[0]) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_camd35_tcp((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration camd35 TCP done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("cs378x", vars, params);
 
 	if ((cfg.c35_tcp_ptab.nports > 0) && (cfg.c35_tcp_ptab.ports[0].s_port > 0)) {
 
@@ -515,25 +462,9 @@ static char *send_oscam_config_camd35tcp(struct templatevars *vars, struct uripa
 
 #ifdef CS_CACHEEX
 static char *send_oscam_config_csp(struct templatevars *vars, struct uriparams *params) {
-	int32_t i;
-
 	setActiveSubMenu(vars, MNU_CFG_CSP);
 
-	if ((strcmp(getParam(params, "action"),"execute") == 0) && (getParam(params, "port"))[0]) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_csp((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration CSP done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("csp", vars, params);
 
 	if (IP_ISSET(cfg.csp_srvip))
 		tpl_addVar(vars, TPLAPPEND, "SERVERIP", cs_inet_ntoa(cfg.csp_srvip));
@@ -554,21 +485,7 @@ static char *send_oscam_config_newcamd(struct templatevars *vars, struct uripara
 
 	setActiveSubMenu(vars, MNU_CFG_NEWCAMD);
 
-	if (strcmp(getParam(params, "action"),"execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_newcamd((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration Newcamd done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("newcamd", vars, params);
 
 	if ((cfg.ncd_ptab.nports > 0) && (cfg.ncd_ptab.ports[0].s_port > 0)) {
 
@@ -596,25 +513,10 @@ static char *send_oscam_config_newcamd(struct templatevars *vars, struct uripara
 
 #ifdef MODULE_RADEGAST
 static char *send_oscam_config_radegast(struct templatevars *vars, struct uriparams *params) {
-	int32_t i;
-
 	setActiveSubMenu(vars, MNU_CFG_RADEGAST);
 
-	if (strcmp(getParam(params, "action"),"execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_radegast((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration Radegast done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("radegast", vars, params);
+
 	tpl_printf(vars, TPLADD, "PORT", "%d", cfg.rad_port);
 	if (IP_ISSET(cfg.rad_srvip))
 	tpl_addVar(vars, TPLADD, "SERVERIP", cs_inet_ntoa(cfg.rad_srvip));
@@ -642,23 +544,10 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 		tpl_addMsg(vars, "Refresh Shares started");
 	}
 
-	int32_t i;
-	if (strcmp(getParam(params, "action"),"execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_cccam((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration CCCam done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-			cc_update_nodeid();
-		}
-	}
+	webif_save_config("cccam", vars, params);
+
+	if (streq(getParam(params, "action"), "execute") && !cfg.http_readonly)
+		cc_update_nodeid();
 
 	char *value = mk_t_cccam_port();
 	tpl_addVar(vars, TPLAPPEND, "PORT", value);
@@ -728,16 +617,27 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 			for(i = 0; i < (*params).paramcount; ++i) {
 				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
 					//we use the same function as used for parsing the config tokens
-					if (strstr((*params).params[i], "http")) {
-						chk_t_webif((*params).params[i], (*params).values[i]);
-					}
-#ifdef LCDSUPPORT
-					else if (strstr((*params).params[i], "lcd")) {
-						chk_t_lcd((*params).params[i], (*params).values[i]);
-					}
+					if (strstr((*params).params[i], "lcd")) {
+						config_set("lcd", (*params).params[i], (*params).values[i]);
+					} else {
+						// FIXME: The following is A HACK! It must be removed when monitor/webif/lcd
+						// options are split.
+						// The hack is added so we don't get such errors when saving webif:
+						//     WARNING: In section [webif] unknown setting 'port=1122' tried.
+						int r, ok = 1;
+						const char *monitor_hack[4] = { "port", "serverip", "nocrypt", "monlevel" };
+						for (r = 0; r < 4; r++) {
+							if (streq(monitor_hack[r], (*params).params[i])) {
+								ok = 0;
+								break;
+							}
+						}
+						if (ok)
+							config_set("webif", (*params).params[i], (*params).values[i]);
+#ifdef MODULE_MONITOR
+						if (!strstr((*params).params[i], "http"))
+							config_set("monitor", (*params).params[i], (*params).values[i]);
 #endif
-					else {
-						chk_t_monitor((*params).params[i], (*params).values[i]);
 					}
 				}
 			}
@@ -749,31 +649,29 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	tpl_printf(vars, TPLADD, "MONPORT", "%d", cfg.mon_port);
 	if (IP_ISSET(cfg.mon_srvip))
 	tpl_addVar(vars, TPLADD, "SERVERIP", cs_inet_ntoa(cfg.mon_srvip));
-	tpl_printf(vars, TPLADD, "AULOW", "%d", cfg.mon_aulow);
-	tpl_printf(vars, TPLADD, "HIDECLIENTTO", "%d", cfg.mon_hideclient_to);
-	if(cfg.mon_appendchaninfo)
+
+	tpl_printf(vars, TPLADD, "AULOW", "%d", cfg.aulow);
+	tpl_printf(vars, TPLADD, "HIDECLIENTTO", "%d", cfg.hideclient_to);
+	if (cfg.appendchaninfo)
 		tpl_addVar(vars, TPLADD, "APPENDCHANINFO", "checked");
 
-#ifdef WITH_SSL
-	if(cfg.http_use_ssl)
-		tpl_printf(vars, TPLADD, "HTTPPORT", "+%d", cfg.http_port);
-	else
-		tpl_printf(vars, TPLADD, "HTTPPORT", "%d", cfg.http_port);
-#else
-	tpl_printf(vars, TPLADD, "HTTPPORT", "%d", cfg.http_port);
-#endif
+	tpl_printf(vars, TPLADD, "HTTPPORT", "%s%d", cfg.http_use_ssl ? "+" : "", cfg.http_port);
 
 	tpl_addVar(vars, TPLADD, "HTTPUSER", cfg.http_user);
 	tpl_addVar(vars, TPLADD, "HTTPPASSWORD", cfg.http_pwd);
 
 	// css style selector
-	tpl_printf(vars, TPLADD, "CSSOPTIONS", "\t\t\t\t\t\t<option value=\"\"%s>embedded</option>\n", strlen(cfg.http_css) == 0?" selected" : "");
+	tpl_printf(vars, TPLADD, "CSSOPTIONS", "\t\t\t\t\t\t<option value=\"\"%s>embedded</option>\n",
+		cfg.http_css ? " selected" : "");
 		
-	if(strlen(cfg.http_tpl) > 0) {
+	if(cfg.http_tpl) {
 		char path[255];
 		tpl_getFilePathInSubdir(cfg.http_tpl, "", "style", ".css", path, 255);
 		if(file_exists(path))
-			tpl_printf(vars, TPLAPPEND, "CSSOPTIONS", "\t\t\t\t\t\t<option value=\"%s\"%s>%s (template)</option>\n", path, strstr(cfg.http_css, path)? " selected" : "", path);
+			tpl_printf(vars, TPLAPPEND, "CSSOPTIONS", "\t\t\t\t\t\t<option value=\"%s\"%s>%s (template)</option>\n",
+				path,
+				cfg.http_css && strstr(cfg.http_css, path) ? " selected" : "",
+				path);
 	}
 
 	DIR *hdir;
@@ -782,7 +680,11 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	if((hdir = opendir(cs_confdir)) != NULL){
 		while(cs_readdir_r(hdir, &entry, &result) == 0 && result != NULL){
 			if (strCmpSuffix(entry.d_name, ".css")) {
-				tpl_printf(vars, TPLAPPEND, "CSSOPTIONS", "\t\t\t\t\t\t<option value=\"%s%s\"%s>%s%s</option>\n",cs_confdir,entry.d_name,strstr(cfg.http_css, entry.d_name)?" selected" : "", cs_confdir,entry.d_name);
+				tpl_printf(vars, TPLAPPEND, "CSSOPTIONS", "\t\t\t\t\t\t<option value=\"%s%s\"%s>%s%s</option>\n",
+					cs_confdir,
+					entry.d_name,
+					cfg.http_css && strstr(cfg.http_css, entry.d_name) ? " selected" : "",
+					cs_confdir,entry.d_name);
 			}
 		}
 		closedir(hdir);
@@ -791,12 +693,8 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	if(cfg.http_prepend_embedded_css)
 		tpl_addVar(vars, TPLADD, "HTTPPREPENDEMBEDDEDCSS", "checked");
 
-	if (cfg.http_help_lang[0])
-		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
-	else
-		tpl_addVar(vars, TPLADD, "HTTPHELPLANG", "en");
-
-	if(cs_http_use_utf8)
+	tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
+	if(cfg.http_use_utf8)
 		tpl_addVar(vars,TPLADD,"HTTPUTF8","selected");
 
 	tpl_printf(vars, TPLADD, "HTTPREFRESH", "%d", cfg.http_refresh);
@@ -849,31 +747,14 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 
 #ifdef MODULE_SERIAL
 static char *send_oscam_config_serial(struct templatevars *vars, struct uriparams *params) {
-	int32_t i;
-
 	setActiveSubMenu(vars, MNU_CFG_SERIAL);
 
-	char *saveptr1 = NULL;
-	if (strcmp(getParam(params, "action"),"execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_serial((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration Serial done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("serial", vars, params);
 
-	if (cfg.ser_device[0]){
-		char sdevice[512];
+	if (cfg.ser_device) {
+		char sdevice[strlen(cfg.ser_device)];
 		cs_strncpy(sdevice, cfg.ser_device, sizeof(sdevice));
-		char *ptr;
+		char *ptr, *saveptr1 = NULL;
 		char delimiter[2]; delimiter[0] = 1; delimiter[1] = '\0';
 		for(ptr = strtok_r(sdevice, delimiter, &saveptr1); ptr; ptr = strtok_r(NULL, delimiter, &saveptr1)){
 			tpl_addVar(vars, TPLADD, "SERIALDEVICE", ptr);
@@ -894,21 +775,7 @@ static char *send_oscam_config_dvbapi(struct templatevars *vars, struct uriparam
 
 	setActiveSubMenu(vars, MNU_CFG_DVBAPI);
 
-	if (strcmp(getParam(params, "action"),"execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_dvbapi((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration DVB Api done. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("dvbapi", vars, params);
 
 	if (cfg.dvbapi_enabled > 0)
 		tpl_addVar(vars, TPLADD, "ENABLEDCHECKED", "checked");
@@ -927,8 +794,7 @@ static char *send_oscam_config_dvbapi(struct templatevars *vars, struct uriparam
 		tpl_printf(vars, TPLAPPEND, "BOXTYPE", "<option%s>%s</option>\n", cfg.dvbapi_boxtype == i ? " selected" : "", boxdesc[i]);
 	}
 
-	if(cfg.dvbapi_usr[0])
-		tpl_addVar(vars, TPLADD, "USER", cfg.dvbapi_usr);
+	tpl_addVar(vars, TPLADD, "USER", cfg.dvbapi_usr);
 
 	//PMT Mode
 	tpl_printf(vars, TPLADD, "TMP", "PMTMODESELECTED%d", cfg.dvbapi_pmtmode);
@@ -944,25 +810,10 @@ static char *send_oscam_config_dvbapi(struct templatevars *vars, struct uriparam
 
 #ifdef CS_ANTICASC
 static char *send_oscam_config_anticasc(struct templatevars *vars, struct uriparams *params) {
-	int32_t i;
-
 	setActiveSubMenu(vars, MNU_CFG_ANTICASC);
 
-	if (strcmp(getParam(params, "action"),"execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					chk_t_ac((*params).params[i], (*params).values[i]);
-				}
-			}
-			tpl_addMsg(vars, "Configuration Anticascading done.");
-			refresh_oscam(REFR_ANTICASC);
-			if(write_config()!=0) tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
+	webif_save_config("anticasc", vars, params);
+
 	if (cfg.ac_enabled > 0) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
 	tpl_printf(vars, TPLADD, "NUMUSERS", "%d", cfg.ac_users);
 	tpl_printf(vars, TPLADD, "SAMPLETIME", "%d", cfg.ac_stime);
@@ -971,7 +822,8 @@ static char *send_oscam_config_anticasc(struct templatevars *vars, struct uripar
 	tpl_printf(vars, TPLADD, "TMP", "PENALTY%d", cfg.ac_penalty);
 	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
 
-	tpl_addVar(vars, TPLADD, "ACLOGFILE", cfg.ac_logfile);
+	if (cfg.ac_logfile)
+		tpl_addVar(vars, TPLADD, "ACLOGFILE", cfg.ac_logfile);
 	tpl_printf(vars, TPLADD, "FAKEDELAY", "%d", cfg.ac_fakedelay);
 	tpl_printf(vars, TPLADD, "DENYSAMPLES", "%d", cfg.ac_denysamples);
 	return tpl_getTpl(vars, "CONFIGANTICASC");
@@ -2469,7 +2321,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		if(latestactivity > 0){
 			isec = now - latestactivity;
 			chsec = latestclient->lastswitch ? now - latestclient->lastswitch : 0;
-			if(isec < cfg.mon_hideclient_to) {
+			if (isec < cfg.hideclient_to) {
 				isactive = 1;
 				status = (!apicall) ? "<b>online</b>" : "online";
 				if(account->expirationdate && account->expirationdate < now) classname = "expired";
@@ -3015,7 +2867,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 		}
 		else {
 			int32_t oldval = cfg.http_hide_idle_clients;
-			chk_t_webif("httphideidleclients", hideidle);
+			config_set("webif", "httphideidleclients", hideidle);
 			if(oldval != cfg.http_hide_idle_clients) {
 				refresh_oscam(REFR_SERVER);
 			}
@@ -3057,12 +2909,10 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 		shown = 0;
 		if (cl->wihidden != 1) {
-
-			if((cfg.http_hide_idle_clients != 1) || (cl->typ != 'c') || ((now - cl->lastecm) <= cfg.mon_hideclient_to)) {
-
+			if (cfg.http_hide_idle_clients != 1 || cl->typ != 'c' || (now - cl->lastecm) <= cfg.hideclient_to) {
 				if (cl->typ=='c'){
 					user_count_shown++;
-					if (cfg.http_hide_idle_clients != 1 && cfg.mon_hideclient_to > 0 && (now - cl->lastecm) <= cfg.mon_hideclient_to){
+					if (cfg.http_hide_idle_clients != 1 && cfg.hideclient_to > 0 && (now - cl->lastecm) <= cfg.hideclient_to) {
 						user_count_active++;
 						tpl_addVar(vars, TPLADD, "CLIENTTYPE", "a");
 					} else tpl_addVar(vars, TPLADD, "CLIENTTYPE", "c");					
@@ -3092,7 +2942,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 				// no AU reader == 0 / AU ok == 1 / Last EMM > aulow == -1
 				if(cl->typ == 'c' || cl->typ == 'p' || cl->typ == 'r'){
 					if ((cl->typ == 'c' && ll_count(cl->aureader_list) == 0) || ((cl->typ == 'p' || cl->typ == 'r') && cl->reader->audisabled)) cau = 0;
-					else if ((now-cl->lastemm)/60 > cfg.mon_aulow) cau = -1;
+					else if ((now-cl->lastemm) / 60 > cfg.aulow) cau = -1;
 					else cau = 1;
 
 					if (!apicall){
@@ -3206,8 +3056,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 				tpl_addVar(vars, TPLADD, "CLIENTLASTRESPONSETIMEHIST", value);
 				free_mk_t(value);
 
-				if (isec < cfg.mon_hideclient_to || cfg.mon_hideclient_to == 0) {
-
+				if (isec < cfg.hideclient_to || cfg.hideclient_to == 0) {
 					if (((cl->typ!='r') || (cl->typ!='p')) && (cl->lastreader[0])) {
 						tpl_printf(vars, TPLADD, "CLIENTLBVALUE", "by %s", cl->lastreader);
 						tpl_printf(vars, TPLAPPEND, "CLIENTLBVALUE", "&nbsp;(%dms)", cl->cwlastresptime);
@@ -3219,7 +3068,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 					tpl_printf(vars, TPLADD, "CLIENTSRVID", "%04X", cl->last_srvid);
 					tpl_printf(vars, TPLADD, "CLIENTLASTRESPONSETIME", "%d", cl->cwlastresptime?cl->cwlastresptime:1);
 
-					if(!cfg.mon_appendchaninfo){
+					if (!cfg.appendchaninfo) {
 						char channame[32];
 						get_servicename(cl, cl->last_srvid, cl->last_caid, channame);
 					}
@@ -3379,10 +3228,13 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 			// select right suborder
 			if (cl->typ == 'c') {
 				if (shown) tpl_addVar(vars, TPLAPPEND, "CLIENTSTATUS", tpl_getTpl(vars, "CLIENTSTATUSBIT"));
-				if(cfg.http_hide_idle_clients == 1 || cfg.mon_hideclient_to < 1) tpl_printf(vars, TPLADD, "CLIENTHEADLINE", "\t\t<TR><TD CLASS=\"subheadline\" colspan=\"17\">Clients %d/%d</TD></TR>\n",
+				if (cfg.http_hide_idle_clients == 1 || cfg.hideclient_to < 1) {
+					tpl_printf(vars, TPLADD, "CLIENTHEADLINE", "\t\t<TR><TD CLASS=\"subheadline\" colspan=\"17\">Clients %d/%d</TD></TR>\n",
 						user_count_shown, user_count_all);
-				else tpl_printf(vars, TPLADD, "CLIENTHEADLINE", "\t\t<TR><TD CLASS=\"subheadline\" colspan=\"17\">Clients %d/%d (%d with ECM within last %d seconds)</TD></TR>\n",
-						user_count_shown, user_count_all, user_count_active, cfg.mon_hideclient_to);
+				} else {
+					tpl_printf(vars, TPLADD, "CLIENTHEADLINE", "\t\t<TR><TD CLASS=\"subheadline\" colspan=\"17\">Clients %d/%d (%d with ECM within last %d seconds)</TD></TR>\n",
+						user_count_shown, user_count_all, user_count_active, cfg.hideclient_to);
+				}
 			}
 			else if (cl->typ == 'r') {
 				if (shown) tpl_addVar(vars, TPLAPPEND, "READERSTATUS", tpl_getTpl(vars, "CLIENTSTATUSBIT"));
@@ -3663,7 +3515,7 @@ static char *send_oscam_services(struct templatevars *vars, struct uriparams *pa
 }
 
 static char *send_oscam_savetpls(struct templatevars *vars) {
-	if(strlen(cfg.http_tpl) > 0) {
+	if(cfg.http_tpl) {
 		tpl_printf(vars, TPLADD, "CNT", "%d", tpl_saveIncludedTpls(cfg.http_tpl));
 		tpl_addVar(vars, TPLADD, "PATH", cfg.http_tpl);
 	} else tpl_addVar(vars, TPLADD, "CNT", "0");
@@ -3733,7 +3585,7 @@ static char *send_oscam_script(struct templatevars *vars) {
 	char *result = "not found";
 	int32_t rc = 0;
 	if(!cfg.http_readonly) {
-		if(cfg.http_script[0]) {
+		if (cfg.http_script) {
 			tpl_addVar(vars, TPLADD, "SCRIPTNAME",cfg.http_script);
 			rc = system(cfg.http_script);
 			if(rc == -1) {
@@ -3954,7 +3806,7 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 #ifdef CS_ANTICASC
 	else if (!apicall && strcmp(getParam(params, "file"), "anticasc") == 0){
 		setActiveSubMenu(vars, MNU_CFG_FACLOG);
-		snprintf(targetfile, 255,"%s", cfg.ac_logfile);
+		snprintf(targetfile, 255, "%s", cfg.ac_logfile ? cfg.ac_logfile : "");
 	}
 #endif
 
@@ -4191,9 +4043,11 @@ static char *send_oscam_api(struct templatevars *vars, FILE *f, struct uriparams
 				shown = 0;
 				if (strcmp(getParam(params, "label"),"") == 0) {
 					if (strcmp(getParam(params, "type"),"servers") == 0) {
-						if ( (cl->typ=='p') || (cl->typ=='r') ) shown = 1;
+						if (cl->typ == 'p' || cl->typ=='r')
+							shown = 1;
 					} else if (strcmp(getParam(params, "type"),"users") == 0) {
-						if ( (cl->typ=='c') ) shown = 1;
+						if (cl->typ == 'c')
+							shown = 1;
 					} else {
 						shown = 1;
 					}
@@ -4265,7 +4119,7 @@ static char *send_oscam_image(struct templatevars *vars, FILE *f, struct uripara
 	if(strlen(wanted) > 3 && wanted[0] == 'I' && wanted[1] == 'C'){
 		if(etagheader == 0){
 			int8_t disktpl = 0;
-			if(strlen(cfg.http_tpl) > 0){
+			if (cfg.http_tpl) {
 		  	char path[255];
 		  	if(strlen(tpl_getTplPath(wanted, cfg.http_tpl, path, 255)) > 0 && file_exists(path)){
 		  		struct stat st;
@@ -4725,8 +4579,10 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 	
 		parseParams(&params, pch);
 	
-		if(strlen(cfg.http_user) == 0 || strlen(cfg.http_pwd) == 0) authok = 1;
-		else calculate_nonce(expectednonce);
+		if (!cfg.http_user || !cfg.http_pwd)
+			authok = 1;
+		else
+			calculate_nonce(expectednonce);
 	
 		for (str1=strtok_r(tmp, "\n", &saveptr1); str1; str1=strtok_r(NULL, "\n", &saveptr1)) {
 			len = strlen(str1);
@@ -4797,7 +4653,7 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 	
 			tpl_addVar(vars, TPLADD, "CS_VERSION", CS_VERSION);
 			tpl_addVar(vars, TPLADD, "CS_SVN_VERSION", CS_SVN_VERSION);
-			tpl_addVar(vars, TPLADD, "HTTP_CHARSET", cs_http_use_utf8?"UTF-8":"ISO-8859-1");
+			tpl_addVar(vars, TPLADD, "HTTP_CHARSET", cfg.http_use_utf8?"UTF-8":"ISO-8859-1");
 			if(cfg.http_refresh > 0 && (pgidx == 3 || pgidx == -1)) {
 				tpl_printf(vars, TPLADD, "REFRESHTIME", "%d", cfg.http_refresh);
 				tpl_addVar(vars, TPLADD, "REFRESHURL", "status.html");
@@ -4826,11 +4682,7 @@ static int32_t process_request(FILE *f, struct in_addr in) {
 			}
 	
 			// language code in helplink
-			if (cfg.http_help_lang[0])
-				tpl_addVar(vars, TPLADD, "LANGUAGE", cfg.http_help_lang);
-			else
-				tpl_addVar(vars, TPLADD, "LANGUAGE", "en");
-	
+			tpl_addVar(vars, TPLADD, "LANGUAGE", cfg.http_help_lang);
 			tpl_addVar(vars, TPLADD, "UPTIME", sec2timeformat(vars, (now - first_client->login)));
 			tpl_addVar(vars, TPLADD, "CURIP", cs_inet_ntoa(addr));
 			if(cfg.http_readonly)

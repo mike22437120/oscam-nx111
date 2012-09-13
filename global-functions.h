@@ -147,35 +147,18 @@ extern void free_sidtab(struct s_sidtab *sidtab);
 extern void init_free_sidtab(void);
 extern int32_t init_provid(void);
 
+extern void config_set(char *section, const char *token, char *value);
+
 extern int32_t  init_srvid(void);
 extern int32_t  init_tierid(void);
-extern int32_t  search_boxkey(uint16_t, char *);
 extern void init_len4caid(void);
 extern int32_t  init_irdeto_guess_tab(void);
-extern void chk_t_ac(char *token, char *value);
-extern void chk_t_camd33(char *token, char *value);
-extern void chk_t_camd35(char *token, char *value);
-extern void chk_t_camd35_tcp(char *token, char *value);
-extern void chk_t_newcamd(char *token, char *value);
-extern void chk_t_radegast(char *token, char *value);
-extern void chk_t_serial(char *token, char *value);
-extern void chk_t_gbox(char *token, char *value);
-extern void chk_t_cccam(char *token, char *value);
-extern void chk_t_csp(char *token, char *value);
 extern int32_t csp_ecm_hash(ECM_REQUEST *er);
-
-extern void chk_t_global(const char *token, char *value);
-extern void chk_t_monitor(char *token, char *value);
 extern void chk_reader(char *token, char *value, struct s_reader *rdr);
 
-extern void chk_t_dvbapi(char *token, char *value);
 extern void dvbapi_chk_caidtab(char *caidasc, char type);
 extern void dvbapi_read_priority(void);
 extern void dvbapi_main_exit();
-
-extern void chk_t_webif(char *token, char *value);
-
-extern void chk_t_lcd(char *token, char *value);
 
 extern void cs_accounts_chk(void);
 extern void chk_account(const char *token, char *value, struct s_auth *account);
@@ -428,6 +411,9 @@ extern int32_t ecmfmt(uint16_t caid, uint32_t prid, uint16_t chid, uint16_t pid,
 extern int32_t format_ecm(ECM_REQUEST *ecm, char *result, size_t size);
 extern int32_t format_cxm(struct s_cacheex_matcher *entry, char *result, size_t size);
 extern int8_t cs_cacheex_maxhop(struct s_client *cl);
+
+extern int streq(const char *s1, const char *s2);
+
 /* ===========================
  *       module-cccshare
  * =========================== */

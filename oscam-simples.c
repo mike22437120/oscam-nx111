@@ -457,7 +457,13 @@ char *cs_inet_ntoa(IN_ADDR_T addr)
 void cs_inet_addr(char *txt, IN_ADDR_T *out)
 {
 #ifdef IPV6SUPPORT
-	inet_pton(AF_INET6, txt, out->s6_addr);
+	static char buff[INET6_ADDRSTRLEN];
+	//trying as IPv6 address
+	if (inet_pton(AF_INET6, txt, out->s6_addr) == 0) {
+		//now trying as mapped IPv4
+		snprintf(buff, sizeof(buff), "::ffff:%s", txt);
+		inet_pton(AF_INET6, buff, out->s6_addr);
+	}
 #else
 	*out = inet_addr(txt);
 #endif
@@ -473,6 +479,10 @@ int32_t cs_in6addr_lt(struct in6_addr *a, struct in6_addr *b)
 {
 	int i;
 	for (i=0; i<4; i++) {
+		if ((i == 2) && ((IN6_IS_ADDR_V4COMPAT(a) && IN6_IS_ADDR_V4MAPPED(b)) ||
+				 (IN6_IS_ADDR_V4COMPAT(b) && IN6_IS_ADDR_V4MAPPED(a))))
+			continue;	//skip comparing this part
+
 		if (a->s6_addr32[i] != b->s6_addr32[i])
 			return ntohl(a->s6_addr32[i]) < ntohl(b->s6_addr32[i]);
 	}
@@ -541,6 +551,7 @@ int32_t check_ip(struct s_ip *ip, IN_ADDR_T n)
 	for (p_ip=ip; (p_ip) && (!ok); p_ip=p_ip->next) {
 		ok  = cs_in6addr_lt(&n, &p_ip->ip[0]);
 		ok |= cs_in6addr_lt(&p_ip->ip[1], &n);
+		ok = !ok;
 	}
 #else
 	for (p_ip=ip; (p_ip) && (!ok); p_ip=p_ip->next)
@@ -1568,7 +1579,7 @@ int32_t add_ms_to_timeb(struct timeb *tb, int32_t ms) {
 
 int32_t ecmfmt(uint16_t caid, uint32_t prid, uint16_t chid, uint16_t pid, uint16_t srvid, uint16_t l, uint16_t checksum, char *result, size_t size)
 {
-	if (!cfg.ecmfmt[0])
+	if (!cfg.ecmfmt)
 		return snprintf(result, size, "%04X&%06X/%04X/%04X/%02X:%04X", caid, prid, chid, srvid, l, htons(checksum));
 
 	uint32_t s=0, zero=0, flen=0, value=0;
@@ -1666,14 +1677,18 @@ struct s_cardsystem *get_cardsystem_by_caid(uint16_t caid) {
 	for (i = 0; i < CS_MAX_MOD; i++) {
 		if (cardsystem[i].caids) {
 			for (j = 0; j < 2; j++) {
-				if (cardsystem[i].caids[j] == caid)
+				uint16_t cs_caid = cardsystem[i].caids[j];
+				if (cs_caid == caid || cs_caid == caid >> 8)
 					return &cardsystem[i];
-				if ((cardsystem[i].caids[j]==caid >> 8)) {
-					return &cardsystem[i];
-				}
 			}
 		}
 	}
 	return NULL;
 }
 
+int streq(const char *s1, const char *s2) {
+	if (!s1 && s2) return 0;
+	if (s1 && !s2) return 0;
+	if (!s1 && !s2) return 1;
+	return strcmp(s1, s2) == 0;
+}
