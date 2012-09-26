@@ -30,6 +30,7 @@ extern void reader_conax(struct s_cardsystem *);
 extern void reader_seca(struct s_cardsystem *);
 extern void reader_videoguard1(struct s_cardsystem *);
 extern void reader_videoguard2(struct s_cardsystem *);
+extern void reader_videoguard11(struct s_cardsystem *);
 extern void reader_videoguard12(struct s_cardsystem *);
 extern void reader_dre(struct s_cardsystem *);
 extern void reader_tongfang(struct s_cardsystem *);
@@ -61,8 +62,9 @@ extern void global_whitelist_read(void);
 extern struct s_cacheex_matcher *is_cacheex_matcher_matching(ECM_REQUEST *er, ECM_REQUEST *ecm);
 extern void cacheex_matcher_read(void);
 
-extern void cacheex_update_peer_id(void);
+extern uint8_t *cacheex_update_peer_id(void);
 extern void cacheex_set_peer_id(uint8_t *id);
+static inline uint64_t cnode(void *var) { uint64_t *x = var; return *x; }
 extern uint8_t *cc_get_cccam_node_id(void);
 
 extern void qboxhd_led_blink(int32_t color, int32_t duration);
@@ -87,7 +89,6 @@ extern int32_t read_from_pipe(struct s_client *, uchar **);
 extern int32_t write_ecm_answer(struct s_reader *, ECM_REQUEST *, int8_t, uint8_t, uchar *, char *);
 extern uint32_t chk_provid(uchar *, uint16_t);
 extern void convert_to_beta(struct s_client *cl, ECM_REQUEST *er, uint16_t caidto);
-extern void guess_irdeto(ECM_REQUEST *);
 extern void get_cw(struct s_client *, ECM_REQUEST *);
 extern void do_emm(struct s_client *, EMM_PACKET *);
 extern ECM_REQUEST *get_ecmtask(void);
@@ -155,13 +156,14 @@ extern void config_free(void);
 extern int32_t  init_srvid(void);
 extern int32_t  init_tierid(void);
 extern void init_len4caid(void);
-extern int32_t  init_irdeto_guess_tab(void);
 extern int32_t csp_ecm_hash(ECM_REQUEST *er);
 extern void chk_reader(char *token, char *value, struct s_reader *rdr);
 
 extern void dvbapi_chk_caidtab(char *caidasc, char type);
 extern void dvbapi_read_priority(void);
 extern void dvbapi_main_exit();
+
+void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f);
 
 extern void cs_accounts_chk(void);
 extern void chk_account(const char *token, char *value, struct s_auth *account);
@@ -191,6 +193,7 @@ extern char *mk_t_cltab(CLASSTAB *clstab);
 extern char *mk_t_emmbylen(struct s_reader *rdr);
 extern char *mk_t_allowedprotocols(struct s_auth *account);
 extern void free_mk_t(char *value);
+extern void * read_cccamcfg(int32_t mode);
 
 /* ===========================
  *       oscam-garbage
@@ -380,7 +383,6 @@ extern void init_rnd(void);
 extern int32_t hexserialset(struct s_reader *rdr);
 extern char *monitor_get_proto(struct s_client *);
 extern char *reader_get_type_desc(struct s_reader * rdr, int32_t extended);
-extern char *get_ncd_client_name(char *client_id);
 extern int32_t cs_strnicmp(const char * str1, const char * str2, size_t num);
 extern char *strnew(char *str);
 extern void hexserial_to_newcamd(uchar *source, uchar *dest, uint16_t caid);
@@ -417,6 +419,11 @@ extern int32_t format_cxm(struct s_cacheex_matcher *entry, char *result, size_t 
 extern int8_t cs_cacheex_maxhop(struct s_client *cl);
 
 extern int streq(const char *s1, const char *s2);
+
+/* ===========================
+ *       module-newcamd
+ * =========================== */
+extern const char *newcamd_get_client_name(uint16_t client_id);
 
 /* ===========================
  *       module-cccshare

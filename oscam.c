@@ -7,6 +7,7 @@
 #if defined(WITH_AZBOX) && defined(HAVE_DVBAPI)
 #include "openxcas/openxcas_api.h"
 #endif
+#include "module-ird-guess.h"
 
 static void cs_fake_client(struct s_client *client, char *usr, int32_t uniq, IN_ADDR_T ip);
 static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea);
@@ -75,6 +76,10 @@ char    *processUsername = NULL;
 #if defined(WEBIF) || defined(MODULE_MONITOR)
 char    *loghist = NULL;     // ptr of log-history
 char    *loghistptr = NULL;
+#endif
+
+#ifdef CS_CACHEEX
+uint8_t cacheex_peer_id[8];
 #endif
 
 #define debug_ecm(mask, args...) \
@@ -248,10 +253,11 @@ static void usage(void)
 	printf("Copyright (C) 2009-2012 OSCam developers.\n");
 	printf("This program is distributed under GPLv3.\n");
 	printf("OSCam is based on Streamboard mp-cardserver v0.9d written by dukat\n");
-	printf("Visit http://streamboard.de.vu/oscam/ for more details.\n\n");
+	printf("Visit http://www.streamboard.tv/oscam/ for more details.\n\n");
 
 	printf(" Features  :");
 	_check(WEBIF, "webif");
+	_check(TOUCH, "touch");
 	_check(MODULE_MONITOR, "monitor");
 	_check(WITH_SSL, "ssl");
 	if (!config_WITH_STAPI())
@@ -1991,7 +1997,7 @@ struct ecm_request_t *check_cwcache(ECM_REQUEST *er, struct s_client *cl)
 #endif
 			if (!(ecm->caid == er->caid || (ecm->ocaid && er->ocaid && ecm->ocaid == er->ocaid)))
 				continue;
-
+				
 #ifdef CS_CACHEEX
 			//CWs from csp have no ecms, so ecm->l=0. ecmd5 is invalid, so do not check!
 			if (ecm->csp_hash != er->csp_hash)
@@ -2053,7 +2059,32 @@ static void update_chid(ECM_REQUEST *er)
 }
 
 #ifdef CS_CACHEEX
-static int8_t cs_add_cache_int(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
+LLIST *invalid_cws;
+
+static void add_invalid_cw(uint8_t *cw) {
+    if (!invalid_cws) invalid_cws = ll_create("invalid cws");
+    uint8_t *cw2 = cs_malloc(&cw2, 16, 0);
+    memcpy(cw2, cw, 16);
+    ll_append(invalid_cws, cw2);
+    while (ll_count(invalid_cws) > 32) {
+        ll_remove_first_data(invalid_cws);        
+    }
+}
+
+static int32_t is_invalid_cw(uint8_t *cw) {
+    if (!invalid_cws) return 0;
+    
+    LL_LOCKITER *li = ll_li_create(invalid_cws, 0);
+    uint8_t *cw2;
+    int32_t invalid = 0;
+    while ((cw2 = ll_li_next(li)) && !invalid) {
+        invalid = (memcmp(cw, cw2, 16) == 0);
+    }
+    ll_li_destroy(li);
+    return invalid;
+}
+ 
+static int32_t cs_add_cache_int(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 {
 	if (!cl)
 		return 0;
@@ -2079,6 +2110,8 @@ static int8_t cs_add_cache_int(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 			if (er->cw[i + 3] != c) {
 				cs_ddump_mask(D_CACHEEX, er->cw, 16,
 						"push received cw with chksum error from %s", csp?"csp":username(cl));
+                                cl->cwcacheexerr++;
+                                if (cl->account) cl->account->cwcacheexerr++;
 				return 0;
 			}
 		}
@@ -2086,7 +2119,16 @@ static int8_t cs_add_cache_int(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 		if (null==0) {
 			cs_ddump_mask(D_CACHEEX, er->cw, 16,
 					"push received null cw from %s", csp?"csp":username(cl));
+                        cl->cwcacheexerr++;
+                        if (cl->account) cl->account->cwcacheexerr++;
 			return 0;
+		}
+		
+		if (is_invalid_cw(er->cw)) {
+		    cs_ddump_mask(D_TRACE, er->cw, 16, "push received invalid cw from %s", csp?"csp":username(cl));
+		    cl->cwcacheexerrcw++;
+		    if (cl->account) cl->account->cwcacheexerrcw++;
+		    return 0;
 		}
 	}
 
@@ -2112,8 +2154,18 @@ static int8_t cs_add_cache_int(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 
         	update_chid(er);
         }
+	else
+		er->checksum = er->csp_hash;
 
 	struct ecm_request_t *ecm = check_cwcache(er, cl);
+
+//	{
+//		char h1[20];
+//		char h2[10];
+//		cs_hexdump(0, er->ecmd5, sizeof(er->ecmd5), h1, sizeof(h1));
+//		cs_hexdump(0, (const uchar*)&er->csp_hash, sizeof(er->csp_hash), h2, sizeof(h2));
+//		debug_ecm(D_TRACE, "cache push check %s: %s %s %s rc=%d found cache: %s", username(cl), buf, h1, h2, er->rc, ecm==NULL?"no":"yes");
+//	}
 
 	if (!ecm) {
 	        if (er->rc < E_NOTFOUND) { // Do NOT add cacheex - not founds!
@@ -2123,9 +2175,8 @@ static int8_t cs_add_cache_int(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 	            cs_writeunlock(&ecmcache_lock);
 
 	            er->selected_reader = cl->reader;
-                }
 
-		cs_cache_push(er);  //cascade push!
+	            cs_cache_push(er);  //cascade push!
 
 		if (er->rc < E_NOTFOUND)
 		    cs_add_cacheex_stats(cl, er->caid, er->srvid, er->prid, 1);
@@ -2134,7 +2185,8 @@ static int8_t cs_add_cache_int(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 		if (cl->account)
 		    cl->account->cwcacheexgot++;
 		first_client->cwcacheexgot++;
-		
+	        }
+
 		debug_ecm(D_CACHEEX, "got pushed ECM %s from %s", buf, csp ? "csp" : username(cl));
 
                 if (er->rc < E_NOTFOUND)
@@ -2169,14 +2221,42 @@ static int8_t cs_add_cache_int(struct s_client *cl, ECM_REQUEST *er, int8_t csp)
 			debug_ecm(D_CACHEEX, "replaced pushed ECM %s from %s", buf, csp ? "csp" : username(cl));
 		} else {
 		        if (er->rc < E_NOTFOUND && memcmp(er->cw, ecm->cw, sizeof(er->cw)) != 0) {
+                                add_invalid_cw(ecm->cw);
+                                add_invalid_cw(er->cw);
+                                
+                                cl->cwcacheexerrcw++;
+                                if (cl->account) cl->account->cwcacheexerrcw++;
+                                
 		                char cw1[16*3+2], cw2[16*3+2];
 		                cs_hexdump(0, er->cw, 16, cw1, sizeof(cw1));
 		                cs_hexdump(0, ecm->cw, 16, cw2, sizeof(cw2));
 		                
-        			debug_ecm(D_TRACE, "WARNING: Different CWs %s from %s<>%s: %s<>%s", buf, 
-        			    csp ? "csp" : username(cl),
-        			    ecm->cacheex_src?username(ecm->cacheex_src):"unknown/csp",
-        			    cw1, cw2);
+		                char ip1[20]="", ip2[20]="";
+		                if (cl) cs_strncpy(ip1, cs_inet_ntoa(cl->ip), sizeof(ip1));
+		                if (ecm->cacheex_src) cs_strncpy(ip2, cs_inet_ntoa(ecm->cacheex_src->ip), sizeof(ip2));
+		                else if (ecm->selected_reader) cs_strncpy(ip2, cs_inet_ntoa(ecm->selected_reader->client->ip), sizeof(ip2));
+		                
+                                void *el = ll_has_elements(er->csp_lastnodes);
+                                uint64_t node1 = el?(*(uint64_t*)el):0;
+                                                               
+                                el = ll_has_elements(ecm->csp_lastnodes);
+                                uint64_t node2 = el?(*(uint64_t*)el):0;
+                                                                                                                              
+                                el = ll_last_element(er->csp_lastnodes);
+                                uint64_t node3 = el?(*(uint64_t*)el):0;
+                                                                                                                                                                                               
+                                el = ll_last_element(ecm->csp_lastnodes);
+                                uint64_t node4 = el?(*(uint64_t*)el):0;
+                                                                                                                                                                                                                                                               
+        			debug_ecm(D_TRACE, "WARNING: Different CWs %s from %s(%s)<>%s(%s): %s<>%s nodes %llX %llX %llX %llX", buf, 
+        			    csp ? "csp" : username(cl), ip1, 
+        			    ecm->cacheex_src?username(ecm->cacheex_src):(ecm->selected_reader?ecm->selected_reader->label:"unknown/csp"), ip2,
+        			    cw1, cw2, 
+        			    (long long unsigned int)node1, 
+        			    (long long unsigned int)node2, 
+        			    (long long unsigned int)node3, 
+        			    (long long unsigned int)node4);
+		                
 		                //char ecmd51[17*3];                
 		                //cs_hexdump(0, er->ecmd5, 16, ecmd51, sizeof(ecmd51));
 		                //char csphash1[5*3];
@@ -2822,6 +2902,29 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 #ifdef WITH_LB
 		send_reader_stat(eardr, ert, ea, ea->rc);
 #endif
+#ifdef CS_CACHEEX
+		        if (ea && ert->rc < E_NOTFOUND && ea->rc < E_NOTFOUND && memcmp(ea->cw, ert->cw, sizeof(ert->cw)) != 0) {
+		                char cw1[16*3+2], cw2[16*3+2];
+		                cs_hexdump(0, ea->cw, 16, cw1, sizeof(cw1));
+		                cs_hexdump(0, ert->cw, 16, cw2, sizeof(cw2));
+		                
+		                char ip1[20]="", ip2[20]="";
+		                if (ea->reader) cs_strncpy(ip1, cs_inet_ntoa(ea->reader->client->ip), sizeof(ip1));
+		                if (ert->cacheex_src) cs_strncpy(ip2, cs_inet_ntoa(ert->cacheex_src->ip), sizeof(ip2));
+		                else if (ert->selected_reader) cs_strncpy(ip2, cs_inet_ntoa(ert->selected_reader->client->ip), sizeof(ip2));
+		                
+		                ECM_REQUEST *er = ert;
+        			debug_ecm(D_TRACE, "WARNING2: Different CWs %s from %s(%s)<>%s(%s): %s<>%s", buf, 
+        			    username(ea->reader?ea->reader->client:cl), ip1, 
+        			    er->cacheex_src?username(er->cacheex_src):(ea->reader?ea->reader->label:"unknown/csp"), ip2,
+        			    cw1, cw2);
+                        }
+#endif
+                if (ea && ea->rc < ert->rc) { //answer too late, only cache update:
+                    memcpy(ert->cw, ea->cw, sizeof(ea->cw));
+                    ert->rc = ea->rc;
+                }
+
 		return; // already done
 	}
 
@@ -2960,45 +3063,6 @@ uint32_t chk_provid(uchar *ecm, uint16_t caid) {
 	return(provid);
 }
 
-#ifdef IRDETO_GUESSING
-void guess_irdeto(ECM_REQUEST *er)
-{
-  uchar  b3;
-  int32_t    b47;
-  //uint16_t chid;
-  struct s_irdeto_quess *ptr;
-
-  b3  = er->ecm[3];
-  ptr = cfg.itab[b3];
-  if( !ptr ) {
-    cs_debug_mask(D_TRACE, "unknown irdeto byte 3: %02X", b3);
-    return;
-  }
-  b47  = b2i(4, er->ecm+4);
-  //chid = b2i(2, er->ecm+6);
-  //cs_debug_mask(D_TRACE, "ecm: b47=%08X, ptr->b47=%08X, ptr->caid=%04X", b47, ptr->b47, ptr->caid);
-  while( ptr )
-  {
-    if( b47==ptr->b47 )
-    {
-      if( er->srvid && (er->srvid!=ptr->sid) )
-      {
-        cs_debug_mask(D_TRACE, "sid mismatched (ecm: %04X, guess: %04X), wrong oscam.ird file?",
-                  er->srvid, ptr->sid);
-        return;
-      }
-      er->caid=ptr->caid;
-      er->srvid=ptr->sid;
-      er->chid=(uint16_t)ptr->b47;
-//      cs_debug_mask(D_TRACE, "quess_irdeto() found caid=%04X, sid=%04X, chid=%04X",
-//               er->caid, er->srvid, er->chid);
-      return;
-    }
-    ptr=ptr->next;
-  }
-}
-#endif
-
 void convert_to_beta(struct s_client *cl, ECM_REQUEST *er, uint16_t caidto)
 {
 	static uchar headerN3[10] = {0xc7, 0x00, 0x00, 0x00, 0x01, 0x10, 0x10, 0x00, 0x87, 0x12};
@@ -3088,10 +3152,8 @@ static void guess_cardsystem(ECM_REQUEST *er)
       (!er->ecm[5]) && (!er->ecm[6]) && (er->ecm[7]==er->ecm[2]-5))
     last_hope=0xd00;
 
-#ifdef IRDETO_GUESSING
   if (!er->caid && er->ecm[2]==0x31 && er->ecm[0x0b]==0x28)
     guess_irdeto(er);
-#endif
 
   if (!er->caid)    // guess by len ..
     er->caid=len4caid[er->ecm[2]+3];
@@ -3906,7 +3968,7 @@ void cs_waitforcardinit(void)
 }
 
 static void check_status(struct s_client *cl) {
-	if (!cl || cl->kill || !cl->init_done )
+	if (!cl || cl->kill || !cl->init_done)
 		return;
 
 	struct s_reader *rdr = cl->reader;
@@ -4896,6 +4958,7 @@ int32_t main (int32_t argc, char *argv[])
 #ifdef READER_VIDEOGUARD
 	reader_videoguard1,
 	reader_videoguard2,
+	reader_videoguard11,
 	reader_videoguard12,
 #endif
 #ifdef READER_DRE
@@ -5052,17 +5115,16 @@ int32_t main (int32_t argc, char *argv[])
 #ifdef CS_CACHEEX
 #if defined MODULE_CAMD35 || defined MODULE_CAMD35_TCP
 #ifdef MODULE_CCCAM
-  cacheex_set_peer_id(cc_get_cccam_node_id());
+  memcpy(cacheex_peer_id, cc_get_cccam_node_id(), 8);
+  cacheex_set_peer_id(cacheex_peer_id);
 #else
-  cacheex_update_peer_id();
+  memcpy(cacheex_peer_id, cacheex_update_peer_id(), 8);
 #endif
 #endif
 #endif
 
   init_len4caid();
-#ifdef IRDETO_GUESSING
   init_irdeto_guess_tab();
-#endif
 
   write_versionfile();
   server_pid = getpid();

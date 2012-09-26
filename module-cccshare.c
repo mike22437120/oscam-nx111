@@ -1216,7 +1216,7 @@ void share_updater(void)
 						if (cfg.cc_update_interval <= 10)
 								cfg.cc_update_interval = DEFAULT_UPDATEINTERVAL;
 						cs_debug_mask(D_TRACE, "share-updater mode=interval t=%ds", cfg.cc_update_interval);
-						cs_sleepms(cfg.cc_update_interval * 1000);
+						cs_sleepms(cfg.cc_update_interval*1000);
 				}
 
 				uint32_t cur_check = 0;

@@ -139,6 +139,19 @@ char *CSS =
 // minimized and optimized JS based on http://en.hasheminezhad.com/scrollsaver to retain scroll position.
 char *JSCRIPT = "function addUnloadHandler(){var a,e;if(window.attachEvent){a=window.attachEvent;e='on';}else{a=window.addEventListener;e='';}a(e+'load',function(){loadScroll();if(typeof Sys!='undefined' && typeof Sys.WebForms!='undefined')Sys.WebForms.PageRequestManager.getInstance().add_endRequest(loadScroll);},false);}function loadScroll(){var c=document.cookie.split(';');for(var i=0;i<c.length;i++){var p=c[i].split('=');if(p[0]=='scrollPosition'){p=unescape(p[1]).split('/');for(var j=0;j<p.length;j++){var e=p[j].split(',');try{if(e[0]=='window'){window.scrollTo(e[1],e[2]);}}catch(ex){}}return;}}}function saveScroll(){var s='scrollPosition=';var l,t;if(window.pageXOffset!==undefined){l=window.pageXOffset;t=window.pageYOffset;}else if(document.documentElement&&document.documentElement.scrollLeft!==undefined){l=document.documentElement.scrollLeft;t=document.documentElement.scrollTop;}else{l=document.body.scrollLeft;t=document.body.scrollTop;}if(l||t){s+='window,'+l+','+t+'/';}document.cookie=s+';';}";
 
+#ifdef TOUCH
+
+char* TOUCH_CSS = ".ui-icon-user {background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAANCAYAAAB2HjRBAAAABHNCSVQICAgIfAhkiAAAAGVJREFUKJHdkDsOhFAMA52nFfc/bwoPxfLYDyiBFjeRoowVjfS4LJJkGwDb/B9ERdsm4nMCaIyxL0bBlsUdfHjzDqzMFLw7AGVm1/ebStirYWMK2+a3B06lMH9tWg/wFXCmFNZlBcdONMu9B5MRAAAAAElFTkSuQmCC) rgba(33,33,33,0.4) no-repeat !important}\
+.ui-icon-card {background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAQCAYAAAAWGF8bAAAABHNCSVQICAgIfAhkiAAAAHNJREFUOI3tk0EOgCAMBKdGP+D//+jdg/UiirSBGvTmJptAyk5aAvCh5sNdGor9AmjQk9dACdxUIRmudWlg9TqUbK0JchblArthMQxG50At3NQN6HX4pA72DrsVHjlSN8B/5O6RJfrWMphJeIjK32hm39cOo4QxPTQoDVkAAAAASUVORK5CYII=) rgba(33,33,33,0.4) !important}\
+.ui-icon-play {background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAEZJREFUOI3dzLsVACAIQ9HgfI7rfthz+AS1MnXeBf7dVCjzG7dICjBICVQIBWQIDURIC/CQNrAEcgzYuAV4MQ1EMQVk8ZNtenETq5uwOdUAAAAASUVORK5CYII=) rgba(33,33,33,0.4) !important}\
+.ui-icon-stop {background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAACRJREFUOI1jYBgFjOgC/xkY/hOpkZGBgYGBiVIXjBowasDgAAAaJAIUw/Ru+wAAAABJRU5ErkJggg==) rgba(33,33,33,0.4) !important}";
+
+char* TOUCH_TPLSTATUS = "<!DOCTYPE html><head><meta name=viewport content='width=device-width, minimum-scale=1, maximum-scale=1'><title>OSCam</title><meta http-equiv=Content-Type content='text/html; charset=##HTTP_CHARSET##'><meta name=format-detection content='telephone=no'/><meta name=apple-mobile-web-app-capable content=yes /><link rel=stylesheet type='text/css' href='site.css'><link rel=stylesheet href='http://code.jquery.com/mobile/1.1.1/jquery.mobile-1.1.1.min.css'/><script src='http://code.jquery.com/jquery-1.7.2.min.js'></script><script src='http://code.jquery.com/mobile/1.1.1/jquery.mobile-1.1.1.min.js'></script><script>actDebugLevel=##ACTDEBUG##</script><script type='text/javascript' src='oscam.js'></script></head><div data-theme=c id=home data-role=page><div data-theme=b data-role=header data-position=fixed><a data-theme=e data-icon=refresh href='javascript:reloadPage()'>Refresh</a><h1>OSCam</h1><a data-theme=e data-icon=delete data-iconpos=notext href='javascript:window.location=\"/\"'></a></div><div data-role=content><div id=rdrDiv data-role=content><ul data-role=listview id=rdrList></ul></div><div id=usrDiv data-role=content><ul data-role=listview id=usrList></ul></div><div id=logDiv data-role=content><ul data-role=listview id=logList></ul><div id=logText style='display:none'>##LOGHISTORY##</div></div><div id=sysDiv><span style='font-size:12px'><strong>Now:</strong> ##CURDATE## ##CURTIME##, <strong>Uptime:</strong> ##UPTIME##<br><strong>Access from:</strong> ##CURIP##<br><strong>Version:</strong> ##CS_VERSION## build ###CS_SVN_VERSION##<br></span><div style='text-align:center'><hr><p>Shutdown / Restart</p><div data-role=controlgroup data-type=horizontal style='width:250px;margin:auto'><a data-theme=e id=shutdown data-role=button style='color:red'>Shutdown</a><a data-theme=e id=restart data-role=button data-icon=refresh>Restart</a></div><hr><p>Load Balancer control</p><div id=lbButs style='width:260px;margin:auto'></div><hr><p>Debug Level: <span id=dbgLevel /></p><div data-role=controlgroup data-type=horizontal data-mini=true style='width:230px;margin:0 auto'><a data-theme=e id=dbgOff data-role=button>Debug log OFF</a><a data-theme=e id=dbgAll data-role=button style='color:green'>Debug log ALL</a></div><br><div id=dbgButs data-role=fieldcontain style='width:455px;margin:auto;'></div></div></div></div><div data-theme=b data-role=footer data-position=fixed id=footer></div></div>";
+
+char* TOUCH_JSCRIPT = "function XML2jsobj(e){function s(e,t){i[e]?(i[e].constructor!=Array&&(i[e]=[i[e]]),i[e][i[e].length]=t):i[e]=t}var t=\"attributes\",n,r,i={};if(e[t])for(n=0;r=e[t][n];n++)s(r.name,r.value);for(n=0;r=e.childNodes[n];n++)r.nodeType==3&&s(\"TEXT\",r.nodeValue),r.nodeType==1&&s(r.nodeName,XML2jsobj(r));return i}function hms(e){e%=86400,time=[0,0,e];for(var t=2;t>0;t--)time[t-1]=Math.floor(time[t]/60),time[t]=time[t]%60,time[t]<10&&(time[t]=\"0\"+time[t]);return time.join(\":\")}function fillLog(){var e=\"length\",t=$.map($(\"#logText\").text().split(\"\\n\"),$.trim).reverse(),n=$(\"#logList\");n.empty();for(i=0;i<t[e];i++){var r=t[i].split(\" \");if(r[e]==1)continue;var s,o=0;for(s=0;s<r[e];s++)if(r[s]){o++;if(o==5)break}var u=r.slice(0,s).join(\" \"),a=r.slice(s).join(\" \");n.append('<li style=\"padding-bottom:0\"><p>'+u+\"</p>\"+a+\"</li>\")}n.listview(\"refresh\")}function appendTitle(e,t,n,r,i,s){var o='<li data-role=\"list-divider\" data-theme=\"b\" style=\"background:gray;'+r+'\">&nbsp;'+n+(i?'<span class=\"ui-li-count\">'+i+\"</span>\":\"\")+(t?'<a data-role=\"button\" data-ajax=\"false\" href=\"'+t+'\"></a>':\"\")+\"</li>\";s?e.prepend(o):e.append(o),e.listview(\"refresh\")}function appendRecord(e,t){var n=\"request\",r=\"name\",i=\"</p>\",s=\"\",o=t[n],u=\"<p><strong>\",a=\" </strong>\";return t[r]&&(s+=\"<h3>\"+t[r]+\"</h3>\"),t.type&&(s+=u+\"Type:\"+a+(t.type==\"p\"?\"Proxy\":\"Local\")+i),t.protocol&&(s+=u+\"Protocol:\"+a+t.protocol+i),t[n]&&(s+=u+\"CAID/SRVID:\"+a+t[n].caid+\" / \"+t[n].srvid+i+(t[n].TEXT?u+\"Channel:\"+a+t[n].TEXT+i:\"\")+u+\"Online/Idle:\"+a+hms(t.times.online)+\" / \"+hms(t.times.idle)+i),e&&(e.append('<li data-icon=\"'+(o?\"stop\":\"play\")+'\"><a id=\"r_'+t[r]+'\">'+s+\"</a></li>\"),buttonUrlCallback(\"#r_\"+t[r],\"readers.html?label=\"+t[r]+\"&action=\"+(o?\"disable\":\"enable\"),1)),s}function findClients(e,t,n){var r=e.oscam.status.client,i=[];for(j=0;j<r.length;j++)(t==null||r[j].name==t)&&n.indexOf(r[j].type)>=0&&(i[i.length]=r[j]);return i}function fillReaders(e){var t=null,n=\"length\",r=\"getAttribute\",s=$(\"#rdrList\").empty();$.get(apiURL(\"readerlist\"),function(o){var u=findClients(e,t,\"rp\");appendTitle(s,\"readers.html\",\"Online Readers\",\"\",u[n]);for(j=0;j<u[n];j++)appendRecord(s,u[j]);u=o.getElementsByTagName(\"reader\");if(u[0]){appendTitle(s,t,\"Disabled Readers\",\"margin-top:10px\",t);for(i=0;i<u[n];i++){if(u[i][r](\"enabled\")==1)continue;appendRecord(s,{name:u[i][r](\"label\"),type:u[i][r](\"type\"),protocol:u[i][r](\"protocol\")})}}s.listview(\"refresh\")})}function fillUsers(e){var t=null,r=\"connection\",s=\"substr\",o=$(\"#usrList\").empty();$.get(apiURL(\"userstats\"),function(u){var a=0,f=[].concat(XML2jsobj(u).oscam.users.user);appendTitle(o,t,\"Offline Users\",\"margin-top:10px\",t);for(i=0;i<f.length;i++){var l=f[i].name,c=findClients(e,l,\"c\")[0],h=f[i].status.indexOf(\"disabled\")<0,p='<li data-icon=\"'+(h?\"stop\":\"play\")+'\"><a id=\"u_'+l+'\"><p><strong  style=\"font-size:16px\"> '+l+\"</strong>\";if(c!=t){p+=\" (\"+c[r].ip+\", port:  \"+c[r].port+\")</p>\",c.name=t,c.type=t,p+=appendRecord(t,c)+'<table style=\"font-size:10px;font-weight:normal\" cellspacing=0><tr>';var d=\"<tr>\";for(var v in f[i].stats){n=v;if(v==\"TEXT\")continue;n==\"cwlastresptime\"&&(n=\"cwltime\"),n==\"cwignore\"&&(n=\"ign\"),n==\"cwtimeout\"&&(n=\"tout\"),n==\"timeonchannel\"&&(n=\"tOnCh\"),n==\"expectsleep\"&&(n=\"eSlp\"),n[s](0,2)==\"cw\"&&(n=n[s](2)),n[s](0,3)==\"emm\"&&(n=\"e\"+n[s](3));var m=f[i].stats[v].TEXT;p+='<th style=\"border:1px solid\">'+n,d+='<td style=\"border:1px solid\">'+(m==\"undefined\"?\"\":m)}p+=d+\"</table></a></li>\",a++,o.prepend(p)}else p+=\"</p></a></li>\",o.append(p);$(\"#u_\"+l).live(\"tap\",{name:l,enabled:h},function(e){$.get(\"userconfig.html?user=\"+e.data.name+\"&action=\"+(e.data.enabled?\"disable\":\"enable\"),reloadPage)})}appendTitle(o,\"userconfig.html\",\"Online Users\",\"\",a,!0),o.listview(\"refresh\")})}function buttonUrlCallback(e,t,n){$(e).live(\"tap\",function(e){$.mobile.showPageLoadingMsg(),$.get(t,typeof n==\"undefined\"?$.mobile.hidePageLoadingMsg:function(){window.setTimeout(reloadPage,n)})})}function reloadPage(){window.location.search=\"?touchOpen=\"+touchOpen}function goTab(e){$.each([\"rdr\",\"usr\",\"log\",\"sys\"],function(e,t){$(\"#\"+t+\"Div\").hide()}),$(\"#\"+e+\"Div\").toggle(),$(\"#\"+e+\"Button\").toggleClass(\"ui-btn-active\"),touchOpen=e}function setDebugLevel(){$.mobile.showPageLoadingMsg(),$.get(\"status.html?debug=\"+dbgLevel(),$.mobile.hidePageLoadingMsg)}function dbgLevel(e){var t=\"#dbg\",n=\"checked\";if(typeof e==\"undefined\"){e=0;for(i=1;i<=maxDebugLevel;i*=2)$(t+i).attr(n)&&(e+=i)}else for(i=1;i<=maxDebugLevel;i*=2)$(t+i).attr(n,e&i?n:null).checkboxradio(\"refresh\");return $(\"#dbgLevel\").html(e),e}function fillSys(){var e=\"Stats\",t=\"Clear\",n=\"create\";buttonUrlCallback(\"#restart\",\"shutdown.html?action=Restart\",5e3),buttonUrlCallback(\"#shutdown\",\"shutdown.html?action=Shutdown\",3e4);var r=\"\",s=[[\"Load\",e],[\"Save\",e],[t,e],[t,\"Timeouts\"],[t,\"Not\",\"Founds\"]];$.each(s,function(e,t){if(e==0||e==3)r+='<div data-role=\"controlgroup\" data-type=\"horizontal\">';r+='<a data-theme=\"e\" id=\"lb'+e+'\" data-role=\"button\">'+t[0]+\"<br>\"+t[1]+(t[2]?\" \"+t[2]:\"\")+\"&nbsp;</a>\";if(e==2||e==4)r+=\"</div>\"}),$(\"#lbButs\").append(r).trigger(n),$.each(s,function(e,t){buttonUrlCallback(\"#lb\"+e,\"config.html?part=loadbalancer&button=\"+t[0]+\"%20\"+t[1]+(t[2]?\"%20\"+t[2]:\"\"))});var o=0,u=[\"\",\"\"],a=0,f=[\"Detailed error\",\"ATR/ECM/CW\",\"Reader traffic\",\"Clients traffic\",\"Reader IFD\",\"Reader I/O\",\"EMM\",\"DVBAPI\",\"Load Balancer\",\"CACHEEX\",\"Client ECM\"];for(i=1;i<=maxDebugLevel;i*=2)u[a]+='<input type=\"checkbox\" id=\"dbg'+i+'\"/><label for=\"dbg'+i+'\">'+f[o]+\"</label>\",o++,a=1-a;for(i=0;i<2;i++)u[i]='<div class=\"ui-block-'+[\"a\",\"b\"][i]+'\" style=\"text-align:'+[\"right\",\"left\"][i]+'\"><fieldset data-role=\"controlgroup\" data-mini=\"true\">'+u[i]+\"</fieldset></div>\";$(\"#dbgButs\").append('<fieldset class=\"ui-grid-a\">'+u[0]+u[1]+\"</fieldset>\").trigger(n);for(i=1;i<=maxDebugLevel;i*=2)$(\"#dbg\"+i).bind(\"change\",setDebugLevel);$(\"#dbgOff\").live(\"tap\",function(){dbgLevel(0),setDebugLevel()}),$(\"#dbgAll\").live(\"tap\",function(){dbgLevel(65535),setDebugLevel()}),dbgLevel(actDebugLevel)}function apiURL(e){return\"oscamapi.html?part=\"+e}touchOpen=\"sys\",maxDebugLevel=1024,$(document).ready(function(){var e='<div data-role=\"navbar\" data-iconpos=\"bottom\"><ul>';$.each([[\"rdr\",\"card\",\"Readers\"],[\"usr\",\"user\",\"Users\"],[\"log\",\"info\",\"Log\"],[\"sys\",\"gear\",\"System\"]],function(t,n){e+='<li><a data-theme=\"b\" id=\"'+n[0]+'Button\" data-icon=\"'+n[1]+'\" data-role=\"button\" onclick=\"goTab(\\''+n[0]+\"')\\\">\"+n[2]+\"</a>\"}),$(\"#footer\").append(e+\"</ul></div>\").trigger(\"create\"),fillSys();var t=window.location.search;fillLog(),$.get(apiURL(\"status\"),function(e){var t=XML2jsobj(e);fillReaders(t),fillUsers(t)});if(t){var n=t.indexOf(\"touchOpen\");n>0&&(touchOpen=t.substr(n+10))}goTab(touchOpen)});";
+ 
+#endif
+
 #define ICMAI "data:image/x-icon;base64,\
 AAABAAEAEBAAAAEACABoBQAAFgAAACgAAAAQAAAAIAAAAAEACAAAAAAAQAEAAAAAAAAAAAAAAAAA\
 AAAAAADw//8A7/D/AODg4ADf8P8A0PD/AM///wDA4P8Az8/PALDw/wCQz/8AsLC/AGDP/wBgz88A\
@@ -262,7 +275,6 @@ SLmGxAAAAABJRU5ErkJggg=="
 #define ICSPAC "data:image/gif;base64,\
 R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAQAIBRAA7"
 
-#ifdef CS_CACHEEX
 #define ICARRR "data:image/gif;base64,\
 R0lGODlhJAALALMAAAUtBRB9DxKLERB9Dxe4FpPykhaxFUjpR4Pwgh3kHHXudLD1r+L84vj++P//\
 /////yH/C05FVFNDQVBFMi4wAwEAAAAh+QQJDwAFACwAAAAAJAALAAAEarDISau9OGsNeu1gKI6k\
@@ -286,7 +298,6 @@ HhEAIfkECQ8ABQAsAAAAACQACwAABG2wyEmrvZiCnbuXWyiOZDlOoXKsyOK8L8Msq8q6cLwARar8\
 CxlstvgZgUJdUSFKOBMHl2y6IBgMT6h0OrMaeKHrVbFYIM6Ig8AQEI/L6LQgEOD1Nlg64RAvK9wJ\
 enxofl8oJoiJIhUhH46PkB4RACH+L0NvcHlyaWdodCBNYXJ5IEdhcnJlbiAxOTk4DQpBTEwgUklH\
 SFRTIFJFU0VSVkVEADs="
-#endif
 
 #define TPLHEADER "\
 <!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\
@@ -344,7 +355,7 @@ SFRTIFJFU0VSVkVEADs="
 	//-->\n\
 	</script>\n"
 
-#define TPLHELPPREFIX "<A HREF=\"http://streamboard.de.vu/wiki/OSCam/##LANGUAGE##/Config/oscam."
+#define TPLHELPPREFIX "<A HREF=\"http://www.streamboard.tv/wiki/OSCam/##LANGUAGE##/Config/oscam."
 
 #define TPLHELPSUFFIX "\" TARGET=\"_blank\">"
 
@@ -433,7 +444,6 @@ SFRTIFJFU0VSVkVEADs="
 	</file>\n\
 ##TPLAPIFOOTER##"
 
-#ifdef WITH_DEBUG
 #define TPLDEBUGSELECT "\
 	<SPAN CLASS=\"debugt\"> Switch Debug from&nbsp;##ACTDEBUG## to&nbsp;</SPAN>\n\
 	<SPAN CLASS=\"debugl\"><A CLASS=\"debugl\" HREF=\"##NEXTPAGE##?debug=0##CUSTOMPARAM##\" title=\"no debugging (default)\">&nbsp;0&nbsp;</A></SPAN>\n\
@@ -449,7 +459,6 @@ SFRTIFJFU0VSVkVEADs="
 	<SPAN CLASS=\"debugl\"><A CLASS=\"##DCLASS512##\" HREF=\"##NEXTPAGE##?debug=##DEBUGVAL512####CUSTOMPARAM##\" title=\"CACHEEX logging\">&nbsp;512&nbsp;</A></SPAN>\n\
 	<SPAN CLASS=\"debugl\"><A CLASS=\"##DCLASS1024##\" HREF=\"##NEXTPAGE##?debug=##DEBUGVAL1024####CUSTOMPARAM##\" title=\"Client ECM logging\">&nbsp;1024&nbsp;</A></SPAN>\n\
 	<SPAN CLASS=\"debugl\"><A CLASS=\"##DCLASS65535##\" HREF=\"##NEXTPAGE##?debug=65535##CUSTOMPARAM##\" title=\"debug all\">&nbsp;ALL&nbsp;</A></SPAN>\n"
-#endif
 
 #define TPLFAILBAN "\
 ##TPLHEADER##\
@@ -486,10 +495,8 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLAPIFAILBANBIT "\
 		<ip ipinteger=\"##INTIP##\" user=\"##VIOLATIONUSER##\" count=\"##VIOLATIONCOUNT##\" date=\"##VIOLATIONDATE##\" secondsleft=\"\">##IPADDRESS##</ip>\n"
 
-#ifdef CS_ANTICASC
 #define TPLCONFIGMENUANTICASC "			<TD CLASS=\"##CMENUACTIVE8##\"><A HREF=\"config.html?part=anticasc\">Anticascading</A></TD>\n"
 #define TPLFILEMENUANTICASC "			<TD CLASS=\"##CMENUACTIVE22##\"><A HREF=\"files.html?file=anticasc\">AC Log</A></TD>\n"
-#endif
 
 #ifdef MODULE_MONITOR
 #define TPLCONFIGMENUMONITOR "			<TD CLASS=\"##CMENUACTIVE9##\"><A HREF=\"config.html?part=monitor\">WebIf/Monitor</A></TD>\n"
@@ -497,46 +504,26 @@ SFRTIFJFU0VSVkVEADs="
 #define TPLCONFIGMENUMONITOR "			<TD CLASS=\"##CMENUACTIVE9##\"><A HREF=\"config.html?part=monitor\">WebIf</A></TD>\n"
 #endif
 
-#ifdef HAVE_DVBAPI
 #define TPLCONFIGMENUDVBAPI "			<TD CLASS=\"##CMENUACTIVE11##\"><A HREF=\"config.html?part=dvbapi\">DVB-Api</A></TD>\n"
 #define TPLFILEMENUDVBAPI "			<TD CLASS=\"##CMENUACTIVE23##\"><A HREF=\"files.html?file=dvbapi\">oscam.dvbapi</A></TD>\n"
-#endif
 
-#ifdef WITH_LB
 #define TPLCONFIGMENULB "			<TD CLASS=\"##CMENUACTIVE1##\"><A HREF=\"config.html?part=loadbalancer\">Loadbalancer</A></TD>\n"
-#endif
 
-#ifdef MODULE_CAMD33
 #define TPLCONFIGMENUCAMD33 "			<TD CLASS=\"##CMENUACTIVE2##\"><A HREF=\"config.html?part=camd33\">Camd3.3</A></TD>\n"
-#endif
 
-#ifdef MODULE_CAMD35
 #define TPLCONFIGMENUCAMD35 "			<TD CLASS=\"##CMENUACTIVE3##\"><A HREF=\"config.html?part=camd35\">Camd3.5</A></TD>\n"
-#endif
 
-#ifdef MODULE_CAMD35_TCP
 #define TPLCONFIGMENUCAMD35TCP "			<TD CLASS=\"##CMENUACTIVE4##\"><A HREF=\"config.html?part=camd35tcp\">Camd3.5 TCP</A></TD>\n"
-#endif
 
-#ifdef CS_CACHEEX
 #define TPLCONFIGMENUCSP "			<TD CLASS=\"##CMENUACTIVE24##\"><A HREF=\"config.html?part=csp\">CSP</A></TD>\n"
-#endif
 
-#ifdef MODULE_CCCAM
 #define TPLCONFIGMENUCCCAM "			<TD CLASS=\"##CMENUACTIVE7##\"><A HREF=\"config.html?part=cccam\">CCcam</A></TD>\n"
-#endif
 
-#ifdef MODULE_NEWCAMD
 #define TPLCONFIGMENUNEWCAMD "			<TD CLASS=\"##CMENUACTIVE5##\"><A HREF=\"config.html?part=newcamd\">Newcamd</A></TD>\n"
-#endif
 
-#ifdef MODULE_RADEGAST
 #define TPLCONFIGMENURADEGAST "			<TD CLASS=\"##CMENUACTIVE6##\"><A HREF=\"config.html?part=radegast\">Radegast</A></TD>\n"
-#endif
 
-#ifdef MODULE_SERIAL
 #define TPLCONFIGMENUSERIAL "			<TD CLASS=\"##CMENUACTIVE10##\"><A HREF=\"config.html?part=serial\">Serial</A></TD>\n"
-#endif
 
 #define TPLSTATUS "\
 ##TPLHEADER##\
@@ -894,7 +881,7 @@ SFRTIFJFU0VSVkVEADs="
 ##TPLUSEREDITCACHEEXBIT##\
 ##TPLUSEREDITANTICASC##\
 ##TPLUSEREDITCCCAM##\
-			<TR><TD>##TPLHELPPREFIX##user#keepalive##TPLHELPSUFFIX##Keepalive:</A></TD><TD><SELECT NAME=\"keepalive\"><OPTION VALUE=\"0\">OFF</OPTION><OPTION VALUE=\"1\" ##KEEPALIVE##>ON</OPTION></SELECT></TD></TR>\n\
+			<TR><TD>##TPLHELPPREFIX##user#keepalive##TPLHELPSUFFIX##Keepalive:</A></TD><TD><SELECT NAME=\"keepalive\"><OPTION VALUE=\"0\">OFF</OPTION><OPTION VALUE=\"1\" ##KEEPALIVECHECKED##>ON</OPTION></SELECT></TD></TR>\n\
 			<TR>\n\
 				<TD class=\"centered\"><input type=\"submit\" name=\"action\" value=\"Save\" title=\"Save settings and reload users\" ##BTNDISABLED##></TD>\n\
 				<TD class=\"centered\"><input name=\"newuser\" type=\"text\" size=\"20\" maxlength=\"20\" title=\"Enter new username if you want to clone this user\">&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"action\" value=\"Save As\" title=\"Save as new user and reload users\" ##BTNDISABLED##></TD>\n\
@@ -905,7 +892,6 @@ SFRTIFJFU0VSVkVEADs="
 
 #define TPLUSEREDITRDRSELECTED "						<option value=\"##READERNAME##\" ##SELECTED##>##READERNAME##</option>"
 
-#ifdef CS_CACHEEX
 #define TPLUSEREDITCACHEEXBIT "				<TR><TD>##TPLHELPPREFIX##user#cacheex##TPLHELPSUFFIX##Cache-EX-Mode:</A></TD>\n\
 												<TD><select name=\"cacheex\">\n\
 														<option value=\"0\" ##CACHEEXSELECTED0##>0 - No CacheEX</option>\n\
@@ -915,7 +901,6 @@ SFRTIFJFU0VSVkVEADs="
 													</select>\n\
 												</TD></TR>\n\
 							<TR><TD>##TPLHELPPREFIX##user#cacheex_maxhop##TPLHELPSUFFIX##Cache-EX Maxhop:</A></TD><TD><input name=\"cacheex_maxhop\" type=\"text\" size=\"4\" maxlength=\"4\" value=\"##CACHEEX_MAXHOP##\"></TD></TR>\n"
-							
 
 #define TPLREADEREDITCACHEEXBIT "			<TR><TD>##TPLHELPPREFIX##server#cacheex##TPLHELPSUFFIX##Cache-EX-Mode:</A></TD>\n\
 												<TD><select name=\"cacheex\">\n\
@@ -926,7 +911,6 @@ SFRTIFJFU0VSVkVEADs="
 													</select>\n\
 												</TD></TR>\n\
 							<TR><TD>##TPLHELPPREFIX##server#cacheex_maxhop##TPLHELPSUFFIX##Cache-EX Maxhop:</A></TD><TD><input name=\"cacheex_maxhop\" type=\"text\" size=\"4\" maxlength=\"4\" value=\"##CACHEEX_MAXHOP##\"></TD></TR>\n"
-#endif
 
 #define TPLUSEREDITSIDOKBIT "\
 						<TR>\n\
@@ -936,7 +920,6 @@ SFRTIFJFU0VSVkVEADs="
 							<TD><INPUT NAME=\"services\" TYPE=\"CHECKBOX\" VALUE=\"!##SIDLABEL##\" ##CHECKED##> !##SIDLABEL##</TD>\n\
 						</TR>\n"
 
-#ifdef CS_ANTICASC
 # define TPLUSEREDITANTICASC "\
 			<TR><TD>##TPLHELPPREFIX##user#numusers##TPLHELPSUFFIX##Anticascading numusers:</A></TD>\
 				<TD><input name=\"numusers\" type=\"text\" size=\"3\" maxlength=\"3\" value=\"##AC_USERS##\">\
@@ -953,9 +936,7 @@ SFRTIFJFU0VSVkVEADs="
 				</select>\n\
 				&nbsp;Global Penalty level:<SPAN CLASS=\"global_conf\"><A HREF=\"config.html?part=anticasc\" TITLE=\"This value is used if Anticascading penalty = -1\">##CFGPENALTY##</A></SPAN>\n\
 			</TD></TR>\n"
-#endif
 
-#ifdef MODULE_CCCAM
 # define TPLUSEREDITCCCAM "\
 			<TR><TD>##TPLHELPPREFIX##user#cccmaxhops##TPLHELPSUFFIX##CCC Maxhops:</A></TD><TD><input name=\"cccmaxhops\" type=\"text\" size=\"3\" maxlength=\"2\" value=\"##CCCMAXHOPS##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##user#cccreshare##TPLHELPSUFFIX##CCC Reshare:</A></TD><TD><input name=\"cccreshare\" type=\"text\" size=\"3\" maxlength=\"2\" value=\"##CCCRESHARE##\">\
@@ -976,7 +957,6 @@ SFRTIFJFU0VSVkVEADs="
 			</SELECT>\
 			&nbsp;Global CCcam Stealth value:<SPAN CLASS=\"global_conf\"><A HREF=\"config.html?part=cccam\">##STEALTH##</A></SPAN>\
 			</TD></TR>\n"
-#endif
 
 #define TPLSIDTAB "\
 ##TPLHEADER##\
@@ -1290,6 +1270,8 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 				<TR><TD>##TPLHELPPREFIX##server#detect##TPLHELPSUFFIX##Detect:</A></TD><TD><input name=\"detect\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##DETECT##\"></TD></TR>\n\
 				<TR><TD>##TPLHELPPREFIX##server#ratelimitecm##TPLHELPSUFFIX##Ratelimit ECM:</A></TD><TD><input name=\"ratelimitecm\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##RATELIMITECM##\"></TD></TR>\n\
 				<TR><TD>##TPLHELPPREFIX##server#ratelimitseconds##TPLHELPSUFFIX##Ratelimit seconds:</A></TD><TD><input name=\"ratelimitseconds\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##RATELIMITSECONDS##\"></TD></TR>\n\
+				<TR><TD>##TPLHELPPREFIX##server#cooldowndelay##TPLHELPSUFFIX##Cooldown Delay:</A></TD><TD><input name=\"cooldowndelay\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##COOLDOWNDELAY##\"></TD></TR>\n\
+				<TR><TD>##TPLHELPPREFIX##server#cooldowntime##TPLHELPSUFFIX##Cooldown Time:</A></TD><TD><input name=\"cooldowntime\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##COOLDOWNTIME##\"></TD></TR>\n\
 				<TR><TD>##TPLHELPPREFIX##server#readnano##TPLHELPSUFFIX##Readnano:</A></TD><TD><input name=\"readnano\" type=\"text\" size=\"30\" maxlength=\"50\" value=\"##EMMFILE##\"></TD></TR>\n\
 				<TR><TD>##TPLHELPPREFIX##server#blocknano##TPLHELPSUFFIX##Blocknano:</A></TD><TD><input name=\"blocknano\" type=\"text\" size=\"50\" maxlength=\"50\" value=\"##BLOCKNANO##\"></TD></TR>\n\
 				<TR><TD>##TPLHELPPREFIX##server#savenano##TPLHELPSUFFIX##Savenano:</A></TD><TD><input name=\"savenano\" type=\"text\" size=\"50\" maxlength=\"50\" value=\"##SAVENANO##\"></TD></TR>\n\
@@ -1327,21 +1309,17 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 				<TR><TD>##TPLHELPPREFIX##server#device_out_endpoint##TPLHELPSUFFIX##Device Out Endpoint:</A></TD><TD>##DEVICEEP##</TD></TR>\n\
 				##TPLREADERCOOLSTREAMBIT##"
 
-#ifdef WITH_LIBUSB
 #define TPLREADERCONFIGDEVICEEPBIT "\
 				<SELECT name=\"device_out_endpoint\">\n\
 					<OPTION value=\"\" ##DEVICEOUTEP0##>default</OPTION>\n\
 					<OPTION value=\"0x82\" ##DEVICEOUTEP1##>0x82 - Smargo+</OPTION>\n\
 					<OPTION value=\"0x81\" ##DEVICEOUTEP2##>0x81 - Infinity USB Smart</OPTION>\n\
 				</SELECT>\n"
-#endif
 
-#ifdef WITH_COOLAPI
 #define TPLREADERCOOLSTREAMBIT "\
 		<TR><TH>&nbsp;</TH><TH>Reader specific settings for Coolstream STB</TH></TR>\n\
 		<TR><TD>##TPLHELPPREFIX##server#cool_timeout_init##TPLHELPSUFFIX##Cool Timeout Init:</A></TD><TD><input name=\"cool_timeout_init\" type=\"text\" size=\"20\" maxlength=\"16\" value=\"##COOLTIMEOUTINIT##\"></TD></TR>\n\
 		<TR><TD>##TPLHELPPREFIX##server#cool_timeout_after_init##TPLHELPSUFFIX##Cool Timeout after Init:</A></TD><TD><input name=\"cool_timeout_after_init\" type=\"text\" size=\"20\" maxlength=\"16\" value=\"##COOLTIMEOUTAFTERINIT##\"></TD></TR>\n"
-#endif
 
 #define TPLREADERCONFIGHOPBIT "\
 			<TR><TD>##TPLHELPPREFIX##server#ccchop##TPLHELPSUFFIX##CCC Hop:</A></TD><TD><input name=\"ccchop\" type=\"text\" size=\"2\" maxlength=\"1\" value=\"##CCCHOP##\"></TD></TR>\n"
@@ -1421,7 +1399,6 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 	</form>\n\
 ##TPLFOOTER##"
 
-#ifdef CS_ANTICASC
 #define TPLCONFIGANTICASC "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1453,9 +1430,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 		</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
-#endif
 
-#ifdef MODULE_CCCAM
 #define TPLCONFIGCCCAM "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1534,7 +1509,6 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 		</TR>\n\
 	</TABLE>\n\
 ##TPLFOOTER##"
-#endif
 
 #define TPLCONFIGMONITOR "\
 ##TPLHEADER##\
@@ -1604,12 +1578,9 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 #define TPLCONFIGMONITOR_CONF ""
 #endif
 
-#ifdef WITH_SSL
 #define TPLHTTPFORCESSLV3 "\
 			<TR><TD>##TPLHELPPREFIX##conf#httpforcesslv3##TPLHELPSUFFIX##Force more secure v3 of ssl:</A></TD><TD><SELECT NAME=\"httpforcesslv3\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##HTTPFORCESSLV3SELECT##>YES</OPTION></SELECT></TD></TR>\n"
-#endif
 
-#ifdef LCDSUPPORT
 #define TPLLCDOPTIONS "\
 			<TR><TH COLSPAN=\"2\">LCD Config</TH></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#enablelcd##TPLHELPSUFFIX##Enable LCD:</A></TD><TD><SELECT NAME=\"enablelcd\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##ENABLELCDSELECTED##>YES</OPTION></SELECT></TD></TR>\n\
@@ -1617,9 +1588,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 			<TR><TD>##TPLHELPPREFIX##conf#lcd_writeintervall##TPLHELPSUFFIX##LCD Write Interval:</A></TD><TD><input name=\"lcd_writeintervall\" type=\"text\" size=\"3\" maxlength=\"3\" value=\"##LCDREFRESHINTERVAL##\"></TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#lcd_hideidle##TPLHELPSUFFIX##LCD Hide idle Readers:</A></TD><TD><SELECT NAME=\"lcd_hideidle\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##LCDHIDEIDLE##>YES</OPTION></SELECT></TD></TR>\n"
 
-#endif
 
-#ifdef MODULE_RADEGAST
 #define TPLCONFIGRADEGAST "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1638,9 +1607,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 		</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
-#endif
 
-#ifdef MODULE_NEWCAMD
 #define TPLCONFIGNEWCAMD "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1663,7 +1630,6 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 		</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
-#endif
 
 #define TPLCONFIGGLOBAL "\
 ##TPLHEADER##\
@@ -1744,24 +1710,17 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 	</form>\n\
 ##TPLFOOTER##"
 
-#ifdef CS_CACHEEX
 #define TPLCACHEEXWAITTIME "\
 			<TR><TH COLSPAN=\"2\">CacheEX</TH></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#cacheexwaittime##TPLHELPSUFFIX##Cacheex wait time:</A></TD><TD><input name=\"cacheexwaittime\" type=\"text\" size=\"5\" maxlength=\"5\" value=\"##CACHEEXWAITTIME##\"> ms max waittime for a cache entry</TD></TR>\n\
 			<TR><TD>##TPLHELPPREFIX##conf#cacheexenablestats##TPLHELPSUFFIX##Cacheex write statistic:</A></TD><TD><SELECT NAME=\"cacheexenablestats\"><OPTION VALUE=\"0\">OFF</OPTION><OPTION VALUE=\"1\" ##CACHEEXSTATSSELECTED##>ON</OPTION></SELECT></TD></TR>\n"
-#endif
 
-#if defined(QBOXHD) || defined(__arm__)
 #define TPLENABLELEDBIT "\
 			<TR><TD>##TPLHELPPREFIX##conf#enableled##TPLHELPSUFFIX##Enable LED:</A></TD><TD><SELECT NAME=\"enableled\"><OPTION VALUE=\"0\">NO</OPTION><OPTION VALUE=\"1\" ##ENABLELEDSELECTED1##>For Router</OPTION><OPTION VALUE=\"2\" ##ENABLELEDSELECTED2##>For QboxHD</OPTION></SELECT></TD></TR>\n"
-#endif
 
-#if defined(MODULE_CAMD35) || defined(MODULE_CAMD35_TCP)
 #define TPLSUPPRESSCMD08 "\
 			<TR><TD>##TPLHELPPREFIX##conf#suppresscmd08##TPLHELPSUFFIX##Suppress cmd08:</A></TD><TD><input name=\"suppresscmd08\" type=\"checkbox\" value=\"1\" ##SUPPRESSCMD08##></TD></TR>\n"
-#endif
 
-#ifdef WITH_LB
 #define TPLCONFIGLOADBALANCER "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1817,9 +1776,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 	</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
-#endif
 
-#ifdef MODULE_CAMD33
 #define TPLCONFIGCAMD33 "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1839,9 +1796,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 		</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
-#endif
 
-#ifdef MODULE_CAMD35
 #define TPLCONFIGCAMD35 "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1860,9 +1815,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 		</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
-#endif
 
-#ifdef MODULE_CAMD35_TCP
 #define TPLCONFIGCAMD35TCP "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1881,9 +1834,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 		</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
-#endif
 
-#ifdef CS_CACHEEX
 #define TPLCONFIGCSP "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1901,9 +1852,7 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 		</TABLE>\n\
 	</form>\n\
 ##TPLFOOTER##"
-#endif
 
-#ifdef MODULE_SERIAL
 #define TPLCONFIGSERIAL "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1920,12 +1869,10 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 	</form>\n\
 	<BR><BR>\n\
 ##TPLFOOTER##"
-#endif
 
 #define TPLCONFIGSERIALDEVICEBIT "\
 			<TR><TD>##TPLHELPPREFIX##conf#device##TPLHELPSUFFIX##Device:</A></TD><TD><input name=\"device\" type=\"text\" size=\"63\" maxlength=\"511\" value=\"##SERIALDEVICE##\"></TD></TR>\n"
 
-#ifdef HAVE_DVBAPI
 #define TPLCONFIGDVBAPI "\
 ##TPLHEADER##\
 ##TPLMENU##\
@@ -1961,7 +1908,6 @@ provid=\"##APIPROVIDERPROVID##\">##APIPROVIDERNAME##</provider>\n"
 	</TABLE>\n\
 </form>\n\
 ##TPLFOOTER##"
-#endif
 
 #define TPLSERVICECONFIGLIST "\
 ##TPLHEADER##\
@@ -2312,15 +2258,14 @@ function isNumber(a) {\n\
 </script>\
 </svg>"
 
-#ifdef CS_CACHEEX
 #define TPLCACHEEXPAGE "\
 ##TPLHEADER##\
 ##TPLMENU##\
 ##TPLMESSAGE##\
 	<BR><BR>\n\
 	<TABLE CLASS=\"stats\">\n\
-			<TR><TH COLSPAN=\"9\">CacheEX Stats</TH></TR>\n\
-			<TR><TH>Direction</TH><TH>Type</TH><TH>Name</TH><TH>IP</TH><TH>NODE</TH><TH>Cache EX Mode</TH><TH>Push</TH><TH>Got</TH><TH>Hit</TH></TR>\n\
+			<TR><TH COLSPAN=\"11\">CacheEX Stats for ##OWN_CACHEEX_NODEID##</TH></TR>\n\
+			<TR><TH>Direction</TH><TH>Type</TH><TH>Name</TH><TH>IP</TH><TH>NODE</TH><TH>Cache EX Mode</TH><TH>Push</TH><TH>Got</TH><TH>Hit</TH><TH>Err</TH><TH>CW Diff</TH></TR>\n\
 ##TABLECLIENTROWS##\
 ##TABLEREADERROWS##\
 	</TABLE>\n\
@@ -2331,10 +2276,9 @@ function isNumber(a) {\n\
 		<TR><TD class=\"centered\">##TOTAL_CACHEXPUSH##</TD><TD class=\"centered\">##TOTAL_CACHEXGOT##</TD><TD class=\"centered\">##TOTAL_CACHEXHIT## (##REL_CACHEXHIT##%)</TD><TD class=\"centered\">##TOTAL_CACHESIZE##</TD></TR>\n\
 	</TABLE>\n\
 	<BR><BR>\n\
-##TPLFOOTER##" 
+##TPLFOOTER##"
 
-#define TPLCACHEEXTABLEROW "			<TR><TD>&nbsp;&nbsp;##DIRECTIONIMG##&nbsp;&nbsp;</TD><TD>##TYPE##</TD><TD>##NAME##</TD><TD>##IP##</TD><TD>##NODE##</TD><TD>##LEVEL##</TD><TD>##PUSH##</TD><TD>##GOT##</TD><TD>##HIT##</TD></TR>\n"
-#endif
+#define TPLCACHEEXTABLEROW "			<TR><TD>&nbsp;&nbsp;##DIRECTIONIMG##&nbsp;&nbsp;</TD><TD>##TYPE##</TD><TD>##NAME##</TD><TD>##IP##</TD><TD>##NODE##</TD><TD>##LEVEL##</TD><TD>##PUSH##</TD><TD>##GOT##</TD><TD>##HIT##</TD><TD>##ERR##</TD><TD>##ERRCW##</TD></TR>\n"
 
 const char *tpl[][3] = {
 	{"HEADER", TPLHEADER, ""}

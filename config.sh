@@ -1,11 +1,12 @@
 #!/bin/sh
 
-addons="WEBIF HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX LCDSUPPORT IPV6SUPPORT"
+addons="WEBIF TOUCH HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX LCDSUPPORT IPV6SUPPORT"
 protocols="MODULE_CAMD33 MODULE_CAMD35 MODULE_CAMD35_TCP MODULE_NEWCAMD MODULE_CCCAM MODULE_GBOX MODULE_RADEGAST MODULE_SERIAL MODULE_CONSTCW MODULE_PANDORA"
 readers="WITH_CARDREADER READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_STREAMGUARD READER_BULCRYPT"
 
 defconfig="
 CONFIG_WEBIF=y
+CONFIG_TOUCH=y
 CONFIG_HAVE_DVBAPI=y
 CONFIG_IRDETO_GUESSING=y
 CONFIG_CS_ANTICASC=y
@@ -242,6 +243,7 @@ print_components() {
 menu_addons() {
 	${DIALOG} --checklist "\nChoose add-ons:\n " $height $width $listheight \
 		WEBIF				"Web Interface"				$(check_test "WEBIF") \
+		TOUCH				"Touch Web Interface"				$(check_test "TOUCH") \
 		HAVE_DVBAPI			"DVB API"					$(check_test "HAVE_DVBAPI") \
 		IRDETO_GUESSING		"Irdeto guessing"			$(check_test "IRDETO_GUESSING") \
 		CS_ANTICASC			"Anti cascading"			$(check_test "CS_ANTICASC") \
@@ -471,6 +473,7 @@ do
 	;;
 	'-l'|'--list-config')
 		enabled_any $(get_opts readers) && enable_opt WITH_CARDREADER >/dev/null
+		disabled WEBIF && disable_opt TOUCH >/dev/null
 		for OPT in $addons $protocols $readers
 		do
 			enabled $OPT && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
@@ -485,14 +488,10 @@ do
 		exit 0
 	;;
 	'-m'|'--make-config.mak')
-		$0 --list-config > config.mak.tmp
-		cmp config.mak.tmp config.mak >/dev/null 2>/dev/null
-		if [ $? != 0 ]
-		then
-			mv config.mak.tmp config.mak
-		else
-			rm config.mak.tmp
-		fi
+		TMPFILE=$(mktemp -t config.mak.XXXXXX) || exit 1
+		$0 --list-config > $TMPFILE
+		cmp $TMPFILE config.mak >/dev/null 2>/dev/null
+		test $? = 0 && rm $TMPFILE || cat $TMPFILE > config.mak
 		exit 0
 	;;
 	'-h'|'--help')

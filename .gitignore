@@ -13,3 +13,6 @@ Distribution/oscam-*
 
 # build directories
 /build*/
+
+*.orig
+*.rej

@@ -528,7 +528,7 @@ void dvbapi_add_ecmpid(int32_t demux_id, uint16_t caid, uint16_t ecmpid, uint32_
 	demux[demux_id].ECMpids[demux[demux_id].ECMpidcount].ECM_PID = ecmpid;
 	demux[demux_id].ECMpids[demux[demux_id].ECMpidcount].CAID = caid;
 	demux[demux_id].ECMpids[demux[demux_id].ECMpidcount].PROVID = provid;
-	if(stream>=0){
+	if (stream>-1){
 		demux[demux_id].ECMpids[demux[demux_id].ECMpidcount].streams |= (1 << stream);
 		cs_log("[ADD PID %d] CAID: %04X\tECM_PID: %04X\tPROVID: %06X STREAM: %d", demux[demux_id].ECMpidcount, caid, ecmpid, provid,stream);
 	}
