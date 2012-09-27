@@ -31,7 +31,7 @@ builddir=`dirname $0`
 [ "$builddir" = "." ] && svnroot=".."
 [ "$builddir" = "." ] || svnroot=`dirname $builddir`
 csver=`grep "CS_VERSION" $svnroot/globals.h | sed -e "s/[^\"]*//" -e "s/\"//g" | cut -f1 -d-`
-svnver=`svnversion  -c ${svnroot} | cut -f 2 -d: | sed -e "s/[^[:digit:]]//g"`
+svnver=`(svnversion  -n -c ${svnroot} 2>/dev/null || (grep "CS_SVN_VERSION" $svnroot/.revision | cut -d\" -f2)) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'`
 cd  ${svnroot}/${plat_dir}/image
 tar czf ${curdir}/oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz cygwin1.dll oscam.exe oscam.conf oscam.server.default
 cd $curdir

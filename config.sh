@@ -454,7 +454,13 @@ do
 		break
 	;;
 	'-r'|'--oscam-revision')
-		(svnversion -n . 2>/dev/null || printf 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'
+		CS_SVNVERSION=`(svnversion -n . 2>/dev/null || printf 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'`
+		CS_SVNVERSION0=`(grep "CS_SVN_VERSION .*" .revision 2>/dev/null || echo CS_SVN_VERSION "0">.revision;printf 0) | cut -d\" -f2 | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'`
+
+		if [ "$CS_SVNVERSION" != "0" -a "$CS_SVNVERSION" != "$CS_SVNVERSION0" ]; then
+			sed -i "s/CS_SVN_VERSION .*/CS_SVN_VERSION \"$CS_SVNVERSION\"/g" .revision
+		fi;
+		grep "CS_SVN_VERSION .*" .revision | cut -d \" -f2
 		break
 	;;
 	'-O'|'--detect-osx-sdk-version')

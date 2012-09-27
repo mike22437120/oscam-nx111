@@ -37,16 +37,18 @@ static int32_t vg11_do_cmd(struct s_reader *reader, const unsigned char *ins, co
 static void read_tiers(struct s_reader *reader)
 {
   def_resp;
-//  const unsigned char ins2a[5] = {  0x48, 0x2a, 0x00, 0x00, 0x00  };
+
+  static const unsigned char ins2A[5] = {  0x48, 0x2A, 0x00, 0x00, 0x90  };
   int32_t l;
 
-//  return; // Not working at present so just do nothing
+  if (!write_cmd_vg(ins2A,NULL) || !status_ok(cta_res+cta_lr-2)) {
+    rdr_log(reader, "class48 ins2A: failed");
+    return;
+  }
 
-//  l = vg11_do_cmd(reader, ins2a, NULL, NULL, cta_res);
-//  if (l < 0 || !status_ok(cta_res + l))
-//  {
-//    return;
-//  }
+  // return at present as not sure how to parse this
+  return;
+
   unsigned char ins76[5] = { 0x48, 0x76, 0x00, 0x00, 0x00 };
   ins76[3] = 0x7f;
   ins76[4] = 2;
@@ -72,7 +74,6 @@ static void read_tiers(struct s_reader *reader)
     int32_t y, m, d, H, M, S;
     rev_date_calc(&cta_res[4], &y, &m, &d, &H, &M, &S, reader->card_baseyear);
     uint16_t tier_id = (cta_res[2] << 8) | cta_res[3];
-
 
     // add entitlements to list
     struct tm timeinfo;
