@@ -34,7 +34,7 @@ builddir=`dirname $0`
 [ "$builddir" = "." ] && svnroot=".."
 [ "$builddir" = "." ] || svnroot=`dirname $builddir`
 csver=`grep "CS_VERSION" $svnroot/globals.h | sed -e "s/[^\"]*//" -e "s/\"//g" | cut -f1 -d-`
-svnver=`(svnversion  -n -c ${svnroot} 2>/dev/null || (grep "CS_SVN_VERSION" $svnroot/.revision | cut -d\" -f2)) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'`
+svnver=`(grep "CS_SVN_VERSION .*" $svnroot/.revision 2>/dev/null || (echo CS_SVN_VERSION "0">.revision;printf 0)) | cut -d" " -f2 | sed 's/[^0-9]*//;s/[^0-9]*$//'`
 cd ${svnroot}/${plat_dir}/image
 sed -i "s/Version:.*/Version: ${csver}-svn${svnver}/" DEBIAN/control
 tar czf ../oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz var usr
