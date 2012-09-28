@@ -503,7 +503,7 @@ static char *send_oscam_config_newcamd(struct templatevars *vars, struct uripara
 		free_mk_t(value);
 
 		if (cfg.ncd_keepalive)
-			tpl_addVar(vars, TPLADD, "KEEPALIVE", "checked");
+			tpl_addVar(vars, TPLADD, "KEEPALIVECHECKED", "checked");
 		if (cfg.ncd_mgclient)
 			tpl_addVar(vars, TPLADD, "MGCLIENTCHK", "checked");
 	}
@@ -2057,7 +2057,7 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 	//Keepalive
 	if(!apicall){
 		if (account->ncd_keepalive)
-			tpl_addVar(vars, TPLADD, "KEEPALIVE", "selected");
+			tpl_addVar(vars, TPLADD, "KEEPALIVECHECKED", "selected");
 	} else {
 		tpl_printf(vars, TPLADD, "KEEPALIVEVALUE", "%d", account->ncd_keepalive);
 	}
