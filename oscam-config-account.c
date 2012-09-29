@@ -144,8 +144,9 @@ static void account_expdate_fn(const char *token, char *value, void *setting, FI
 		strftime(buf, 16, "%Y-%m-%d", &timeinfo);
 		if (!streq(buf, "1970-01-01"))
 			fprintf_conf(f, token, "%s\n", buf);
-		else
+		else if (cfg.http_full_cfg){
 			fprintf_conf_n(f, token);
+		}
 	}
 }
 
