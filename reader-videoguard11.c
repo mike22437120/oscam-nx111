@@ -122,9 +122,100 @@ static int32_t videoguard11_card_init(struct s_reader *reader, ATR *newatr)
      NDS1 Class 48 only cards need to be told the length as (48, ins, 00, 80, 01)
      does not return the length */
 
+  int32_t l = 0;
+  unsigned char buff[256];
+
+  /* Try to get the boxid from the card, even if BoxID specified in the config file
+     also used to check if it is an NDS1 card as the returned information will
+     not be encrypted if it is an NDS1 card */
+
+
+  static const unsigned char ins36[5] = { 0x48, 0x36, 0x00, 0x00, 0x90 };
   unsigned char boxID[4];
   int32_t boxidOK = 0;
+  l = vg11_do_cmd(reader, ins36, NULL, buff, cta_res);
+  if (buff[7] > 0x0F) {
+    rdr_log(reader, "class48 ins36: encrypted - therefore not an NDS1 card");
+    return ERROR;
+  } else {
+    /* skipping the initial fixed fields: cmdecho (4) + length (1) + encr/rev++ (4) */
+    int32_t i = 9;
+    int32_t gotUA = 0;
+    while (i < l) {
+      if (!gotUA && buff[i] < 0xF0) {	/* then we guess that the next 4 bytes is the UA */
+	gotUA = 1;
+	i += 4;
+      } else {
+	switch (buff[i]) {	/* object length vary depending on type */
+	case 0x00:		/* padding */
+	  {
+	    i += 1;
+	    break;
+	  }
+	case 0xEF:		/* card status */
+	  {
+	    i += 3;
+	    break;
+	  }
+	case 0xD1:
+	  {
+	    i += 4;
+	    break;
+	  }
+	case 0xDF:		/* next server contact */
+	  {
+	    i += 5;
+	    break;
+	  }
+	case 0xF3:		/* boxID */
+	  {
+	    memcpy(&boxID, &buff[i + 1], sizeof(boxID));
+	    boxidOK = 1;
+	    i += 5;
+	    break;
+	  }
+	case 0xF6:
+	  {
+	    i += 6;
+	    break;
+	  }
+	case 0xFC:		/* No idea seems to with with NDS1 */
+	  {
+	    i += 14;
+	    break;
+	  }
+	case 0x01:		/* date & time */
+	  {
+	    i += 7;
+	    break;
+	  }
+	case 0xFA:
+	  {
+	    i += 9;
+	    break;
+	  }
+	case 0x5E:
+	case 0x67:		/* signature */
+	case 0xDE:
+	case 0xE2:
+	case 0xE9:		/* tier dates */
+	case 0xF8:		/* Old PPV Event Record */
+	case 0xFD:
+	  {
+	    i += buff[i + 1] + 2;	/* skip length + 2 bytes (type and length) */
+	    break;
+	  }
+	default:		/* default to assume a length byte */
+	  {
+	    rdr_log(reader, "class48 ins36: returned unknown type=0x%02X - parsing may fail", buff[i]);
+	    i += buff[i + 1] + 2;
+	  }
+	}
+      }
+    }
+  }
 
+  // rdr_log(reader, "calculated BoxID: %02X%02X%02X%02X", boxID[0], boxID[1], boxID[2], boxID[3]);
 
   /* the boxid is specified in the config */
   if (reader->boxid > 0) {
@@ -132,36 +223,40 @@ static int32_t videoguard11_card_init(struct s_reader *reader, ATR *newatr)
     for (i = 0; i < 4; i++) {
       boxID[i] = (reader->boxid >> (8 * (3 - i))) % 0x100;
     }
-    boxidOK = 1;
     // rdr_log(reader, "config BoxID: %02X%02X%02X%02X", boxID[0], boxID[1], boxID[2], boxID[3]);
   }
 
   if (!boxidOK) {
     rdr_log(reader, "no boxID available");
-    return ERROR;
+  //  return ERROR;
   }
 
   // Send BoxID
   static const unsigned char ins4C[5] = { 0x48, 0x4C, 0x00, 0x00, 0x09 };
-  unsigned char payload4C[9] = { 0, 0, 0, 0, 0x03, 0xC8, 0, 0, 0 };
+  unsigned char payload4C[9] = { 0, 0, 0, 0, 3, 0, 0, 0, 4 };
   memcpy(payload4C, boxID, 4);
-  if (!write_cmd_vg(ins4C, payload4C) || !status_ok(cta_res + cta_lr-2)) {
+  if (!write_cmd_vg(ins4C, payload4C) || !status_ok(cta_res + l)) {
     rdr_log(reader, "class48 ins4C: sending boxid failed");
-  //  return ERROR;
+ //   return ERROR;
   }
 
-
-  static const unsigned char ins0C[5] = { 0x48, 0x0C, 0x00, 0x00, 0x0A };
-  if (!write_cmd_vg(ins0C,NULL) || !status_ok(cta_res+cta_lr-2)) {
-    rdr_log(reader, "class48 ins0C: failed");
-    //return ERROR;
+  static const unsigned char ins1C[5] = { 0x48, 0x1C, 0x00, 0x00, 0x25 };
+  l = vg11_do_cmd(reader, ins1C, NULL, buff, cta_res);
+  if (l < 0) {
+    rdr_log(reader, "class48 ins1C: failed");
+ //   return ERROR;
   }
+  else 
+     rdr_ddump_mask(reader, D_READER,buff,0x25,"class 48 ins1C recived:");
 
   static const unsigned char ins58[5] = { 0x48, 0x58, 0x00, 0x00, 0x17 };
-  if (!write_cmd_vg(ins58,NULL) || !status_ok(cta_res+cta_lr-2)) {
+  l = vg11_do_cmd(reader, ins58, NULL, buff, cta_res);
+  if (l < 0) {
     rdr_log(reader, "class48 ins58: failed");
-  //  return ERROR;
+ //   return ERROR;
   }
+  else  
+      rdr_ddump_mask(reader, D_READER,buff,0x17,"class 48 ins58 recived:");
 
   memset(reader->hexserial, 0, 8);
   memcpy(reader->hexserial + 2, cta_res + 1, 4);
@@ -173,6 +268,24 @@ static int32_t videoguard11_card_init(struct s_reader *reader, ATR *newatr)
   /* we have one provider, 0x0000 */
   reader->nprov = 1;
   memset(reader->prid, 0x00, sizeof(reader->prid));
+
+  static const unsigned char ins2A[5] = { 0x48, 0x2A, 0x00, 0x00, 0x90 };
+  l = vg11_do_cmd(reader, ins2A, NULL, buff, cta_res);
+  if (l < 0) {
+    rdr_log(reader, "class48 ins2A: failed");
+ //   return ERROR;
+  }
+  else  
+      rdr_ddump_mask(reader, D_READER,buff,0x90,"class 48 ins2A recived:");
+
+  static const unsigned char ins0C[5] = { 0x48, 0x0C, 0x00, 0x00, 0x0A };
+  l = vg11_do_cmd(reader, ins0C, NULL, buff, cta_res);
+  if (l < 0) {
+    rdr_log(reader, "class48 ins0C: failed");
+ //   return ERROR;
+  }
+  else  
+      rdr_ddump_mask(reader, D_READER,buff,0x0A,"class 48 ins0C recived:");
 
   rdr_log_sensitive(reader, "type: VideoGuard, caid: %04X, serial: {%02X%02X%02X%02X}, BoxID: {%02X%02X%02X%02X}",
     reader->caid, reader->hexserial[2], reader->hexserial[3], reader->hexserial[4], reader->hexserial[5],

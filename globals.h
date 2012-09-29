@@ -363,6 +363,10 @@ extern const char *boxdesc[];
 #define DEFAULT_MAX_CACHE_TIME 15
 #define DEFAULT_MAX_CACHE_COUNT 1000
 
+#define DEFAULT_LB_AUTO_TIMEOUT 0
+#define DEFAULT_LB_AUTO_TIMEOUT_P 30
+#define DEFAULT_LB_AUTO_TIMEOUT_T 300
+
 enum {E1_GLOBAL=0, E1_USER, E1_READER, E1_SERVER, E1_LSERVER};
 
 //LB blocking events:
@@ -374,46 +378,6 @@ enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_
 #define LB_NONBLOCK_E2_FIRST E2_CCCAM_NOK1
 
 #define CTA_RES_LEN 512
-
-#define  LED1A 		0
-#define  LED1B 		1
-#define  LED2 		2
-#define  LED3 		3
-#define  LED_OFF	0
-#define  LED_ON		1
-#define  LED_BLINK_ON 	2
-#define  LED_BLINK_OFF 	3
-#define  LED_DEFAULT 	10
-#define  LED_STOP_THREAD 100
-#define  ARM_LED_TIMEOUT 3 //Dont blink for actions which are < ARM_LED_TIMEOUT seconds ago
-
-struct s_arm_led {
-	int32_t led;
-	int32_t action;
-	time_t start_time;
-};
-
-#define QBOXHD_LED_DEVICE               "/dev/sw0"
-#define QBOXHD_SET_LED_ALL_PANEL_COLOR	_IO(0xBC, 13)    // payload = 3byte [H][S][V]
-#define QBOXHD_LED_COLOR_RED        359  // only H value, S and V values are always == 99
-#define QBOXHD_LED_COLOR_GREEN      120
-#define QBOXHD_LED_COLOR_BLUE       230
-#define QBOXHD_LED_COLOR_YELLOW     55
-#define QBOXHD_LED_COLOR_MAGENTA    290
-
-#define QBOXHDMINI_LED_DEVICE       "/dev/lpc_0"
-#define	QBOXHDMINI_IOSET_RGB        _IOWR('L', 6, qboxhdmini_led_color_struct)
-#define QBOXHDMINI_LED_COLOR_RED     0x1F0000               // 3 bytes RGB , 5 bit used for each color
-#define QBOXHDMINI_LED_COLOR_GREEN   0x001F00
-#define QBOXHDMINI_LED_COLOR_BLUE    0x00001F
-#define QBOXHDMINI_LED_COLOR_YELLOW  0x1F1F00
-#define QBOXHDMINI_LED_COLOR_MAGENTA 0x1F001F
-
-#define QBOXHD_LED_COLOR_OFF        -1   // all colors H,S,V and/or R,G,B == 0,0,0
-
-#define QBOXHD_LED_BLINK_FAST       100  // blink milliseconds
-#define QBOXHD_LED_BLINK_MEDIUM     200
-#define QBOXHD_LED_BLINK_SLOW       400
 
 #define MAX_ATR_LEN		33			// max. ATR length
 #define MAX_HIST		15			// max. number of historical characters
@@ -1544,6 +1508,7 @@ struct s_config
 	char			*http_script;
 	int32_t			http_refresh;
 	int8_t			http_hide_idle_clients;
+	char			*http_hide_type;
 	int8_t			http_showpicons;
 	struct s_ip 	*http_allowed;
 	int8_t			http_readonly;
@@ -1632,6 +1597,9 @@ struct s_config
 	int32_t			lb_max_readers;					// limit the amount of readers during learning
 	int32_t			lb_auto_betatunnel;				// automatic selection of betatunnel convertion based on learned data
 	int32_t			lb_auto_betatunnel_prefer_beta; // prefer-beta-over-nagra factor
+	int32_t			lb_auto_timeout;		// Automatic timeout by loadbalancer statistics
+	int32_t			lb_auto_timeout_p;		// percent added to avg time as timeout time
+	int32_t			lb_auto_timeout_t;		// minimal time added to avg time as timeout time
 #endif
 	int32_t			resolve_gethostbyname;
 	int8_t			double_check;					// schlocke: Double checks each ecm+dcw from two (or more) readers
@@ -1667,7 +1635,7 @@ struct s_config
 	struct		s_cpmap *cpmap;
 #endif
 
-#if defined(QBOXHD) || defined(__arm__)
+#ifdef LEDSUPPORT
 	int8_t		enableled;							// 0=disabled led, 1=enable led for routers, 2=enable qboxhd led
 #endif
 
@@ -1769,19 +1737,6 @@ typedef struct emm_packet_t
 	struct s_client *client;
 } EMM_PACKET;
 
-// QBOX led structures
-typedef struct {
-	uint16_t H;										// range 0-359
-	unsigned char S;								// range 0-99
-	unsigned char V;								// range 0-99
-} qboxhd_led_color_struct;
-
-typedef struct {
-	unsigned char red;								// first 5 bit used (&0x1F)
-	unsigned char green;							// first 5 bit used (&0x1F)
-	unsigned char blue;								// first 5 bit used (&0x1F)
-} qboxhdmini_led_color_struct;
-
 
 /* ===========================
  *      global variables
@@ -1812,10 +1767,6 @@ extern CS_MUTEX_LOCK gethostbyname_lock;
 extern CS_MUTEX_LOCK readdir_lock;
 #if defined(WITH_LIBUSB)
 extern CS_MUTEX_LOCK sr_lock;
-#endif
-
-#ifdef CS_CACHEEX
-extern uint8_t cacheex_peer_id[8];
 #endif
 
 extern pid_t server_pid;							// PID of server - set while startup

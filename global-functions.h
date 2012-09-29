@@ -59,15 +59,6 @@ int32_t restart_cardreader(struct s_reader *rdr, int32_t restart);
 
 extern int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line);
 extern void global_whitelist_read(void);
-extern struct s_cacheex_matcher *is_cacheex_matcher_matching(ECM_REQUEST *er, ECM_REQUEST *ecm);
-extern void cacheex_matcher_read(void);
-
-extern uint8_t *cacheex_update_peer_id(void);
-extern void cacheex_set_peer_id(uint8_t *id);
-static inline uint64_t cnode(void *var) { uint64_t *x = var; return *x; }
-extern uint8_t *cc_get_cccam_node_id(void);
-
-extern void qboxhd_led_blink(int32_t color, int32_t duration);
 
 extern int32_t accept_connection(int32_t i, int32_t j);
 extern void start_thread(void * startroutine, char * nameroutine);
@@ -102,6 +93,7 @@ extern int32_t chk_srvid_match_by_caid_prov(uint16_t, uint32_t, SIDTAB *);
 extern int32_t chk_sfilter(ECM_REQUEST *, PTAB*);
 extern int32_t chk_ufilters(ECM_REQUEST *);
 extern int32_t chk_rsfilter(struct s_reader * reader, ECM_REQUEST *);
+extern int32_t chk_caid(uint16_t caid, CAIDTAB *ctab);
 extern int32_t matching_reader(ECM_REQUEST *, struct s_reader *);
 extern int32_t emm_reader_match(struct s_reader *reader, uint16_t caid, uint32_t provid);
 extern void set_signal_handler(int32_t , int32_t , void (*));
@@ -122,7 +114,17 @@ extern void cs_add_violation_by_ip(IN_ADDR_T ip, int32_t port, char *info);
 extern void cs_add_violation(struct s_client *cl, char *info);
 extern void cs_card_info(void);
 extern void cs_debug_level(void);
-extern void cs_add_cache(struct s_client *cl, ECM_REQUEST *er, int8_t csp);
+extern void update_chid(ECM_REQUEST *ecm);
+extern void free_ecm(ECM_REQUEST *ecm);
+
+#define debug_ecm(mask, args...) \
+	do { \
+		if (config_WITH_DEBUG()) { \
+			char buf[ECM_FMT_LEN]; \
+			format_ecm(er, buf, ECM_FMT_LEN); \
+			cs_debug_mask(mask, ##args); \
+		} \
+	} while(0)
 
 /* ===========================
  *       module-anticasc
@@ -211,24 +213,6 @@ extern void stop_garbage_collector(void);
  *         module-webif
  * =========================== */
 extern void http_srv(void);
-
-/* ===========================
- *         oscam-lcd
- * =========================== */
-#ifdef LCDSUPPORT
-extern void start_lcd_thread(void);
-extern void end_lcd_thread(void);
-#else
-static inline void start_lcd_thread(void) { }
-static inline void end_lcd_thread(void) { }
-#endif
-
-/* ===========================
- *         arm-led
- * =========================== */
-extern void cs_switch_led(int32_t led, int32_t action);
-extern void arm_led_start_thread(void);
-extern void arm_led_stop_thread(void);
 
 /* ===========================
  *         oscam-log
@@ -320,6 +304,7 @@ extern void cs_inet_addr(char *txt, IN_ADDR_T *out);
 extern IN_ADDR_T get_null_ip(void);
 extern void set_null_ip(IN_ADDR_T *ip);
 extern void set_localhost_ip(IN_ADDR_T *ip);
+void cs_resolve(const char *hostname, IN_ADDR_T *ip, struct SOCKADDR *sock);
 
 #ifdef IPV6SUPPORT
 #define GET_IP() *(struct in6_addr *)pthread_getspecific(getip)
@@ -415,8 +400,6 @@ extern void add_ms_to_timespec(struct timespec *timeout, int32_t msec);
 extern int32_t add_ms_to_timeb(struct timeb *tb, int32_t ms);
 extern int32_t ecmfmt(uint16_t caid, uint32_t prid, uint16_t chid, uint16_t pid, uint16_t srvid, uint16_t l, uint16_t checksum, char *result, size_t size);
 extern int32_t format_ecm(ECM_REQUEST *ecm, char *result, size_t size);
-extern int32_t format_cxm(struct s_cacheex_matcher *entry, char *result, size_t size);
-extern int8_t cs_cacheex_maxhop(struct s_client *cl);
 
 extern int streq(const char *s1, const char *s2);
 
@@ -451,6 +434,7 @@ extern void update_ecmlen_from_stat(struct s_reader *rdr);
 extern int32_t clean_all_stats_by_rc(int8_t rc, int8_t inverse);
 extern int32_t lb_valid_btun(ECM_REQUEST *er, uint16_t caidto);
 extern void lb_mark_last_reader(ECM_REQUEST *er);
+extern uint32_t lb_auto_timeout(ECM_REQUEST *er, uint32_t ctimeout);
 
 /* ===========================
  *       reader-common

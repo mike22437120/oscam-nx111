@@ -148,7 +148,7 @@ void global_fixups_fn(void *UNUSED(var)) {
 
 static const struct config_list global_opts[] = {
 	DEF_OPT_FIXUP_FUNC(global_fixups_fn),
-#if defined(QBOXHD) || defined(__arm__)
+#ifdef LEDSUPPORT
 	DEF_OPT_INT8("enableled"				, OFS(enableled),			0 ),
 #endif
 	DEF_OPT_FUNC("disablelog"				, OFS(disablelog),			disablelog_fn ),
@@ -204,6 +204,9 @@ static const struct config_list global_opts[] = {
 	DEF_OPT_FUNC("lb_retrylimits"			, OFS(lb_retrylimittab), caidvaluetab_fn ),
 	DEF_OPT_FUNC("lb_nbest_percaid"			, OFS(lb_nbest_readers_tab), caidvaluetab_fn ),
 	DEF_OPT_FUNC("lb_noproviderforcaid"		, OFS(lb_noproviderforcaid), check_caidtab_fn ),
+	DEF_OPT_INT32("lb_auto_timeout"			, OFS(lb_auto_timeout),	DEFAULT_LB_AUTO_TIMEOUT ),
+	DEF_OPT_INT32("lb_auto_timeout_p"		, OFS(lb_auto_timeout_p), DEFAULT_LB_AUTO_TIMEOUT_P ),
+	DEF_OPT_INT32("lb_auto_timeout_t"		, OFS(lb_auto_timeout_t), DEFAULT_LB_AUTO_TIMEOUT_T ),
 #endif
 	DEF_OPT_FUNC("double_check_caid"		, OFS(double_check_caid),	check_caidtab_fn ),
 	DEF_OPT_STR("ecmfmt"					, OFS(ecmfmt),				NULL ),
@@ -343,6 +346,7 @@ static const struct config_list webif_opts[] = {
 	DEF_OPT_INT32("http_prepend_embedded_css"	, OFS(http_prepend_embedded_css), 0 ),
 	DEF_OPT_INT32("httprefresh"				, OFS(http_refresh),			0 ),
 	DEF_OPT_INT8("httphideidleclients"		, OFS(http_hide_idle_clients),	0 ),
+	DEF_OPT_STR("httphidetype"				, OFS(http_hide_type),				NULL ),
 	DEF_OPT_INT8("httpshowpicons"			, OFS(http_showpicons),			0 ),
 	DEF_OPT_FUNC("httpallowed"				, OFS(http_allowed),			iprange_fn ),
 	DEF_OPT_INT8("httpreadonly"				, OFS(http_readonly),			0 ),

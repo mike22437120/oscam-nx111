@@ -13,6 +13,8 @@ SVN_REV := $(shell ./config.sh --oscam-revision)
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
+LINKER_VER_OPT:=-Wl,--version
+
 # Find OSX SDK
 ifeq ($(uname_S),Darwin)
 # Setting OSX_VER allows you to choose prefered version if you have
@@ -22,6 +24,7 @@ ifeq ($(uname_S),Darwin)
 # SDK_VER is not set.
 OSX_SDK := $(shell ./config.sh --detect-osx-sdk-version $(OSX_VER))
 override CONFIG_HAVE_DVBAPI:=
+LINKER_VER_OPT:=-Wl,-v
 endif
 
 ifeq "$(shell ./config.sh --enabled WITH_SSL)" "Y"
@@ -59,7 +62,7 @@ LDFLAGS = -Wl,--gc-sections
 # Check for the linker version and if it matches disable --gc-sections
 # For more information about the bug see:
 #   http://cygwin.com/ml/binutils/2005-01/msg00103.html
-LINKER_VER := $(shell $(CC) -Wl,--version 2>&1 | head -1 | cut -d' ' -f5)
+LINKER_VER := $(shell $(CC) $(LINKER_VER_OPT) 2>&1 | head -1 | cut -d' ' -f5)
 # dm500 toolchain
 ifeq "$(LINKER_VER)" "20040727"
 LDFLAGS :=
@@ -208,7 +211,7 @@ SAY = @echo
 endif
 
 BINDIR := Distribution
-BUILD_DIR := build
+override BUILD_DIR := build
 OBJDIR := $(BUILD_DIR)/$(TARGET)
 
 OSCAM_BIN := $(BINDIR)/oscam-$(VER)$(SVN_REV)-$(subst cygwin,cygwin.exe,$(TARGET))
@@ -261,6 +264,7 @@ SRC-$(CONFIG_WITH_CARDREADER) += csctapi/protocol_t1.c
 SRC-$(CONFIG_WITH_CARDREADER) += csctapi/t1_block.c
 
 SRC-$(CONFIG_CS_ANTICASC) += module-anticasc.c
+SRC-$(CONFIG_CS_CACHEEX) += module-cacheex.c
 SRC-$(CONFIG_MODULE_CAMD33) += module-camd33.c
 SRC-$(sort $(CONFIG_MODULE_CAMD35) $(CONFIG_MODULE_CAMD35_TCP)) += module-camd35.c
 SRC-$(CONFIG_MODULE_CCCAM) += module-cccam.c
@@ -274,6 +278,7 @@ SRC-$(CONFIG_HAVE_DVBAPI) += module-dvbapi.c
 SRC-$(CONFIG_MODULE_GBOX) += module-gbox.c
 SRC-$(CONFIG_IRDETO_GUESSING) += module-ird-guess.c
 SRC-$(CONFIG_LCDSUPPORT) += module-lcd.c
+SRC-$(CONFIG_LEDSUPPORT) += module-led.c
 SRC-$(CONFIG_MODULE_MONITOR) += module-monitor.c
 SRC-$(CONFIG_MODULE_NEWCAMD) += module-newcamd.c
 SRC-$(CONFIG_MODULE_PANDORA) += module-pandora.c
@@ -361,7 +366,7 @@ all:
 |  Protocols: $(shell ./config.sh --show-enabled protocols | sed -e 's|MODULE_||g')\n\
 |  Readers  : $(shell ./config.sh --show-enabled readers | sed -e 's|READER_||g')\n\
 |  Compiler : $(shell $(CC) --version 2>/dev/null | head -n 1)\n\
-|  Linker   : $(shell $(CC) -Wl,-v 2>&1 | head -n 1)\n\
+|  Linker   : $(shell $(CC) $(LINKER_VER_OPT) 2>&1 | head -n 1)\n\
 |  Binary   : $(OSCAM_BIN)\n\
 +-------------------------------------------------------------------------------\n"
 	@$(MAKE) --no-print-directory $(OSCAM_BIN) $(LIST_SMARGO_BIN)
@@ -637,6 +642,7 @@ OSCam build system documentation\n\
     make azbox         - Builds OSCam for AZBox STBs\n\
     make coolstream    - Builds OSCam for Coolstream\n\
     make dockstar      - Builds OSCam for Dockstar\n\
+    make qboxhd        - Builds OSCam for QBoxHD STBs\n\
     make opensolaris   - Builds OSCam for OpenSolaris\n\
 \n\
  Predefined targets for static builds:\n\

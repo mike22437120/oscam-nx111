@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
+#include "module-cacheex.h"
 #include "module-cccam.h"
 #include "module-cccshare.h"
 #include "module-webif.h"
@@ -305,7 +306,7 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 	tpl_addVar(vars, TPLADD, "DOUBLECHECKCAID", value);
 	free_mk_t(value);
 		
-#if defined(QBOXHD) || defined(__arm__)
+#ifdef LEDSUPPORT
 	if(cfg.enableled == 1)
 		tpl_addVar(vars, TPLADD, "ENABLELEDSELECTED1", "selected");
 	else if(cfg.enableled == 2)
@@ -392,6 +393,10 @@ static char *send_oscam_config_loadbalancer(struct templatevars *vars, struct ur
 	if (cfg.lb_auto_betatunnel) tpl_addVar(vars, TPLADD, "LBAUTOBETATUNNEL", "selected");
 	tpl_printf(vars, TPLADD, "LBPREFERBETA", "%d", cfg.lb_auto_betatunnel_prefer_beta);
 
+	if (cfg.lb_auto_timeout) tpl_addVar(vars, TPLADD, "LBAUTOTIMEOUT", "selected");
+	tpl_printf(vars, TPLADD, "LBAUTOTIMEOUTP", "%d", cfg.lb_auto_timeout_p);
+	tpl_printf(vars, TPLADD, "LBAUTOTIMEOUTT", "%d", cfg.lb_auto_timeout_t);
+	
 	return tpl_getTpl(vars, "CONFIGLOADBALANCER");
 }
 #endif
@@ -703,6 +708,7 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	tpl_addVar(vars, TPLADD, "HTTPJSCRIPT", cfg.http_jscript);
 
 	if (cfg.http_hide_idle_clients > 0) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
+	tpl_addVar(vars, TPLADD, "HTTPHIDETYPE", cfg.http_hide_type);
 	if (cfg.http_showpicons > 0) tpl_addVar(vars, TPLADD, "SHOWPICONSCHECKED", "checked");
 
 	char *value = mk_t_iprange(cfg.mon_allowed);
@@ -2876,6 +2882,8 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	int32_t shown;
 
 	struct s_client *cl;
+	int8_t filtered;
+	
 	cs_readlock(&readerlist_lock);
 	cs_readlock(&clientlist_lock);
 	for (i=0, cl=first_client; cl ; cl=cl->next, i++) {
@@ -2902,7 +2910,15 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 		shown = 0;
 		if (cl->wihidden != 1) {
-			if (cfg.http_hide_idle_clients != 1 || cl->typ != 'c' || (now - cl->lastecm) <= cfg.hideclient_to) {
+			filtered = !(cfg.http_hide_idle_clients != 1 || cl->typ != 'c' || (now - cl->lastecm) <= cfg.hideclient_to);
+			if (!filtered && cfg.http_hide_type) {
+				char *p = cfg.http_hide_type;
+			        while (*p && !filtered) {
+			        	filtered = (*p++ == cl->typ);
+				}
+			}
+			
+                        if (!filtered) {
 				if (cl->typ=='c'){
 					user_count_shown++;
 					if (cfg.http_hide_idle_clients != 1 && cfg.hideclient_to > 0 && (now - cl->lastecm) <= cfg.hideclient_to) {
@@ -4183,7 +4199,7 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 	struct s_client *cl;
 	time_t now = time((time_t*)0);
 
-	tpl_printf(vars, TPLADD, "OWN_CACHEEX_NODEID", "%" PRIu64 "X", cnode(cacheex_peer_id));
+	tpl_printf(vars, TPLADD, "OWN_CACHEEX_NODEID", "%" PRIu64 "X", cacheex_node_id(cacheex_peer_id));
 	
 	for (i = 0, cl = first_client; cl ; cl = cl->next, i++) {
 		if (cl->typ=='c' && cl->account && cl->account->cacheex){
@@ -4305,11 +4321,7 @@ static int8_t check_httpdyndns(IN_ADDR_T addr) {
 		int8_t i = 0;
 		for(i = 0; i < MAX_HTTP_DYNDNS; i++) {
 			if(cfg.http_dyndns[i][0]){
-#ifdef IPV6SUPPORT
-				cs_getIPv6fromHost((char*)cfg.http_dyndns[i], &cfg.http_dynip[i], NULL);
-#else
-				cfg.http_dynip[i] = cs_getIPfromHost((char*)cfg.http_dyndns[i]);
-#endif
+				cs_resolve((const char *)cfg.http_dyndns[i], &cfg.http_dynip[i], NULL);
 				cs_debug_mask(D_TRACE, "WebIf: httpdyndns [%d] resolved %s to %s ", i, (char*)cfg.http_dyndns[i], cs_inet_ntoa(cfg.http_dynip[i]));
 			}
 		}
@@ -4362,11 +4374,7 @@ static int8_t check_request(char *result, int32_t read) {
 	return 0;
 }
 
-#ifdef IPV6SUPPORT
-static int32_t readRequest(FILE *f, struct in6_addr in, char **result, int8_t forcePlain)
-#else
-static int32_t readRequest(FILE *f, struct in_addr in, char **result, int8_t forcePlain)
-#endif
+static int32_t readRequest(FILE *f, IN_ADDR_T in, char **result, int8_t forcePlain)
 {
 	int32_t n, bufsize=0, errcount = 0;
 	char buf2[1024];
@@ -4416,11 +4424,7 @@ static int32_t readRequest(FILE *f, struct in_addr in, char **result, int8_t for
 
 		//max request size 100kb
 		if (bufsize>102400) {
-#ifdef IPV6SUPPORT
 			cs_log("error: too much data received from %s", cs_inet_ntoa(in));
-#else
-			cs_log("error: too much data received from %s", inet_ntoa(in));
-#endif
 			free(*result);
 			return -1;
 		}
@@ -4449,18 +4453,10 @@ static int32_t readRequest(FILE *f, struct in_addr in, char **result, int8_t for
 	}
 	return bufsize;
 }
-#ifdef IPV6SUPPORT
-static int32_t process_request(FILE *f, struct in6_addr in) {
-#else
-static int32_t process_request(FILE *f, struct in_addr in) {
-#endif
+static int32_t process_request(FILE *f, IN_ADDR_T in) {
 	int32_t ok=0,v=cv();
 	int8_t *keepalive = (int8_t *)pthread_getspecific(getkeepalive);
-#ifdef IPV6SUPPORT
-	struct in6_addr addr = GET_IP();
-#else
-	in_addr_t addr = GET_IP();
-#endif
+	IN_ADDR_T addr = GET_IP();
 
 	do {
 #ifdef WITH_SSL
@@ -4765,22 +4761,16 @@ static void *serve_process(void *conn){
 	struct s_connection *myconn = (struct s_connection*)conn;
 	int32_t s = myconn->socket;
 	struct s_client *cl = myconn->cl;
-#ifdef IPV6SUPPORT
-	struct in6_addr in = myconn->remote;
-#else
-	struct in_addr in = myconn->remote;
-#endif
+	IN_ADDR_T in;
+	IP_ASSIGN(in, myconn->remote);
 
 #ifdef WITH_SSL
 	SSL *ssl = myconn->ssl;
 	pthread_setspecific(getssl, ssl);
 #endif
 	free(myconn);
-#ifdef IPV6SUPPORT
-	pthread_setspecific(getip, &in.s6_addr);
-#else
-	pthread_setspecific(getip, &in.s_addr);
-#endif
+
+	pthread_setspecific(getip, &in);
 	pthread_setspecific(getclient, cl);
 
 	int8_t keepalive = 0;
