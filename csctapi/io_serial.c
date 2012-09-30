@@ -218,8 +218,6 @@ bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct te
     nuts.flags &= ~ASYNC_SPD_MASK;
     nuts.flags |= ASYNC_SPD_CUST;
     ioctl(reader->handle, TIOCSSERIAL, &nuts);
-//    cfsetospeed(tio, IO_Serial_Bitrate(38400));
-//    cfsetispeed(tio, IO_Serial_Bitrate(38400));
   }
 #endif
   if (reader->typ == R_SC8in1) {
