@@ -206,8 +206,8 @@ void block_connect(struct s_reader *rdr) {
   rdr->tcp_block_connect_till.time += rdr->tcp_block_delay / 1000;
   rdr->tcp_block_connect_till.millitm += rdr->tcp_block_delay % 1000;
   rdr->tcp_block_delay *= 4; //increment timeouts
-//  if (rdr->tcp_block_delay >= 60*1000)
-//    rdr->tcp_block_delay = 60*1000; //max 1min, todo config
+  if (rdr->tcp_block_delay >= 60*1000)
+    rdr->tcp_block_delay = 60*1000; //max 1min, todo config
   rdr_debug_mask(rdr, D_TRACE, "tcp connect blocking delay set to %d", rdr->tcp_block_delay);
 }
 

@@ -293,12 +293,6 @@ typedef unsigned char uchar;
 #define BOXTYPES		11
 extern const char *boxdesc[];
 
-#ifdef HAVE_DVBAPI
-#define ECMINFO_MODE_OSCAM 	0
-#define ECMINFO_MODE_CCCAM 	1
-#define ECMINFO_MODE_NEWCAMD	2
-#endif
-
 #define EMM_UNIQUE 1
 #define EMM_SHARED 2
 #define EMM_GLOBAL 4
@@ -358,7 +352,7 @@ extern const char *boxdesc[];
 #define DEFAULT_LB_MODE 0
 #define DEFAULT_LB_STAT_CLEANUP 336
 #define DEFAULT_LB_REOPEN_MODE 0
-#define DEFAULT_UPDATEINTERVAL 120
+#define DEFAULT_UPDATEINTERVAL 240
 #define DEFAULT_LB_AUTO_BETATUNNEL 1
 #define DEFAULT_LB_AUTO_BETATUNNEL_PREFER_BETA 50
 #define DEFAULT_CACHEEX_WAIT_TIME 50
@@ -444,10 +438,6 @@ enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_
 #define REQUEST_SENT			0x10
 #define REQUEST_ANSWERED		0x20
 
-#define CCCAMCFGREADER    1
-#define CCCAMCFGUSER      2
-
-
 /* ===========================
  *      Default Values
  * =========================== */
@@ -460,7 +450,7 @@ enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_
 #define DEFAULT_CC_RESHARE  -1 // Use global cfg
 #define DEFAULT_CC_IGNRSHR  -1 // Use global cfg
 #define DEFAULT_CC_STEALTH  -1 // Use global cfg
-#define DEFAULT_CC_KEEPALIVE 1
+#define DEFAULT_CC_KEEPALIVE 0
 #define DEFAULT_CC_RECONNECT 12000
 #endif
 
@@ -1070,8 +1060,6 @@ struct s_reader  									//contains device info, reader info and card info
 	uint8_t		changes_since_shareupdate;
 	int32_t			resetcycle;						// ECM until reset
 	int32_t			resetcounter;					// actual count
-	int32_t			resetcycle_nok;						// nok until reset
-	int32_t			resetcounter_nok;					// actual nok count
 	uint32_t		auprovid;						// AU only for this provid
 	int8_t			audisabled;						// exclude reader from auto AU
 	int8_t			smargopatch;
@@ -1294,7 +1282,6 @@ struct s_reader  									//contains device info, reader info and card info
 	struct s_sc8in1_config *sc8in1_config;
 	uint8_t			sc8in1_dtrrts_patch; // fix for kernel commit 6a1a82df91fa0eb1cc76069a9efe5714d087eccd
 
-	uint32_t		autorestartseconds;		// auto restart reader after login ,default 0  disable
 #ifdef MODULE_PANDORA
 	int8_t			pand_send_ecm;
 #endif
@@ -1522,7 +1509,6 @@ struct s_config
 	int8_t			http_force_sslv3;
 	char			*http_cert;
 	char			*http_help_lang;
-	int32_t			http_use_utf8;
 #endif
 	int8_t			http_full_cfg;
 	int32_t			failbantime;
@@ -1563,8 +1549,6 @@ struct s_config
 	int8_t			cc_forward_origin_card;
 	int8_t			cc_use_fixed_nodeid;
 	uint8_t			cc_fixed_nodeid[8];
-	int8_t			cc_autosidblock;
-	char		*cc_cfgfile;	//cccam.cfg file path
 #endif
 	char			*gbox_hostname;
 	char			*gbox_key;
@@ -1620,7 +1604,6 @@ struct s_config
 	int8_t		dvbapi_boxtype;
 	int8_t		dvbapi_pmtmode;
 	int8_t		dvbapi_requestmode;
-	int32_t		dvbapi_ecm_infomode;//ecm.info  format:0 oscam 1 cccam 2 
 	SIDTABBITS	dvbapi_sidtabok;					// positiv services
 	SIDTABBITS	dvbapi_sidtabno;					// negative services
 	int8_t		dvbapi_reopenonzap;

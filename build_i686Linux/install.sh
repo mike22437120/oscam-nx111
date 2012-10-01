@@ -15,13 +15,12 @@ make clean
 if [ -d $TOOLCHAIN_ROOT/i686-pc-linux-gnu/bin ]; then
 	PATH=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/bin:$PATH \
 	cmake	-DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-i686-pc-linux.cmake \
-		-DCS_CONFDIR=/var/etc \
 		-DLIBUSBDIR=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/i686-pc-linux-gnu/sysroot/usr \
 		-DLIBRTDIR=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/i686-pc-linux-gnu/sysroot/usr \
 		-DOPTIONAL_INCLUDE_DIR=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/i686-pc-linux-gnu/sysroot/usr/include \
 		..   
 else
-	cmake	-DCS_CONFDIR=/var/etc ..
+	cmake	..
 fi
 
 make
@@ -37,7 +36,7 @@ csver=`grep "CS_VERSION" $svnroot/globals.h | sed -e "s/[^\"]*//" -e "s/\"//g" |
 svnver=`(grep "CS_SVN_VERSION .*" $svnroot/.revision 2>/dev/null || (echo CS_SVN_VERSION "0">.revision;printf 0)) | cut -d" " -f2 | sed 's/[^0-9]*//;s/[^0-9]*$//'`
 cd ${svnroot}/${plat_dir}/image
 sed -i "s/Version:.*/Version: ${csver}-svn${svnver}/" DEBIAN/control
-tar czf ../oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz var usr
+tar czf ../oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.tar.gz usr
 cd ../ 
 dpkg -b image oscam-${plat}-svn${svnver}-nx111-`date +%Y%m%d`.deb
 rm -rf CMake* *.a Makefile cscrypt csctapi *.cmake algo image/usr/bin/oscam utils
