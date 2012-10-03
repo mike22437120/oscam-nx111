@@ -11,10 +11,21 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
+#include "module-anticasc.h"
 #include "module-cacheex.h"
 #include "module-cccam.h"
 #include "module-cccshare.h"
+#include "module-stat.h"
 #include "module-webif.h"
+#include "module-webif-lib.h"
+#include "module-webif-pages.h"
+#include "oscam-conf-mk.h"
+#include "oscam-files.h"
+#include "oscam-garbage.h"
+#include "oscam-client.h"
+#include "oscam-lock.h"
+#include "oscam-net.h"
+#include "oscam-string.h"
 
 extern char *CSS;
 extern char *entitlement_type[];
@@ -118,7 +129,7 @@ static void refresh_oscam(enum refreshtypes refreshtype) {
  * load historical values from ringbuffer and return it in the right order
  * as string. Value should be freed with free_mk_t()
  */
-char *get_ecm_historystring(struct s_client *cl){
+static char *get_ecm_historystring(struct s_client *cl){
 
 	if(cl){
 		int32_t k, i, pos = 0, needed = 1, v;
@@ -148,7 +159,8 @@ char *get_ecm_historystring(struct s_client *cl){
 		return "";
 	}
 }
-char *get_ecm_fullhistorystring(struct s_client *cl){
+
+static char *get_ecm_fullhistorystring(struct s_client *cl){
 
 	if(cl){
 		int32_t k, i, pos = 0, needed = 1, v;
@@ -610,6 +622,15 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 }
 #endif
 
+static bool is_ext(const char *path, const char *ext)
+{
+	size_t lenpath = strlen(path);
+	size_t lenext = strlen(ext);
+	if (lenext > lenpath)
+		return 0;
+	return memcmp(path + lenpath - lenext, ext, lenext) == 0;
+}
+
 static char *send_oscam_config_monitor(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
 
@@ -684,7 +705,7 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	struct dirent *result;
 	if((hdir = opendir(cs_confdir)) != NULL){
 		while(cs_readdir_r(hdir, &entry, &result) == 0 && result != NULL){
-			if (strCmpSuffix(entry.d_name, ".css")) {
+			if (is_ext(entry.d_name, ".css")) {
 				tpl_printf(vars, TPLAPPEND, "CSSOPTIONS", "\t\t\t\t\t\t<option value=\"%s%s\"%s>%s%s</option>\n",
 					cs_confdir,
 					entry.d_name,
@@ -2116,7 +2137,7 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 
 }
 
-static void webif_add_client_proto(struct templatevars *vars, struct s_client *cl, char *proto) {
+static void webif_add_client_proto(struct templatevars *vars, struct s_client *cl, const char *proto) {
 #ifdef MODULE_NEWCAMD
 	if (streq(proto, "newcamd") && cl->typ == 'c') {
 		tpl_printf(vars, TPLADDONCE, "CLIENTPROTO","%s (%s)", proto, newcamd_get_client_name(cl->ncd_client_id));
@@ -2134,8 +2155,40 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 	}
 #endif
 	(void)cl; // Prevent warning when NEWCAMD and CCCAM are both disabled
-	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", proto);
+	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", (char *)proto);
 	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", "");
+}
+
+static void clear_account_stats(struct s_auth *account) {
+	account->cwfound = 0;
+	account->cwcache = 0;
+	account->cwnot = 0;
+	account->cwtun = 0;
+	account->cwignored  = 0;
+	account->cwtout = 0;
+	account->emmok = 0;
+	account->emmnok = 0;
+	cacheex_clear_account_stats(account);
+}
+
+static void clear_all_account_stats(void) {
+	struct s_auth *account = cfg.account;
+	while (account) {
+		clear_account_stats(account);
+		account = account->next;
+	}
+}
+
+static void clear_system_stats(void) {
+	first_client->cwfound = 0;
+	first_client->cwcache = 0;
+	first_client->cwnot = 0;
+	first_client->cwtun = 0;
+	first_client->cwignored  = 0;
+	first_client->cwtout = 0;
+	first_client->emmok = 0;
+	first_client->emmnok = 0;
+	cacheex_clear_client_stats(first_client);
 }
 
 static char *send_oscam_user_config(struct templatevars *vars, struct uriparams *params, int32_t apicall) {
@@ -2294,7 +2347,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 			active_users++;
 
 		int32_t lastresponsetm = 0, latestactivity=0;
-		char *proto = "";
+		const char *proto = "";
 		double cwrate = 0.0, cwrate2 = 0.0;
 
 		//search account in active clients
@@ -2323,7 +2376,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 			status = (!apicall) ? "<b>connected</b>" : "connected";
 			if(account->expirationdate && account->expirationdate < now) classname = "expired";
 			else classname = "connected";
-			proto = monitor_get_proto(latestclient);
+			proto = client_get_proto(latestclient);
 			if (latestclient->last_srvid != NO_SRVID_VALUE || latestclient->last_caid != NO_CAID_VALUE)
 				lastchan = xml_encode(vars, get_servicename(latestclient, latestclient->last_srvid, latestclient->last_caid, channame));
 			else
@@ -3019,7 +3072,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 				} else tpl_printf(vars, TPLADD, "CLIENTCRYPTED", "%d", cl->crypted);
 				tpl_addVar(vars, TPLADD, "CLIENTIP", cs_inet_ntoa(cl->ip));
 				tpl_printf(vars, TPLADD, "CLIENTPORT", "%d", cl->port);
-				char *proto = monitor_get_proto(cl);
+				const char *proto = client_get_proto(cl);
 				webif_add_client_proto(vars, cl, proto);
 
 				if (!apicall) {
@@ -4611,18 +4664,18 @@ static int32_t process_request(FILE *f, IN_ADDR_T in) {
 				}
 				break;
 			}
-			if(authok == 0 && len > 50 && cs_strnicmp(str1, "Authorization:", 14) == 0 && strstr(str1, "Digest") != NULL) {
+			if (!authok && len > 50 && strncmp(str1, "Authorization:", 14) == 0 && strstr(str1, "Digest") != NULL) {
 				if (cs_dblevel & D_CLIENT){
 					if(cs_realloc(&authheader, len + 1, -1))
 						cs_strncpy(authheader, str1, len);
 				}
 				authok = check_auth(str1, method, path, expectednonce);
-			} else if (len > 40 && cs_strnicmp(str1, "If-Modified-Since:", 18) == 0){
+			} else if (len > 40 && strncmp(str1, "If-Modified-Since:", 18) == 0){
 				modifiedheader = parse_modifiedsince(str1);
-			} else if (len > 20 && cs_strnicmp(str1, "If-None-Match:", 14) == 0){
+			} else if (len > 20 && strncmp(str1, "If-None-Match:", 14) == 0){
 				for(pch = str1 + 14; pch[0] != '"' && pch[0] != '\0'; ++pch);
 				if(strlen(pch) > 5) etagheader = (uint32_t)strtoul(++pch, NULL, 10);
-			} else if (len > 12 && cs_strnicmp(str1, "Connection: Keep-Alive", 22) == 0 && strcmp(method, "POST")){
+			} else if (len > 12 && strncmp(str1, "Connection: Keep-Alive", 22) == 0 && strcmp(method, "POST")){
 				*keepalive = 1;
 			}
 		}
@@ -4856,11 +4909,20 @@ static void *serve_process(void *conn){
 	return NULL;
 }
 
-void http_srv(void) {
+/* Creates a random string with specified length. Note that dst must be one larger than size to hold the trailing \0*/
+static void create_rand_str(char *dst, int32_t size) {
+	int32_t i;
+	for (i = 0; i < size; ++i){
+		dst[i] = (rand() % 94) + 32;
+	}
+	dst[i] = '\0';
+}
+
+static void *http_srv(void) {
 	pthread_t workthread;
 	pthread_attr_t attr;
 	struct s_client * cl = create_client(first_client->ip);
-	if (cl == NULL) return;
+	if (cl == NULL) return NULL;
 	httpthread = cl->thread = pthread_self();
 	pthread_setspecific(getclient, cl);
 	cl->typ = 'h';
@@ -4880,11 +4942,11 @@ void http_srv(void) {
 
 	if (pthread_key_create(&getip, NULL)) {
 		cs_log("Could not create getip");
-		return;
+		return NULL;
 	}
 	if (pthread_key_create(&getkeepalive, NULL)) {
 		cs_log("Could not create getkeepalive");
-		return;
+		return NULL;
 	}
 
 #ifdef IPV6SUPPORT
@@ -4905,7 +4967,7 @@ void http_srv(void) {
 		cs_log("HTTP Server: Trying fallback to IPv4.");
 		if((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 			cs_log("HTTP Server: Creating socket failed! (errno=%d %s)", errno, strerror(errno));
-			return;
+			return NULL;
 		}
 		ipv4fallback = 1;
 	}
@@ -4922,7 +4984,7 @@ void http_srv(void) {
 	if((bind(sock, &sin, sizeof(struct sockaddr_in6))) < 0) {
 		cs_log("HTTP Server couldn't bind on port %d (errno=%d %s). Not starting HTTP!", cfg.http_port, errno, strerror(errno));
 		close(sock);
-		return;
+		return NULL;
 	}
 #else
 	struct sockaddr_in sin;
@@ -4934,7 +4996,7 @@ void http_srv(void) {
 	/* Startup server */
 	if((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 		cs_log("HTTP Server: Creating socket failed! (errno=%d %s)", errno, strerror(errno));
-		return;
+		return NULL;
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
 		cs_log("HTTP Server: Setting SO_REUSEADDR via setsockopt failed! (errno=%d %s)", errno, strerror(errno));
@@ -4947,13 +5009,13 @@ void http_srv(void) {
 	if((bind(sock, (struct sockaddr *) &sin, sizeof(sin))) < 0) {
 		cs_log("HTTP Server couldn't bind on port %d (errno=%d %s). Not starting HTTP!", cfg.http_port, errno, strerror(errno));
 		close(sock);
-		return;
+		return NULL;
 	}
 #endif
 	if (listen(sock, SOMAXCONN) < 0) {
 		cs_log("HTTP Server: Call to listen() failed! (errno=%d %s)", errno, strerror(errno));
 		close(sock);
-		return;
+		return NULL;
 	}
 
 #ifdef WITH_SSL
@@ -5044,6 +5106,51 @@ void http_srv(void) {
 	cs_log("HTTP Server: Shutdown requested.");
 	close(sock);
 	//exit(SIGQUIT);
+	return NULL;
+}
+
+void webif_client_reset_lastresponsetime(struct s_client *cl) {
+	int32_t i;
+	for (i = 0; i < CS_ECM_RINGBUFFER_MAX; i++) {
+		cl->cwlastresptimes[i].duration = 0;
+		cl->cwlastresptimes[i].timestamp = time((time_t*)0);
+		cl->cwlastresptimes[i].rc = 0;
+	}
+	cl->cwlastresptimes_last = 0;
+}
+
+void webif_client_add_lastresponsetime(struct s_client *cl, int32_t ltime, time_t timestamp, int32_t rc) {
+	if (cl->cwlastresptimes_last == CS_ECM_RINGBUFFER_MAX - 1) {
+		cl->cwlastresptimes_last = 0;
+	} else {
+		cl->cwlastresptimes_last++;
+	}
+	cl->cwlastresptimes[cl->cwlastresptimes_last].duration = ltime > 9999 ? 9999 : ltime;
+	cl->cwlastresptimes[cl->cwlastresptimes_last].timestamp = timestamp;
+	cl->cwlastresptimes[cl->cwlastresptimes_last].rc = rc;
+}
+
+void webif_client_init_lastreader(struct s_client *client, ECM_REQUEST *er, struct s_reader *er_reader, const char *stxt[]) {
+	if (er_reader) {
+		if (er->rc == E_FOUND)
+			cs_strncpy(client->lastreader, er_reader->label, sizeof(client->lastreader));
+		else if (er->rc == E_CACHEEX)
+			cs_strncpy(client->lastreader, "cache3", sizeof(client->lastreader));
+		else if (er->rc < E_NOTFOUND)
+			snprintf(client->lastreader, sizeof(client->lastreader)-1, "%s (cache)", er_reader->label);
+		else
+			cs_strncpy(client->lastreader, stxt[er->rc], sizeof(client->lastreader));
+	} else {
+		cs_strncpy(client->lastreader, stxt[er->rc], sizeof(client->lastreader));
+	}
+}
+
+void webif_init(void) {
+	if (cfg.http_port == 0) {
+		cs_log("http disabled");
+		return;
+	}
+	start_thread(http_srv, "http");
 }
 
 #endif

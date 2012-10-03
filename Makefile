@@ -304,7 +304,9 @@ SRC-$(CONFIG_READER_VIDEOGUARD) += reader-videoguard1.c
 SRC-$(CONFIG_READER_VIDEOGUARD) += reader-videoguard11.c
 SRC-$(CONFIG_READER_VIDEOGUARD) += reader-videoguard12.c
 SRC-$(CONFIG_READER_VIDEOGUARD) += reader-videoguard2.c
+SRC-y += oscam-aes.c
 SRC-y += oscam-chk.c
+SRC-y += oscam-client.c
 SRC-y += oscam-conf.c
 SRC-y += oscam-conf-chk.c
 SRC-y += oscam-conf-mk.c
@@ -312,11 +314,16 @@ SRC-y += oscam-config-account.c
 SRC-y += oscam-config-global.c
 SRC-y += oscam-config-reader.c
 SRC-y += oscam-config.c
+SRC-y += oscam-failban.c
+SRC-y += oscam-files.c
 SRC-y += oscam-garbage.c
+SRC-y += oscam-lock.c
 SRC-y += oscam-log.c
+SRC-y += oscam-net.c
 SRC-y += oscam-llist.c
 SRC-y += oscam-reader.c
 SRC-y += oscam-simples.c
+SRC-y += oscam-string.c
 SRC-y += oscam.c
 ######################################################################
 #

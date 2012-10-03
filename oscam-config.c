@@ -4,6 +4,9 @@
 
 #include "oscam-conf.h"
 #include "oscam-conf-chk.h"
+#include "oscam-files.h"
+#include "oscam-garbage.h"
+#include "oscam-string.h"
 
 #define cs_srid				"oscam.srvid"
 #define cs_trid				"oscam.tiers"
@@ -429,7 +432,7 @@ int32_t init_srvid(void)
 		}
 
 		char *tmpptr = NULL;
-		if (len > 0 && !cs_malloc(&tmpptr, len, 0))
+		if (len > 0 && !cs_malloc(&tmpptr, len, -1))
 			continue;
 
 		srvid->data=tmpptr;
@@ -449,8 +452,13 @@ int32_t init_srvid(void)
 				for(j = 0; j < len2; ++j) pos += (uint8_t)tmp[j];
 				pos = pos%1024;
 				if(used[pos] >= allocated[pos]){
-					if(allocated[pos] == 0) cs_malloc(&stringcache[pos], 16 * sizeof(char*), SIGINT);
-					else cs_realloc(&stringcache[pos], (allocated[pos] + 16) * sizeof(char*), SIGINT);
+					if (allocated[pos] == 0) {
+						if (!cs_malloc(&stringcache[pos], 16 * sizeof(char*), -1))
+							break;
+					} else {
+						if (!cs_realloc(&stringcache[pos], (allocated[pos] + 16) * sizeof(char*), -1))
+							break;
+					}
 					allocated[pos] += 16;
 				}
 				stringcache[pos][used[pos]] = tmp;

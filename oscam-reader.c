@@ -1,7 +1,12 @@
 #include "globals.h"
-#include "module-led.h"
-#include "reader-common.h"
 #include "csctapi/ifd_sc8in1.h"
+#include "module-led.h"
+#include "module-stat.h"
+#include "oscam-chk.h"
+#include "oscam-client.h"
+#include "oscam-net.h"
+#include "oscam-string.h"
+#include "reader-common.h"
 
 static char *debug_mask_txt(int mask) {
 	switch (mask) {
@@ -166,9 +171,7 @@ void casc_check_dcw(struct s_reader * reader, int32_t idx, int32_t rc, uchar *cw
 
 		if (ecm->rc>=10 && (t-(uint32_t)ecm->tps.time > ((cfg.ctimeout + 500) / 1000) + 1)) { // drop timeouts
 			ecm->rc=0;
-#ifdef WITH_LB
 			send_reader_stat(reader, ecm, NULL, E_TIMEOUT);
-#endif
 		}
 
 		if (ecm->rc >= 10)
@@ -443,9 +446,7 @@ int32_t casc_process_ecm(struct s_reader * reader, ECM_REQUEST *er)
 		ecm = &cl->ecmtask[i];
 		if ((ecm->rc>=10) && (t-(uint32_t)ecm->tps.time > ((cfg.ctimeout + 500) / 1000) + 1)) { // drop timeouts
 			ecm->rc=0;
-#ifdef WITH_LB
 			send_reader_stat(reader, ecm, NULL, E_TIMEOUT);
-#endif
 		}
 	}
 
@@ -553,7 +554,7 @@ void reader_get_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	}
 
 #ifdef WITH_CARDREADER
-
+	if(ecm_ratelimit_check(reader, er, 2) != OK) return; // slot = 2: checkout ratelimiter in reader mode so srvid can be replaced
 	cs_ddump_mask(D_ATR, er->ecm, er->l, "ecm:");
 
 	struct timeb tps, tpe;
@@ -751,7 +752,8 @@ int32_t reader_init(struct s_reader *reader) {
 		if ((reader->log_port) && (reader->ph.c_init_log))
 			reader->ph.c_init_log();
 
-		cs_malloc(&client->ecmtask, cfg.max_pending * sizeof(ECM_REQUEST), 1);
+		if (!cs_malloc(&client->ecmtask, cfg.max_pending * sizeof(ECM_REQUEST), -1))
+			return 0;
 
 		rdr_log(reader, "proxy initialized, server %s:%d", reader->device, reader->r_port);
 	}
@@ -786,7 +788,10 @@ int32_t reader_init(struct s_reader *reader) {
 
 #endif
 
-	cs_malloc(&client->emmcache,CS_EMMCACHESIZE*(sizeof(struct s_emm)), 1);
+	if (!cs_malloc(&client->emmcache, CS_EMMCACHESIZE * (sizeof(struct s_emm)), -1)) {
+		NULLFREE(client->ecmtask);
+		return 0;
+	}
 
 	client->login=time((time_t*)0);
 	client->init_done=1;

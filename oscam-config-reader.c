@@ -11,8 +11,13 @@
 #include <net/if.h>
 #endif
 
+#include "oscam-aes.h"
 #include "oscam-conf.h"
 #include "oscam-conf-chk.h"
+#include "oscam-conf-mk.h"
+#include "oscam-garbage.h"
+#include "oscam-lock.h"
+#include "oscam-string.h"
 
 #define cs_srvr "oscam.server"
 
@@ -1100,8 +1105,8 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 			for (h=0; h < MAXECMRATELIMIT; h++) { // reset all slots
 				rdr->rlecmh[h].srvid = -1;
 				rdr->rlecmh[h].last = -1;
-				return;
 			}
+			return;
 		}
 	}
 	if (!strcmp(token, "ratelimitseconds")) {
@@ -1199,7 +1204,10 @@ int32_t init_readerdb(void)
      if (fp){
 
 	struct s_reader *rdr;
-	cs_malloc(&rdr, sizeof(struct s_reader), SIGINT);
+	if (!cs_malloc(&rdr, sizeof(struct s_reader), -1)) {
+		free(token);
+		return 1;
+	}
 
 	ll_append(configured_readers, rdr);
 	while (fgets(token, MAXLINESIZE, fp)) {

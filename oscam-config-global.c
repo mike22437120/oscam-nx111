@@ -1,6 +1,9 @@
 #include "globals.h"
 #include "oscam-conf.h"
 #include "oscam-conf-chk.h"
+#include "oscam-conf-mk.h"
+#include "oscam-net.h"
+#include "oscam-string.h"
 
 #define cs_conf "oscam.conf"
 
