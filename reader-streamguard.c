@@ -79,7 +79,7 @@ static int32_t streamguard_do_ecm(struct s_reader *reader, const ECM_REQUEST *er
   char *tmp;
 
   if((ecm_len = check_sct_len(er->ecm, 3)) < 0) return ERROR;
-	if(cs_malloc(&tmp, ecm_len * 3 + 1, -1)){
+	if(cs_malloc(&tmp, ecm_len * 3 + 1)){
 		cs_debug_mask(D_IFD, "ECM: %s", cs_hexdump(1, er->ecm, ecm_len, tmp, ecm_len * 3 + 1));
 		free(tmp);
 	}

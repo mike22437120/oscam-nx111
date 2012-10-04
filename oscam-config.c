@@ -159,9 +159,9 @@ static void chk_entry4sidtab(char *value, struct s_sidtab *sidtab, int32_t what)
   }
   //if (!i) return(0);
   if (b==sizeof(uint16_t)){
-    if(!cs_malloc(&slist, i*sizeof(uint16_t), -1)) return;
+    if (!cs_malloc(&slist, i * sizeof(uint16_t))) return;
   } else {
-  	if(!cs_malloc(&llist, i*sizeof(uint32_t), -1)) return;
+    if (!cs_malloc(&llist, i * sizeof(uint32_t))) return;
   }
   cs_strncpy(value, buf, sizeof(buf));
   for (i=0, ptr=strtok_r(value, ",", &saveptr1); ptr; ptr=strtok_r(NULL, ",", &saveptr1))
@@ -243,7 +243,8 @@ int32_t init_sidtab(void) {
 
 	int32_t nr, nro, nrr;
 	char *value, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 1;
+	if (!cs_malloc(&token, MAXLINESIZE))
+		return 1;
 	struct s_sidtab *ptr;
 	struct s_sidtab *sidtab=(struct s_sidtab *)0;
 
@@ -268,7 +269,7 @@ int32_t init_sidtab(void) {
 				nr++;
 				nrr++;
 			} else {
-				if (!cs_malloc(&ptr, sizeof(struct s_sidtab), -1)) {
+				if (!cs_malloc(&ptr, sizeof(struct s_sidtab))) {
 					free(token);
 					return(1);
 				}
@@ -306,7 +307,8 @@ int32_t init_provid(void) {
 
 	int32_t nr;
 	char *payload, *saveptr1 = NULL, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
+	if (!cs_malloc(&token, MAXLINESIZE))
+		return 0;
 	static struct s_provid *provid=(struct s_provid *)0;
 
 	nr=0;
@@ -324,7 +326,7 @@ int32_t init_provid(void) {
 
 		*payload++ = '\0';
 
-		if (!cs_malloc(&ptr, sizeof(struct s_provid), -1)) {
+		if (!cs_malloc(&ptr, sizeof(struct s_provid))) {
 			free(token);
 			fclose(fp);
 			return(1);
@@ -375,7 +377,8 @@ int32_t init_srvid(void)
 
 	int32_t nr = 0, i;
 	char *payload, *tmp, *saveptr1 = NULL, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
+	if (!cs_malloc(&token, MAXLINESIZE))
+		return 0;
 	struct s_srvid *srvid=NULL, *new_cfg_srvid[16], *last_srvid[16];
 	// A cache for strings within srvids. A checksum is calculated which is the start point in the array (some kind of primitive hash algo).
 	// From this point, a sequential search is done. This greatly reduces the amount of string comparisons.
@@ -400,7 +403,7 @@ int32_t init_srvid(void)
 		if (!(payload=strchr(token, '|'))) continue;
 		*payload++ = '\0';
 
-		if (!cs_malloc(&srvid, sizeof(struct s_srvid), -1)){
+		if (!cs_malloc(&srvid, sizeof(struct s_srvid))) {
 			free(token);
 			fclose(fp);
 			return(1);
@@ -432,7 +435,7 @@ int32_t init_srvid(void)
 		}
 
 		char *tmpptr = NULL;
-		if (len > 0 && !cs_malloc(&tmpptr, len, -1))
+		if (len > 0 && !cs_malloc(&tmpptr, len))
 			continue;
 
 		srvid->data=tmpptr;
@@ -453,10 +456,10 @@ int32_t init_srvid(void)
 				pos = pos%1024;
 				if(used[pos] >= allocated[pos]){
 					if (allocated[pos] == 0) {
-						if (!cs_malloc(&stringcache[pos], 16 * sizeof(char*), -1))
+						if (!cs_malloc(&stringcache[pos], 16 * sizeof(char *)))
 							break;
 					} else {
-						if (!cs_realloc(&stringcache[pos], (allocated[pos] + 16) * sizeof(char*), -1))
+						if (!cs_realloc(&stringcache[pos], (allocated[pos] + 16) * sizeof(char *)))
 							break;
 					}
 					allocated[pos] += 16;
@@ -539,7 +542,8 @@ int32_t init_tierid(void)
 
 	int32_t nr;
 	char *payload, *saveptr1 = NULL, *token;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return 0;
+	if (!cs_malloc(&token, MAXLINESIZE))
+		return 0;
 	static struct s_tierid *tierid=NULL, *new_cfg_tierid=NULL;
 
 	nr=0;
@@ -556,7 +560,7 @@ int32_t init_tierid(void)
 		if (!(tieridasc = strchr(token, ':'))) continue;
 		*payload++ = '\0';
 
-		if (!cs_malloc(&ptr,sizeof(struct s_tierid), -1)){
+		if (!cs_malloc(&ptr,sizeof(struct s_tierid))) {
 			free(token);
 			fclose(fp);
 			return(1);
@@ -749,7 +753,7 @@ static struct s_global_whitelist *global_whitelist_read_int(void) {
 				ecmlen = 0;
 				sscanf(p2, "%4x", &ecmlen);
 
-				if (!cs_malloc(&entry, sizeof(struct s_global_whitelist), -1)) {
+				if (!cs_malloc(&entry, sizeof(struct s_global_whitelist))) {
 					fclose(fp);
 					return new_whitelist;
 				}
@@ -819,7 +823,8 @@ void init_len4caid(void)
 	int32_t nr;
 	char *value, *token;
 
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return;
+	if (!cs_malloc(&token, MAXLINESIZE))
+		return;
 
 	memset(len4caid, 0, sizeof(uint16_t)<<8);
 	for(nr = 0; fgets(token, MAXLINESIZE, fp);) {
@@ -916,7 +921,7 @@ int32_t chk_cccam_cfg_F_more(char *line,struct s_auth * account)
 								continue;
 							}
 
-							if (!cs_malloc(&sp, sizeof(struct s_sidtab), -1) || !sp)continue;
+							if (!cs_malloc(&sp, sizeof(struct s_sidtab)) || !sp)continue;
 							if (sidtab)
 								sidtab->next=sp;
 						      	else	
@@ -1034,7 +1039,7 @@ void * read_cccamcfg(int32_t mode)
 			if(found)
 				continue;
 
-			if(!cs_malloc(&rdr,sizeof(struct s_reader),-1))
+			if(!cs_malloc(&rdr,sizeof(struct s_reader)))
 					continue;
 
 			memset(rdr, 0, sizeof(struct s_reader));
@@ -1072,7 +1077,7 @@ void * read_cccamcfg(int32_t mode)
 			if(found)
 				continue;
 
-			if(!cs_malloc(&ptr, sizeof(struct s_auth), -1)) return (void *)authptr;
+			if(!cs_malloc(&ptr, sizeof(struct s_auth))) return (void *)authptr;
 			if (account)
 				account->next = ptr;
 			else	

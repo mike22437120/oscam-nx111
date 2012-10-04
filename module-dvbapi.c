@@ -101,7 +101,7 @@ int32_t edit_channel_cache(int32_t demux_id, int32_t pidindex, uint8_t add)
 	}
 
 	if (add) {
-		if (!cs_malloc(&c, sizeof(struct s_channel_cache), -1))
+		if (!cs_malloc(&c, sizeof(struct s_channel_cache)))
 			return count;
 		c->srvid = demux[demux_id].program_number;
 		c->caid = p->CAID;
@@ -571,11 +571,11 @@ void dvbapi_parse_cat(int32_t demux_id, uchar *buf, int32_t len) {
 		switch (caid >> 8) {
 			case 0x01:
 				dvbapi_add_emmpid(demux_id, caid, emm_pid, 0, EMM_UNIQUE|EMM_GLOBAL);
-				cs_log("[cat] CAID: %04x\tEMM_PID: %04x", caid, emm_pid);
+				cs_debug_mask(D_DVBAPI, "[cat] CAID: %04x\tEMM_PID: %04x", caid, emm_pid);
 				for (k = i+7; k < i+buf[i+1]+2; k += 4) {
 					emm_provider = (buf[k+2] << 8| buf[k+3]);
 					emm_pid = (buf[k] & 0x0F) << 8 | buf[k+1];
-					cs_log("[cat] CAID: %04X\tEMM_PID: %04X\tPROVID: %06X", caid, emm_pid, emm_provider);
+					cs_debug_mask(D_DVBAPI, "[cat] CAID: %04X\tEMM_PID: %04X\tPROVID: %06X", caid, emm_pid, emm_provider);
 					dvbapi_add_emmpid(demux_id, caid, emm_pid, emm_provider, EMM_SHARED);
 				}
 				break;
@@ -583,18 +583,18 @@ void dvbapi_parse_cat(int32_t demux_id, uchar *buf, int32_t len) {
 				for (k = i+6; k < i+buf[i+1]+2; k += buf[k+1]+2) {
 					if (buf[k]==0x14) {
 						emm_provider = buf[k+2] << 16 | (buf[k+3] << 8| (buf[k+4] & 0xF0));
-						cs_log("[cat] CAID: %04x\tEMM_PID: %04x\tPROVID: %06X", caid, emm_pid, emm_provider);
+						cs_debug_mask(D_DVBAPI, "[cat] CAID: %04x\tEMM_PID: %04x\tPROVID: %06X", caid, emm_pid, emm_provider);
 						dvbapi_add_emmpid(demux_id, caid, emm_pid, emm_provider, EMM_UNIQUE|EMM_SHARED|EMM_GLOBAL);
 					}
 				}
 				break;
 			case 0x18:
 				emm_provider = (buf[i+1] == 0x07) ? (buf[i+6] << 16 | (buf[i+7] << 8| (buf[i+8]))) : 0;
-				cs_log("[cat] CAID: %04x\tEMM_PID: %04x\tPROVID: %06X", caid, emm_pid, emm_provider);
+				cs_debug_mask(D_DVBAPI, "[cat] CAID: %04x\tEMM_PID: %04x\tPROVID: %06X", caid, emm_pid, emm_provider);
 				dvbapi_add_emmpid(demux_id, caid, emm_pid, emm_provider, EMM_UNIQUE|EMM_SHARED|EMM_GLOBAL);
 				break;
 			default:
-				cs_log("[cat] CAID: %04x\tEMM_PID: %04x", caid, emm_pid);
+				cs_debug_mask(D_DVBAPI, "[cat] CAID: %04x\tEMM_PID: %04x", caid, emm_pid);
 				dvbapi_add_emmpid(demux_id, caid, emm_pid, 0, EMM_UNIQUE|EMM_SHARED|EMM_GLOBAL);
 				break;
 		}
@@ -881,7 +881,7 @@ void dvbapi_read_priority(void) {
 		}
 
 		struct s_dvbapi_priority *entry;
-		if(!cs_malloc(&entry,sizeof(struct s_dvbapi_priority), -1)){
+		if (!cs_malloc(&entry, sizeof(struct s_dvbapi_priority))) {
 			fclose(fp);
 			return;
 		}
@@ -951,7 +951,8 @@ void dvbapi_read_priority(void) {
 			for (this = cfg.srvid[i]; this; this = this->next) {
 				if (strcmp(this->prov, c_srvid+1)==0) {
 					struct s_dvbapi_priority *entry2;
-					if(!cs_malloc(&entry2,sizeof(struct s_dvbapi_priority), -1)) continue;
+					if (!cs_malloc(&entry2,sizeof(struct s_dvbapi_priority)))
+						continue;
 					memcpy(entry2, entry, sizeof(struct s_dvbapi_priority));
 
 					entry2->srvid=this->srvid;
@@ -1195,7 +1196,7 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 	if (dvbapi_priority) {
 		struct s_reader *rdr;
 		ECM_REQUEST *er;
-		if (!cs_malloc(&er, sizeof(ECM_REQUEST), -1))
+		if (!cs_malloc(&er, sizeof(ECM_REQUEST)))
 			return;
 
 		int32_t p_order = demux[demux_index].ECMpidcount; // reverse order! makes sure that user defined p: values are in the right order
@@ -1272,7 +1273,7 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 	} else if (cfg.preferlocalcards) { //works if there is cfg.preferlocalcards=1 but no oscam.dvbapi
 		struct s_reader *rdr;
 		ECM_REQUEST *er;
-		if (!cs_malloc(&er, sizeof(ECM_REQUEST), -1))
+		if (!cs_malloc(&er, sizeof(ECM_REQUEST)))
 			return;
 
 		highest_prio = prio*2;
@@ -1751,7 +1752,8 @@ void dvbapi_chk_caidtab(char *caidasc, char type) {
 		
 		if (((caid=a2i(ptr1, 2))|(prov=a2i(ptr3, 3)))) {
 			struct s_dvbapi_priority *entry;
-			if(!cs_malloc(&entry,sizeof(struct s_dvbapi_priority), -1)) return;
+			if (!cs_malloc(&entry, sizeof(struct s_dvbapi_priority)))
+				return;
 			entry->caid=caid;
 
 			if(*ptr3 == '\0')

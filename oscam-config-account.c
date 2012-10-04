@@ -333,7 +333,8 @@ struct s_auth *init_userdb(void)
 	char *value, *token;
 	struct s_auth *account = NULL;
 	struct s_auth *probe = NULL;
-	if(!cs_malloc(&token, MAXLINESIZE, -1)) return authptr;
+	if (!cs_malloc(&token, MAXLINESIZE))
+		return NULL;
 
 	if(cfg.cc_cfgfile)
 		authptr=(struct s_auth*)read_cccamcfg(CCCAMCFGUSER);
@@ -351,12 +352,9 @@ struct s_auth *init_userdb(void)
 
 		if ((token[0] == '[') && (token[l-1] == ']')) {
 			token[l - 1] = 0;
-			tag = (!strcmp("account", strtolower(token + 1)));
-			checked=0;
-			if(!cs_malloc(&ptr, sizeof(struct s_auth), -1)){
-				free(token);
-				return authptr;
-			}
+			tag = streq("account", strtolower(token + 1));
+			if (!cs_malloc(&ptr, sizeof(struct s_auth)))
+				break;
 			if (account)
 				account->next = ptr;
 			else

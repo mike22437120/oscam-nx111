@@ -556,8 +556,8 @@ int32_t status_ok(const unsigned char *status)
 }
 
 void memorize_cmd_table (struct s_reader * reader, const unsigned char *mem, int32_t size){
-  if(cs_malloc(&reader->cmd_table,sizeof(unsigned char) * size, -1))
-  	memcpy(reader->cmd_table,mem,size);
+  if (cs_malloc(&reader->cmd_table, size))
+    memcpy(reader->cmd_table,mem,size);
 }
 
 int32_t cmd_table_get_info(struct s_reader * reader, const unsigned char *cmd, unsigned char *rlen, unsigned char *rmode)
@@ -912,7 +912,7 @@ static void msgs_init(uint32_t baseyear)
    while (fgets(buffer, sizeof(buffer), fp))
    {
       MAILMSG *msg;
-      if (cs_malloc(&msg, sizeof(MAILMSG), -1) == 0)
+      if (!cs_malloc(&msg, sizeof(MAILMSG)))
       {
          fclose(fp);
          return;
@@ -950,7 +950,7 @@ void videoguard_mail_msg(struct s_reader *rdr, uint8_t *data)
 
    if (msg == 0)
    {
-      if (cs_malloc(&msg, sizeof(MAILMSG), -1) == 0)
+      if (!cs_malloc(&msg, sizeof(MAILMSG)))
          return;
       msg->caid = rdr->caid;
       msg->serial = serial;
@@ -960,7 +960,7 @@ void videoguard_mail_msg(struct s_reader *rdr, uint8_t *data)
       msg->mask = 1 << index;
       msg->written = 0;
       msg->len = submsg_len;
-      if (cs_malloc(&msg->message, msg_size, -1) == 0)
+      if (!cs_malloc(&msg->message, msg_size))
       {
          free(msg);
          return;
