@@ -619,7 +619,7 @@ int32_t dvbapi_get_descindex(void) {
 	return idx;
 }
 
-void dvbapi_set_pid(int32_t demux_id, int32_t num, int32_t index) {
+void dvbapi_set_pid(int32_t demux_id, int32_t num, int32_t idx) {
 	int32_t i;
 
 	if (demux[demux_id].pidindex == -1) return;
@@ -627,7 +627,7 @@ void dvbapi_set_pid(int32_t demux_id, int32_t num, int32_t index) {
 	switch(selected_api) {
 #ifdef WITH_STAPI
 		case STAPI:
-			stapi_set_pid(demux_id, num, index, demux[demux_id].STREAMpids[num], demux[demux_id].pmt_file);
+			stapi_set_pid(demux_id, num, idx, demux[demux_id].STREAMpids[num], demux[demux_id].pmt_file);
 			break;
 #endif
 #ifdef WITH_COOLAPI
@@ -647,7 +647,7 @@ void dvbapi_set_pid(int32_t demux_id, int32_t num, int32_t index) {
 						ca_pid_t ca_pid2;
 						memset(&ca_pid2,0,sizeof(ca_pid2));
 						ca_pid2.pid = demux[demux_id].STREAMpids[num];
-						ca_pid2.index = index;
+						ca_pid2.index = idx;
 
 						if (cfg.dvbapi_boxtype == BOXTYPE_PC) {
 							// preparing packet
@@ -1327,6 +1327,7 @@ void dvbapi_resort_ecmpids(int32_t demux_index) {
 		ECM_REQUEST er;
 		er.caid  = demux[demux_index].ECMpids[n].CAID;
 		er.prid  = demux[demux_index].ECMpids[n].PROVID;
+		er.pid = demux[demux_index].ECMpids[n].ECM_PID;
 		er.srvid = demux[demux_index].program_number;
 
 		for (nr=0, sidtab=cfg.sidtab; sidtab; sidtab=sidtab->next, nr++) {
@@ -1410,14 +1411,14 @@ void dvbapi_parse_descriptor(int32_t demux_id, uint32_t info_length, unsigned ch
 	}
 }
 
-void request_cw(struct s_client *dvbapi_client, ECM_REQUEST *er)
+void request_cw(struct s_client *client, ECM_REQUEST *er)
 {
 #ifdef WITH_DEBUG
 	char buf[ECM_FMT_LEN];
 	format_ecm(er, buf, ECM_FMT_LEN);
 	cs_debug_mask(D_DVBAPI, "dvbapi request cw for %s", buf);
 #endif
-	get_cw(dvbapi_client, er);
+	get_cw(client, er);
 }
 
 void dvbapi_try_next_caid(int32_t demux_id) {
@@ -1992,6 +1993,7 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 			return;
 		uint16_t caid = curpid->CAID;
 		uint32_t provid = curpid->PROVID;
+		uint16_t ecmpid = curpid->ECM_PID;
 
 		if ((caid >> 8) == 0x06) {
 			//80 70 39 53 04 05 00 88
@@ -2070,6 +2072,9 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 
 		if (provid != curpid->PROVID)
 			curpid->PROVID = provid;
+			
+		if (ecmpid != curpid->ECM_PID)
+			curpid->ECM_PID = ecmpid;
 
 		if (cfg.dvbapi_au>0)
 			dvbapi_start_emm_filter(demux_id);
@@ -2080,7 +2085,7 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 
 		er->srvid = demux[demux_id].program_number;
 		er->caid  = caid;
-		er->pid   = curpid->ECM_PID;
+		er->pid   = ecmpid;
 		er->prid  = provid;
 		er->chid  = chid;
 		er->l     = len;
@@ -2295,7 +2300,7 @@ void dvbapi_main_exit()
 	dvbapi_write_prio();
 }
 
-void dvbapi_write_cw(int32_t demux_id, uchar *cw, int32_t index) {
+void dvbapi_write_cw(int32_t demux_id, uchar *cw, int32_t idx) {
 	int32_t n;
 	unsigned char nullcw[8];
 	memset(nullcw, 0, 8);
@@ -2304,7 +2309,7 @@ void dvbapi_write_cw(int32_t demux_id, uchar *cw, int32_t index) {
 
 	for (n=0;n<2;n++) {
 		if (memcmp(cw+(n*8),demux[demux_id].lastcw[n],8)!=0 && memcmp(cw+(n*8),nullcw,8)!=0) {
-			ca_descr.index = index;
+			ca_descr.index = idx;
 			ca_descr.parity = n;
 			memcpy(demux[demux_id].lastcw[n],cw+(n*8),8);
 			memcpy(ca_descr.cw,cw+(n*8),8);

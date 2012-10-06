@@ -27,6 +27,9 @@
 #include "oscam-net.h"
 #include "oscam-string.h"
 
+extern struct s_module modules[CS_MAX_MOD];
+extern struct s_cardreader cardreaders[CS_MAX_MOD];
+
 extern char *CSS;
 extern char *entitlement_type[];
 
@@ -1093,8 +1096,8 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 #endif
 
 		for (i=0; i<CS_MAX_MOD; i++) {
-			if (cardreader[i].desc)
-				tpl_printf(vars, TPLAPPEND, "ADDPROTOCOL", "<option>%s</option>\n", xml_encode(vars, cardreader[i].desc));
+			if (cardreaders[i].desc)
+				tpl_printf(vars, TPLAPPEND, "ADDPROTOCOL", "<option>%s</option>\n", xml_encode(vars, cardreaders[i].desc));
 		}
 		return tpl_getTpl(vars, "READERS");
 	} else {
@@ -1122,8 +1125,8 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 		}
 		if (is_cascading_reader(newrdr)) {
 			for (i=0; i<CS_MAX_MOD; i++) {
-				if (ph[i].num && newrdr->typ==ph[i].num) {
-					newrdr->ph=ph[i];
+				if (modules[i].num && newrdr->typ == modules[i].num) {
+					newrdr->ph = modules[i];
 					if(newrdr->device[0]) newrdr->ph.active=1;
 				}
 			}
@@ -1776,65 +1779,65 @@ static char *send_oscam_reader_stats(struct templatevars *vars, struct uriparams
 		READER_STAT **statarray = get_sorted_stat_copy(rdr, 0, &statsize);
 		char channame[32];
 		for(; rowcount < statsize; ++rowcount){
-			READER_STAT *stat = statarray[rowcount];
-			if (!(stat->rc == rc2hide)) {
+			READER_STAT *s = statarray[rowcount];
+			if (!(s->rc == rc2hide)) {
 				struct tm lt;
-				localtime_r(&stat->last_received, &lt);
-				ecmcount += stat->ecm_count;
+				localtime_r(&s->last_received, &lt);
+				ecmcount += s->ecm_count;
 				if (!apicall) {
-					tpl_printf(vars, TPLADD, "CHANNEL", "%04X:%06X:%04X:%04X", stat->caid, stat->prid, stat->srvid, stat->chid);
-					tpl_addVar(vars, TPLADD, "CHANNELNAME", xml_encode(vars, get_servicename(cur_client(), stat->srvid, stat->caid, channame)));
-					tpl_printf(vars, TPLADD, "ECMLEN","%04hX", stat->ecmlen);
-					tpl_addVar(vars, TPLADD, "RC", stxt[stat->rc]);
-					tpl_printf(vars, TPLADD, "TIME", "%dms", stat->time_avg);
-					if (stat->time_stat[stat->time_idx])
-						tpl_printf(vars, TPLADD, "TIMELAST", "%dms", stat->time_stat[stat->time_idx]);
+					tpl_printf(vars, TPLADD, "CHANNEL", "%04X:%06X:%04X:%04X", s->caid, s->prid, s->srvid, s->chid);
+					tpl_addVar(vars, TPLADD, "CHANNELNAME", xml_encode(vars, get_servicename(cur_client(), s->srvid, s->caid, channame)));
+					tpl_printf(vars, TPLADD, "ECMLEN","%04hX", s->ecmlen);
+					tpl_addVar(vars, TPLADD, "RC", stxt[s->rc]);
+					tpl_printf(vars, TPLADD, "TIME", "%dms", s->time_avg);
+					if (s->time_stat[s->time_idx])
+						tpl_printf(vars, TPLADD, "TIMELAST", "%dms", s->time_stat[s->time_idx]);
 					else
 						tpl_addVar(vars, TPLADD, "TIMELAST", "");
-					tpl_printf(vars, TPLADD, "COUNT", "%d", stat->ecm_count);
+					tpl_printf(vars, TPLADD, "COUNT", "%d", s->ecm_count);
 
-					if(stat->last_received) {
+					if(s->last_received) {
 						tpl_printf(vars, TPLADD, "LAST", "%02d.%02d.%02d %02d:%02d:%02d", lt.tm_mday, lt.tm_mon+1, lt.tm_year%100, lt.tm_hour, lt.tm_min, lt.tm_sec);
 
 					} else {
 						tpl_addVar(vars, TPLADD, "LAST","never");
 					}
 				} else {
-					tpl_printf(vars, TPLADD, "ECMCAID", "%04X", stat->caid);
-					tpl_printf(vars, TPLADD, "ECMPROVID", "%06X", stat->prid);
-					tpl_printf(vars, TPLADD, "ECMSRVID", "%04X", stat->srvid);
-					tpl_printf(vars, TPLADD, "ECMLEN", "%04hX", stat->ecmlen);
-					tpl_addVar(vars, TPLADD, "ECMCHANNELNAME", xml_encode(vars, get_servicename(cur_client(), stat->srvid, stat->caid, channame)));
-					tpl_printf(vars, TPLADD, "ECMTIME", "%d", stat->time_avg);
-					tpl_printf(vars, TPLADD, "ECMTIMELAST", "%d", stat->time_stat[stat->time_idx]);
-					tpl_printf(vars, TPLADD, "ECMRC", "%d", stat->rc);
-					tpl_addVar(vars, TPLADD, "ECMRCS", stxt[stat->rc]);
-					if(stat->last_received) {
+					tpl_printf(vars, TPLADD, "ECMCAID", "%04X", s->caid);
+					tpl_printf(vars, TPLADD, "ECMPROVID", "%06X", s->prid);
+					tpl_printf(vars, TPLADD, "ECMSRVID", "%04X", s->srvid);
+					tpl_printf(vars, TPLADD, "ECMLEN", "%04hX", s->ecmlen);
+					tpl_addVar(vars, TPLADD, "ECMCHANNELNAME", xml_encode(vars, get_servicename(cur_client(), s->srvid, s->caid, channame)));
+					tpl_printf(vars, TPLADD, "ECMTIME", "%d", s->time_avg);
+					tpl_printf(vars, TPLADD, "ECMTIMELAST", "%d", s->time_stat[s->time_idx]);
+					tpl_printf(vars, TPLADD, "ECMRC", "%d", s->rc);
+					tpl_addVar(vars, TPLADD, "ECMRCS", stxt[s->rc]);
+					if(s->last_received) {
 						char tbuffer [30];
 						strftime(tbuffer, 30, "%Y-%m-%dT%H:%M:%S%z", &lt);
 						tpl_addVar(vars, TPLADD, "ECMLAST", tbuffer);
 					} else {
 						tpl_addVar(vars, TPLADD, "ECMLAST", "");
 					}
-					tpl_printf(vars, TPLADD, "ECMCOUNT", "%d", stat->ecm_count);
+					tpl_printf(vars, TPLADD, "ECMCOUNT", "%d", s->ecm_count);
 
-					if (stat->last_received > lastaccess)
-						lastaccess = stat->last_received;
+					if (s->last_received > lastaccess)
+						lastaccess = s->last_received;
 				}
 
 				if (!apicall) {
-					if (stat->rc == 4) {
+					if (s->rc == 4) {
 						tpl_addVar(vars, TPLAPPEND, "READERSTATSROWNOTFOUND", tpl_getTpl(vars, "READERSTATSBIT"));
 						tpl_addVar(vars, TPLADD, "READERSTATSNFHEADLINE", "\t\t<TR><TD CLASS=\"subheadline\" colspan=\"6\">Not found</TD>");
 						tpl_printf(vars, TPLAPPEND, "READERSTATSNFHEADLINE", "<TD CLASS=\"subheadline\" colspan=\"2\"><A HREF=\"readerstats.html?label=%s&amp;action=resetstat&amp;rc=4\">delete all %s</A></TD></TR>\n",
 								urlencode(vars, rdr->label),
-								stxt[stat->rc]);
-					} else if (stat->rc == 5) {
+								stxt[s->rc]);
+					} else if (s->rc == 5) {
 						tpl_addVar(vars, TPLAPPEND, "READERSTATSROWTIMEOUT", tpl_getTpl(vars, "READERSTATSBIT"));
 						tpl_addVar(vars, TPLADD, "READERSTATSTOHEADLINE", "\t\t<TR><TD CLASS=\"subheadline\" colspan=\"6\">Timeout</TD>");
 						tpl_printf(vars, TPLAPPEND, "READERSTATSTOHEADLINE", "<TD CLASS=\"subheadline\" colspan=\"2\"><A HREF=\"readerstats.html?label=%s&amp;action=resetstat&amp;rc=5\">delete all %s</A></TD></TR>\n",
 								urlencode(vars, rdr->label),
-								stxt[stat->rc]);
+								stxt[s->rc]);
 					}
 					else
 						tpl_addVar(vars, TPLAPPEND, "READERSTATSROWFOUND", tpl_getTpl(vars, "READERSTATSBIT"));
@@ -2219,7 +2222,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 					ll_clear(account->aureader_list);
 					for (cl=first_client->next; cl ; cl=cl->next){
 						if(cl->account == account){
-							if (ph[cl->ctyp].type & MOD_CONN_NET) {
+							if (modules[cl->ctyp].type & MOD_CONN_NET) {
 								kill_thread(cl);
 							} else {
 								cl->account = first_client->account;
@@ -2245,7 +2248,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 				account->disabled = 1;
 				for (cl=first_client->next; cl ; cl=cl->next){
 					if(cl->account == account){
-						if (ph[cl->ctyp].type & MOD_CONN_NET) {
+						if (modules[cl->ctyp].type & MOD_CONN_NET) {
 							kill_thread(cl);
 						} else {
 							cl->account = first_client->account;
@@ -2351,9 +2354,9 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		double cwrate = 0.0, cwrate2 = 0.0;
 
 		//search account in active clients
-		int32_t isactive = 0;
+		isactive = 0;
 		int16_t nrclients = 0;
-		struct s_client *cl, *latestclient=NULL;
+		struct s_client *latestclient = NULL;
 		for (cl=first_client->next; cl ; cl=cl->next) {
 			if (cl->account && !strcmp(cl->account->usr, account->usr)) {
 				if(cl->lastecm > latestactivity || cl->login > latestactivity){
@@ -2942,7 +2945,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	for (i=0, cl=first_client; cl ; cl=cl->next, i++) {
 		if (cl->kill) continue;
 #ifdef CS_CACHEEX
-		if (ph[cl->ctyp].listenertype != LIS_CSPUDP) {
+		if (modules[cl->ctyp].listenertype != LIS_CSPUDP) {
 #endif
 
 		// Reset template variables
@@ -3185,14 +3188,14 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 							S_ENTITLEMENT *ent;
 							uint16_t total_ent = 0;
 							uint16_t active_ent = 0;
-							time_t now = (time((time_t*)0)/84600)*84600;
+							time_t now_day = (now / 84600) * 84600;
 							struct tm end_t;
 
 							tpl_addVar(vars, TPLADD, "TMPSPAN", "<SPAN>");
 							while((ent = ll_iter_next(&itr)))
 							{
 								total_ent++;
-								if ((ent->end > now) && (ent->type != 7))
+								if ((ent->end > now_day) && (ent->type != 7))
 								{
 									if (active_ent) tpl_addVar(vars, TPLAPPEND, "TMPSPAN", "<BR><BR>");
 									active_ent++;
@@ -4218,7 +4221,7 @@ static uint64_t get_cacheex_node(struct s_client *cl) {
 	uint64_t node = 0x00;
 	struct s_module *p;
 	if (cl->reader) p = &cl->reader->ph;
-	else p = &ph[cl->ctyp];
+	else p = &modules[cl->ctyp];
 #ifdef MODULE_CCCAM
 	if (p->num == R_CCCAM && cl->cc) {
 		struct cc_data *cc = cl->cc;
@@ -4255,7 +4258,7 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 	char *pushing = "<IMG SRC=\"image?i=ICARRR\" ALT=\"Pushing\">";
 	char *rowvariable = "";
 
-	int16_t i, write = 0;
+	int16_t i, written = 0;
 	struct s_client *cl;
 	time_t now = time((time_t*)0);
 
@@ -4275,7 +4278,7 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 			tpl_printf(vars, TPLADD, "ERRCW", "%d", cl->account->cwcacheexerrcw);
 			tpl_addVar(vars, TPLADD, "DIRECTIONIMG", (cl->account->cacheex == 3) ? getting : pushing);
 			rowvariable = "TABLECLIENTROWS";
-			write = 1;
+			written = 1;
 		}
 		else if ((cl->typ=='p' || cl->typ=='r') && (cl->reader && cl->reader->cacheex)) {
 			tpl_addVar(vars, TPLADD, "TYPE", "Reader");
@@ -4290,9 +4293,9 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 			tpl_printf(vars, TPLADD, "ERRCW", "%d", cl->cwcacheexerrcw);
 			tpl_addVar(vars, TPLADD, "DIRECTIONIMG", (cl->reader->cacheex == 3) ? pushing : getting);
 			rowvariable = "TABLEREADERROWS";
-			write = 1;
+			written = 1;
 		}
-		else if (ph[cl->ctyp].listenertype == LIS_CSPUDP) {
+		else if (modules[cl->ctyp].listenertype == LIS_CSPUDP) {
 			tpl_addVar(vars, TPLADD, "TYPE", "csp");
 			tpl_addVar(vars, TPLADD, "NAME", "csp");
 			tpl_addVar(vars, TPLADD, "IP", cs_inet_ntoa(cl->ip));
@@ -4303,10 +4306,10 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 			tpl_printf(vars, TPLADD, "HIT", "%d", cl->cwcacheexhit);
 			tpl_addVar(vars, TPLADD, "DIRECTIONIMG", getting);
 			rowvariable = "TABLECLIENTROWS";
-			write = 1;
+			written = 1;
 		}
 
-		if (write) {
+		if (written) {
 			tpl_addVar(vars, TPLAPPEND, rowvariable, tpl_getTpl(vars, "CACHEEXTABLEROW"));
 
 			if (cl->ll_cacheex_stats) {
@@ -4338,7 +4341,7 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 
 				}
 			}
-			write = 0;
+			written = 0;
 		}
 	}
 
@@ -4412,9 +4415,9 @@ static int8_t check_valid_origin(IN_ADDR_T addr) {
 	return 0;
 }
 
-static int8_t check_request(char *result, int32_t read) {
-	if(read < 50) return 0;
-	result[read]='\0';
+static int8_t check_request(char *result, int32_t readen) {
+	if(readen < 50) return 0;
+	result[readen]='\0';
 	int8_t method;
 	if (strncmp(result, "POST", 4) == 0) method = 1;
 	else method = 0;
@@ -4425,7 +4428,7 @@ static int8_t check_request(char *result, int32_t read) {
 		char *ptr = strstr(result, "Content-Length: ");
 		if(ptr != NULL){
 			ptr += 16;
-			if(ptr < result + read){
+			if(ptr < result + readen){
 				uint32_t length = atoi(ptr);
 				if(strlen(headerEnd+4) >= length) return 1;
 			}

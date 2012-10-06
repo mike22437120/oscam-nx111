@@ -390,13 +390,13 @@ struct cc_extended_ecm_idx *add_extended_ecm_idx(struct s_client *cl,
 }
 
 struct cc_extended_ecm_idx *get_extended_ecm_idx(struct s_client *cl,
-		uint8_t send_idx, int32_t remove) {
+		uint8_t send_idx, int32_t remove_item) {
 	struct cc_data *cc = cl->cc;
 	struct cc_extended_ecm_idx *eei;
 	LL_ITER it = ll_iter_create(cc->extended_ecm_idx);
 	while ((eei = ll_iter_next(&it))) {
 		if (eei->send_idx == send_idx) {
-			if (remove)
+			if (remove_item)
 				ll_iter_remove(&it);
 			//cs_debug_mask(D_TRACE, "%s get by send-idx: %d FOUND: %d",
 			//		getprefix(), send_idx, eei->ecm_idx);
@@ -404,7 +404,7 @@ struct cc_extended_ecm_idx *get_extended_ecm_idx(struct s_client *cl,
 		}
 	}
 #ifdef WITH_DEBUG
-	if (remove)
+	if (remove_item)
 		cs_debug_mask(cl->typ=='c'?D_CLIENT:D_READER, "%s get by send-idx: %d NOT FOUND", getprefix(),
 			send_idx);
 #endif
@@ -412,13 +412,13 @@ struct cc_extended_ecm_idx *get_extended_ecm_idx(struct s_client *cl,
 }
 
 struct cc_extended_ecm_idx *get_extended_ecm_idx_by_idx(struct s_client *cl,
-		uint16_t ecm_idx, int32_t remove) {
+		uint16_t ecm_idx, int32_t remove_item) {
 	struct cc_data *cc = cl->cc;
 	struct cc_extended_ecm_idx *eei;
 	LL_ITER it = ll_iter_create(cc->extended_ecm_idx);
 	while ((eei = ll_iter_next(&it))) {
 		if (eei->ecm_idx == ecm_idx) {
-			if (remove)
+			if (remove_item)
 				ll_iter_remove(&it);
 			//cs_debug_mask(D_TRACE, "%s get by ecm-idx: %d FOUND: %d",
 			//		getprefix(), ecm_idx, eei->send_idx);
@@ -426,7 +426,7 @@ struct cc_extended_ecm_idx *get_extended_ecm_idx_by_idx(struct s_client *cl,
 		}
 	}
 #ifdef WITH_DEBUG
-	if (remove)
+	if (remove_item)
 		cs_debug_mask(cl->typ=='c'?D_CLIENT:D_READER, "%s get by ecm-idx: %d NOT FOUND", getprefix(),
 			ecm_idx);
 #endif
@@ -2604,9 +2604,9 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 									cs_debug_mask(D_TRACE, "%s origin reader not found!", getprefix());
 								else {
 									cs_debug_mask(D_TRACE, "%s forward card: share %d origin reader %s origin id %d", getprefix(), card->id, ordr->label, card->origin_id);
-									struct s_client *cl = ordr->client;
-									if (card->origin_id && cl && cl->cc) { //only if we have a origin from a cccam reader
-										struct cc_data *rcc = cl->cc;
+									struct s_client *cl2 = ordr->client;
+									if (card->origin_id && cl2 && cl2->cc) { //only if we have a origin from a cccam reader
+										struct cc_data *rcc = cl2->cc;
 
 										if(rcc){
 											itr = ll_iter_create(rcc->cards);
@@ -2657,7 +2657,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l) {
 		} else { //READER:
 			cs_readlock(&cc->cards_busy);
     		cc->recv_ecmtask = -1;
-			struct cc_extended_ecm_idx *eei = get_extended_ecm_idx(cl,
+			eei = get_extended_ecm_idx(cl,
 					cc->extended_mode ? cc->g_flag : 1, TRUE);
 			if (!eei) {
 				cs_debug_mask(D_READER, "%s received extended ecm id %d but not found!",
