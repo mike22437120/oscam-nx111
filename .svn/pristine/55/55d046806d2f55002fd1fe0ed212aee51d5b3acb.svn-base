@@ -52,7 +52,7 @@ uint16_t cs_dblevel=0;   // Debug Level
 int32_t thread_pipe[2] = {0, 0};
 #ifdef WEBIF
 int8_t cs_restart_mode=1; //Restartmode: 0=off, no restart fork, 1=(default)restart fork, restart by webif, 2=like=1, but also restart on segfaults
-uint8_t cs_http_use_utf8 = 1;
+uint8_t cs_http_use_utf8 = 0;
 #endif
 int8_t cs_capture_SEGV=0;
 int8_t cs_dump_stack=0;
@@ -156,7 +156,6 @@ static void usage(void)
 	_check(READER_VIDEOGUARD, "videoguard");
 	_check(READER_DRE, "dre");
 	_check(READER_TONGFANG, "tongfang");
-	_check(READER_STREAMGUARD, "streamguard");
 	_check(READER_BULCRYPT, "bulcrypt");
 	printf("\n");
 
@@ -803,13 +802,8 @@ void cs_exit(int32_t sig)
 
 	cs_log("cardserver down");
 
-	if (sig == SIGINT){
-#ifdef HAVE_DVBAPI
-		dvbapi_main_exit();
-#endif
-
+	if (sig == SIGINT)
 		exit(sig);
-	}
 
 	cs_cleanup();
 
@@ -1250,7 +1244,6 @@ struct ecm_request_t *check_cwcache(ECM_REQUEST *er, struct s_client *cl)
 	return ecm;
 }
 
-
 /*
  * write_ecm_request():
  */
@@ -1392,21 +1385,6 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 #endif
 		}
 	}
-	else
-	if (reader && rc == E_NOTFOUND && (rcEx == E2_CCCAM_NOK1 || rcEx == E2_CCCAM_NOK2) && reader->resetcycle_nok > 0)
-	{
-		reader->resetcounter_nok++;
-		if (reader->resetcounter_nok > reader->resetcycle_nok) {
-			reader->resetcounter_nok = 0;
-			rdr_log(reader, "Resetting reader, resetcyle of %d NOK ecms reached", reader->resetcycle_nok);
-			reader->card_status = CARD_NEED_INIT;
-#ifdef WITH_CARDREADER
-      			//reader_reset(reader);
-      			add_job(cl, ACTION_READER_RESET, NULL, 0);
-#endif
-		}
-	}
-
 
 	return res;
 }
@@ -2330,6 +2308,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 		cacheex_update_hash(er);
 		ac_chk(client, er, 0);
 	}
+
 	struct s_ecm_answer *ea, *prv = NULL;
 #ifdef CS_CACHEEX
 	if(er->rc >= E_99 && !cacheex_is_match_alias(client, er)) {
@@ -2358,7 +2337,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 #endif
 			if (match) {
 				if (!cs_malloc(&ea, sizeof(struct s_ecm_answer)))
-					break;
+					goto OUT;
 				ea->reader = rdr;
 				if (prv)
 					prv->next = ea;
@@ -2384,6 +2363,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 			}
 		}
 
+OUT:
 		cs_readunlock(&clientlist_lock);
 		cs_readunlock(&readerlist_lock);
 
@@ -2921,8 +2901,7 @@ static void check_status(struct s_client *cl) {
 			//check for card inserted or card removed on pysical reader
 			if (!rdr || !rdr->enable)
 				break;
-			reader_checkhealth(rdr);
-//			add_job(cl, ACTION_READER_CHECK_HEALTH, NULL, 0);
+			add_job(cl, ACTION_READER_CHECK_HEALTH, NULL, 0);
 			break;
 #endif
 		case 'p':
@@ -3667,17 +3646,6 @@ void * reader_check(void) {
 		for (cl=first_client->next; cl ; cl=cl->next) {
 			if (!cl->thread_active)
 				check_status(cl);
-			struct s_reader *rdr=cl->reader;
-			if (rdr && rdr->autorestartseconds
- 			    && (cl->login + (time_t)rdr->autorestartseconds) < time(NULL)){
-				if(rdr->enable){
-					rdr->enable=0;
-					kill_thread(cl);
-					cs_sleepms(cfg.reader_restart_seconds * 1000);
-				}
-				rdr->enable=1;
-				restart_cardreader(rdr, 1);
-			}
 		}
 		cs_readlock(&readerlist_lock);
 		for (rdr=first_active_reader; rdr; rdr=rdr->next) {
@@ -3915,7 +3883,6 @@ int32_t main (int32_t argc, char *argv[])
 #ifdef READER_VIDEOGUARD
 	reader_videoguard1,
 	reader_videoguard2,
-	reader_videoguard11,
 	reader_videoguard12,
 #endif
 #ifdef READER_DRE
@@ -3923,9 +3890,6 @@ int32_t main (int32_t argc, char *argv[])
 #endif
 #ifdef READER_TONGFANG
 	reader_tongfang,
-#endif
-#ifdef READER_STREAMGUARD
-	reader_streamguard,
 #endif
 #ifdef READER_BULCRYPT
 	reader_bulcrypt,
