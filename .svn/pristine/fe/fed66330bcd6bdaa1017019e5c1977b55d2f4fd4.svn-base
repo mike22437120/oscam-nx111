@@ -2,7 +2,7 @@
 
 addons="WEBIF TOUCH HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX LCDSUPPORT LEDSUPPORT IPV6SUPPORT"
 protocols="MODULE_CAMD33 MODULE_CAMD35 MODULE_CAMD35_TCP MODULE_NEWCAMD MODULE_CCCAM MODULE_CCCSHARE MODULE_GBOX MODULE_RADEGAST MODULE_SERIAL MODULE_CONSTCW MODULE_PANDORA"
-readers="WITH_CARDREADER READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_STREAMGUARD READER_BULCRYPT"
+readers="WITH_CARDREADER READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_BULCRYPT"
 
 defconfig="
 CONFIG_WEBIF=y
@@ -299,7 +299,6 @@ menu_reader() {
 		READER_VIDEOGUARD	"NDS Videoguard"	$(check_test "READER_VIDEOGUARD") \
 		READER_DRE			"DRE Crypt"			$(check_test "READER_DRE") \
 		READER_TONGFANG		"Tongfang"			$(check_test "READER_TONGFANG") \
-		READER_STREAMGUARD	"Streamguard"		$(check_test "READER_STREAMGUARD") \
 		READER_BULCRYPT		"Bulcrypt"			$(check_test "READER_BULCRYPT") \
 		2> ${tempfile}
 
@@ -458,13 +457,7 @@ do
 		break
 	;;
 	'-r'|'--oscam-revision')
-		CS_SVNVERSION=`(svnversion -n . 2>/dev/null || printf 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'`
-		CS_SVNVERSION0=`(grep "CS_SVN_VERSION .*" .revision 2>/dev/null || (echo CS_SVN_VERSION "0">.revision;printf 0)) | cut -d" " -f2 | sed 's/[^0-9]*//;s/[^0-9]*$//'`
-
-		if [ "$CS_SVNVERSION" != "0" -a "$CS_SVNVERSION" != "$CS_SVNVERSION0" ]; then
-			sed -i "s/CS_SVN_VERSION .*/CS_SVN_VERSION \"$CS_SVNVERSION\"/g" .revision
-		fi;
-		grep "CS_SVN_VERSION .*" .revision | cut -d \" -f2
+		(svnversion -n . 2>/dev/null || printf 0) | sed 's/.*://; s/[^0-9]*$//; s/^$/0/'
 		break
 	;;
 	'-O'|'--detect-osx-sdk-version')

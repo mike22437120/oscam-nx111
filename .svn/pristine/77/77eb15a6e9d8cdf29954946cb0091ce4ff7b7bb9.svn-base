@@ -30,11 +30,9 @@ extern void reader_conax(struct s_cardsystem *);
 extern void reader_seca(struct s_cardsystem *);
 extern void reader_videoguard1(struct s_cardsystem *);
 extern void reader_videoguard2(struct s_cardsystem *);
-extern void reader_videoguard11(struct s_cardsystem *);
 extern void reader_videoguard12(struct s_cardsystem *);
 extern void reader_dre(struct s_cardsystem *);
 extern void reader_tongfang(struct s_cardsystem *);
-extern void reader_streamguard(struct s_cardsystem *);
 extern void reader_bulcrypt(struct s_cardsystem *);
 
 /* ===========================
@@ -127,7 +125,6 @@ extern void chk_reader(char *token, char *value, struct s_reader *rdr);
 
 extern void dvbapi_chk_caidtab(char *caidasc, char type);
 extern void dvbapi_read_priority(void);
-extern void dvbapi_main_exit();
 
 void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f);
 
@@ -139,7 +136,6 @@ extern int32_t write_userdb(void);
 extern int32_t write_config(void);
 extern int32_t write_server(void);
 extern void write_versionfile(void);
-extern void * read_cccamcfg(int32_t mode);
 
 /* ===========================
  *         oscam-log
@@ -225,6 +221,7 @@ extern struct s_reader *get_reader_by_label(char *lbl);
 
 extern void add_ms_to_timespec(struct timespec *timeout, int32_t msec);
 extern int32_t add_ms_to_timeb(struct timeb *tb, int32_t ms);
+
 extern int32_t ecmfmt(uint16_t caid, uint32_t prid, uint16_t chid, uint16_t pid, uint16_t srvid, uint16_t l, uint16_t checksum, char *result, size_t size);
 extern int32_t format_ecm(ECM_REQUEST *ecm, char *result, size_t size);
 
