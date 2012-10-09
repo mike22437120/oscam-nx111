@@ -98,7 +98,7 @@ include_directories (
     ${CMAKE_CURRENT_SOURCE_DIR}/csctapi
     ${CMAKE_CURRENT_SOURCE_DIR}/cscrypt
     ${CMAKE_CURRENT_SOURCE_DIR}/algo
-    ${CMAKE_CURRENT_SOURCE_DIR}/cygwin
+    ${CMAKE_CURRENT_SOURCE_DIR}/extapi/cygwin
     /usr/include/w32api
     ${OPTIONAL_INCLUDE_DIR}
     ${OPTIONAL_INCLUDE_DIR}/w32api
@@ -545,7 +545,7 @@ elseif (OSCamOperatingSystem MATCHES "NeutrinoHD")
     target_link_libraries ( ${exe_name} rt nxp )
 elseif (OSCamOperatingSystem MATCHES "AZBox")
     add_library(xcas STATIC IMPORTED)
-    set_property(TARGET xcas PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/openxcas/libOpenXCASAPI.a)
+    set_property(TARGET xcas PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/extapi/openxcas/libOpenXCASAPI.a)
     target_link_libraries(${exe_name} xcas)
 endif (OSCamOperatingSystem MATCHES "Linux")
 

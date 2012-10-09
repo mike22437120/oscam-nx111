@@ -1,6 +1,10 @@
 #include "globals.h"
 
-#include "coolapi.h"
+#include "csctapi/cardreaders.h"
+#include "modules.h"
+#include "readers.h"
+
+#include "extapi/coolapi.h"
 #include "csctapi/icc_async.h"
 #include "module-anticasc.h"
 #include "module-cacheex.h"
@@ -19,6 +23,7 @@
 #include "oscam-lock.h"
 #include "oscam-net.h"
 #include "oscam-string.h"
+#include "oscam-time.h"
 
 static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea);
 
@@ -207,12 +212,8 @@ static void usage(void)
 #undef _check
 
 #ifdef NEED_DAEMON
-#if defined(__APPLE__)
-// this is done because daemon is being deprecated starting with 10.5 and -Werror will always trigger an error
-static int32_t daemon_compat(int32_t nochdir, int32_t noclose)
-#else
-static int32_t daemon(int32_t nochdir, int32_t noclose)
-#endif
+// The compat function is not called daemon() because this may cause problems.
+static int32_t do_daemon(int32_t nochdir, int32_t noclose)
 {
   int32_t fd;
 
@@ -239,6 +240,8 @@ static int32_t daemon(int32_t nochdir, int32_t noclose)
   }
   return(0);
 }
+#else
+#define do_daemon daemon
 #endif
 
 int32_t recv_from_udpipe(uchar *buf)
@@ -3876,7 +3879,7 @@ int32_t main (int32_t argc, char *argv[])
            module_radegast,
 #endif
 #ifdef MODULE_SERIAL
-           module_oscam_ser,
+           module_serial,
 #endif
 #ifdef HAVE_DVBAPI
 	   module_dvbapi,
@@ -4001,16 +4004,13 @@ int32_t main (int32_t argc, char *argv[])
 	  }
   }
 
-
-#if defined(__APPLE__)
-  if (bg && daemon_compat(1,0))
-#else
-  if (bg && daemon(1,0))
-#endif
+  if (bg && do_daemon(1,0))
   {
     printf("Error starting in background (errno=%d: %s)", errno, strerror(errno));
     cs_exit(1);
   }
+
+  get_random_bytes_init();
 
 #ifdef WEBIF
   if (cs_restart_mode)
@@ -4057,7 +4057,6 @@ int32_t main (int32_t argc, char *argv[])
     cardreader_def[i](&cardreaders[i]);
   }
 
-  init_rnd();
   init_sidtab();
   init_readerdb();
   cfg.account = init_userdb();

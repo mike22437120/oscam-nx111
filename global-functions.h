@@ -2,49 +2,6 @@
 #define GLOBAL_FUNCTIONS_H_
 
 /* ===========================
- *      protocol modules
- * =========================== */
-extern int32_t monitor_send_idx(struct s_client *, char *);
-extern void module_monitor(struct s_module *);
-extern void module_camd35(struct s_module *);
-extern void module_camd35_tcp(struct s_module *);
-extern void module_camd33(struct s_module *);
-extern void module_newcamd(struct s_module *);
-extern void module_radegast(struct s_module *);
-extern void module_oscam_ser(struct s_module *);
-extern void module_cccam(struct s_module *);
-extern void module_pandora(struct s_module *);
-extern void module_gbox(struct s_module *);
-extern void module_constcw(struct s_module *);
-extern void module_csp(struct s_module *);
-extern void module_dvbapi(struct s_module *);
-
-/* ===========================
- *       card support
- * =========================== */
-extern void reader_nagra(struct s_cardsystem *);
-extern void reader_irdeto(struct s_cardsystem *);
-extern void reader_cryptoworks(struct s_cardsystem *);
-extern void reader_viaccess(struct s_cardsystem *);
-extern void reader_conax(struct s_cardsystem *);
-extern void reader_seca(struct s_cardsystem *);
-extern void reader_videoguard1(struct s_cardsystem *);
-extern void reader_videoguard2(struct s_cardsystem *);
-extern void reader_videoguard11(struct s_cardsystem *);
-extern void reader_videoguard12(struct s_cardsystem *);
-extern void reader_dre(struct s_cardsystem *);
-extern void reader_tongfang(struct s_cardsystem *);
-extern void reader_streamguard(struct s_cardsystem *);
-extern void reader_bulcrypt(struct s_cardsystem *);
-
-/* ===========================
- *         cardreaders
- * =========================== */
-extern void cardreader_mouse(struct s_cardreader *crdr);
-extern void cardreader_smargo(struct s_cardreader *crdr);
-extern void cardreader_stapi(struct s_cardreader *crdr);
-
-/* ===========================
  *           oscam
  * =========================== */
 extern void cs_exit_oscam(void);
@@ -141,31 +98,8 @@ extern int32_t write_server(void);
 extern void write_versionfile(void);
 extern void * read_cccamcfg(int32_t mode);
 
-/* ===========================
- *         oscam-log
- * =========================== */
-extern char *LOG_LIST;
-extern int32_t  cs_init_log(void);
-extern void cs_reinit_loghist(uint32_t size);
-extern int32_t cs_open_logfiles(void);
-
-extern void cs_log_int(uint16_t mask, int8_t lock, const uchar *buf, int32_t n, const char *fmt, ...) __attribute__ ((format (printf, 5, 6)));
-
-#define cs_log(...)          cs_log_int(0, 1, NULL, 0, ##__VA_ARGS__)
-#define cs_log_nolock(...)   cs_log_int(0, 0, NULL, 0, ##__VA_ARGS__)
-#define cs_dump(buf, n, ...) cs_log_int(0, 1, buf,  n, ##__VA_ARGS__)
-
-#define cs_debug_mask(mask, ...)         do { if (config_WITH_DEBUG()) cs_log_int(mask, 1, NULL, 0, ##__VA_ARGS__); } while(0)
-#define cs_debug_mask_nolock(mask, ...)  do { if (config_WITH_DEBUG()) cs_log_int(mask, 0, NULL, 0, ##__VA_ARGS__); } while(0)
-#define cs_ddump_mask(mask, buf, n, ...) do { if (config_WITH_DEBUG()) cs_log_int(mask, 1, buf , n, ##__VA_ARGS__); } while(0)
-
-extern void log_emm_request(struct s_reader *);
-extern void logCWtoFile(ECM_REQUEST *er, uchar *cw);
-extern void cs_log_config(void);
-extern void cs_close_log(void);
-extern int32_t cs_init_statistics(void);
-extern void cs_statistics(struct s_client * client);
-extern void cs_disable_log(int8_t disabled);
+#include "oscam-log.h"
+#include "oscam-log-reader.h"
 
 /* ===========================
  *        oscam-reader
@@ -173,11 +107,6 @@ extern void cs_disable_log(int8_t disabled);
 extern int32_t reader_cmd2icc(struct s_reader * reader, const uchar *buf, const int32_t l, uchar *response, uint16_t *response_length);
 extern int32_t card_write(struct s_reader * reader, const uchar *, const uchar *, uchar *, uint16_t *);
 extern int32_t check_sct_len(const unsigned char *data, int32_t off);
-extern void rdr_log(struct s_reader * reader, char *,...) __attribute__ ((format (printf, 2, 3)));
-extern void rdr_log_sensitive(struct s_reader * reader, char *,...) __attribute__ ((format (printf, 2, 3)));
-extern void rdr_debug_mask(struct s_reader * reader, uint16_t mask, char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
-extern void rdr_debug_mask_sensitive(struct s_reader * reader, uint16_t mask, char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
-extern void rdr_ddump_mask(struct s_reader * reader, uint16_t mask, const uint8_t * buf, int n, char *fmt, ...) __attribute__ ((format (printf, 5, 6)));
 extern void * start_cardreader(void *);
 extern void reader_card_info(struct s_reader * reader);
 extern int32_t hostResolve(struct s_reader * reader);
@@ -200,22 +129,10 @@ extern void reader_do_card_info(struct s_reader * reader);
 /* ===========================
  *        oscam-simples
  * =========================== */
-extern char *remote_txt(void);
-extern int32_t comp_timeb(struct timeb *tpa, struct timeb *tpb);
-extern time_t cs_timegm(struct tm *tm);
-extern struct tm *cs_gmtime_r(const time_t *timep, struct tm *r);
-extern char *cs_ctime_r(const time_t *timep, char* buf);
-extern void cs_ftime(struct timeb *);
-extern void cs_sleepms(uint32_t);
-extern void cs_sleepus(uint32_t);
-extern void cs_setpriority(int32_t);
-extern int32_t check_filled(uchar *value, int32_t length);
 extern char *get_servicename(struct s_client *cl, uint16_t srvid, uint16_t caid, char *buf);
 extern char *get_tiername(uint16_t tierid, uint16_t caid, char *buf);
 extern char *get_provider(uint16_t caid, uint32_t provid, char *buf, uint32_t buflen);
 void add_provider(uint16_t caid, uint32_t provid, const char *name, const char *sat, const char *lang);
-extern uchar fast_rnd(void);
-extern void init_rnd(void);
 extern int32_t hexserialset(struct s_reader *rdr);
 extern char *reader_get_type_desc(struct s_reader * rdr, int32_t extended);
 extern void hexserial_to_newcamd(uchar *source, uchar *dest, uint16_t caid);
@@ -223,8 +140,6 @@ extern void newcamd_to_hexserial(uchar *source, uchar *dest, uint16_t caid);
 
 extern struct s_reader *get_reader_by_label(char *lbl);
 
-extern void add_ms_to_timespec(struct timespec *timeout, int32_t msec);
-extern int32_t add_ms_to_timeb(struct timeb *tb, int32_t ms);
 extern int32_t ecmfmt(uint16_t caid, uint32_t prid, uint16_t chid, uint16_t pid, uint16_t srvid, uint16_t l, uint16_t checksum, char *result, size_t size);
 extern int32_t format_ecm(ECM_REQUEST *ecm, char *result, size_t size);
 

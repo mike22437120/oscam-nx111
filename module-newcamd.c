@@ -4,6 +4,7 @@
 #include "oscam-client.h"
 #include "oscam-net.h"
 #include "oscam-string.h"
+#include "oscam-time.h"
 
 extern struct s_module modules[CS_MAX_MOD];
 
@@ -712,7 +713,7 @@ static int8_t newcamd_auth_client(IN_ADDR_T ip, uint8_t *deskey)
     }
 
     // make random 14 bytes
-    for( i=0; i<14; i++ ) buf[i]=fast_rnd();
+    get_random_bytes(buf, 14);
 
     // send init sequence
     send(cl->udp_fd, buf, 14, 0);

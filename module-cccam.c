@@ -14,6 +14,7 @@
 #include "oscam-lock.h"
 #include "oscam-net.h"
 #include "oscam-string.h"
+#include "oscam-time.h"
 
 //Mode names for CMD_05 command:
 const char *cmd05_mode_name[] = { "UNKNOWN", "PLAIN", "AES", "CC_CRYPT", "RC4",
@@ -484,7 +485,7 @@ int32_t cc_recv_to(struct s_client *cl, uint8_t *buf, int32_t len) {
 		pfd.fd = cl->udp_fd;
 		pfd.events = POLLIN | POLLPRI;
 
-		rc = poll(&pfd, 1, 2000);
+		rc = poll(&pfd, 1, cfg.cc_recv_timeout);
 
 		if (rc < 0) {
 			if (errno==EINTR) continue;
@@ -3188,9 +3189,7 @@ int32_t cc_srv_connect(struct s_client *cl) {
         (void *)&keep_alive, sizeof(keep_alive));
 
 	//Create checksum for "O" cccam:
-	for (i = 0; i < 12; i++) {
-		data[i] = fast_rnd();
-	}
+	get_random_bytes(data, 12);
 	for (i = 0; i < 4; i++) {
 		data[12 + i] = (data[i] + data[4 + i] + data[8 + i]) & 0xff;
 	}
@@ -3693,11 +3692,10 @@ void cc_cleanup(struct s_client *cl) {
 void cc_update_nodeid(void)
 {
 	//Partner Detection:
-	init_rnd();
 	uint16_t sum = 0x1234; //This is our checksum
 	int32_t i;
+	get_random_bytes(cc_node_id, 4);
 	for (i = 0; i < 4; i++) {
-		cc_node_id[i] = fast_rnd();
 		sum += cc_node_id[i];
 	}
 
