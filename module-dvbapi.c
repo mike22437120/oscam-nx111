@@ -207,8 +207,7 @@ static int32_t dvbapi_detect_api(void) {
 	cs_log("Detected Coolstream API");
 	return 1;
 #else
-	int32_t i,devnum=-1, dmx_fd=0, ret=-1, boxnum = sizeof(devices)/sizeof(struct box_devices);
-	uchar filter[32];
+	int32_t i,devnum=-1, dmx_fd=0, boxnum = sizeof(devices)/sizeof(struct box_devices);
 	char device_path[128], device_path2[128];
 
 	for (i=0;i<boxnum;i++) {
@@ -219,42 +218,28 @@ static int32_t dvbapi_detect_api(void) {
 
 		if ((dmx_fd = open(device_path, O_RDWR)) > 0) {
 			devnum=i;
+			close(dmx_fd);
 			break;
 		}
 	}
 
-	if (dmx_fd < 0) return 0;
-	close(dmx_fd);
+	if (devnum == -1) return 0;
 	selected_box = devnum;
 	if (selected_box > -1)
 		selected_api=devices[selected_box].api;
 
 #ifdef WITH_STAPI
-	if (devnum==4) {
-		if (stapi_open()==FALSE) {
-			cs_log("ERROR: stapi: setting up stapi failed.");
-			return 0;
-		}
-		close(dmx_fd);
-		return 1;
+	if (devnum == 4 && stapi_open() == 0) {
+		cs_log("ERROR: stapi: setting up stapi failed.");
+		return 0;
 	}
 #endif
 	if (cfg.dvbapi_boxtype == BOXTYPE_NEUMO) {
 		selected_api=DVBAPI_1;
-		return 1;
 	}
-
-	memset(filter,0,32);
-	filter[0]=0x01;
-	filter[16]=0xFF;
-
-	ret = dvbapi_set_filter(0, selected_api, 0x0001, 0x0001, filter, filter+16, 1, 0, 0, TYPE_ECM);
-	if (ret >= 0) dvbapi_stop_filter(0, TYPE_ECM);
-	else return 0;
 
 	cs_log("Detected %s Api: %d", device_path, selected_api);
 #endif
-
 	return 1;
 }
 
@@ -663,8 +648,9 @@ void dvbapi_set_pid(int32_t demux_id, int32_t num, int32_t idx) {
 							// sending data
 							send(ca_fd[i], &packet, sizeof(packet), 0);
 						} else {
+							// This ioctl fails on dm500 but that is OK.
 							if (ioctl(ca_fd[i], CA_SET_PID, &ca_pid2)==-1)
-								cs_log("ERROR: ioctl(CA_SET_PID) pid=0x%04x index=%d (errno=%d %s)", ca_pid2.pid, ca_pid2.index, errno, strerror(errno));
+								cs_debug_mask(D_TRACE|D_DVBAPI,"ERROR: ioctl(CA_SET_PID) pid=0x%04x index=%d (errno=%d %s)", ca_pid2.pid, ca_pid2.index, errno, strerror(errno));
 							else
 								cs_debug_mask(D_DVBAPI, "CA_SET_PID pid=0x%04x index=%d", ca_pid2.pid, ca_pid2.index);
 						}

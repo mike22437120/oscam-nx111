@@ -586,6 +586,9 @@ DESCRIPTIONS
        autosidblock = value
           enable to add sevice to block list when service is not ok,defa   ult to 1.
 
+       recv_timeout = milli-seconds
+	  set network timeout for receiving data, default:2000
+
        forward_origin_card = 0|1
 	  1 = forward ECM request to reader holding this card, load balancer, fallback and caching will be  disabled,
 	  default:0

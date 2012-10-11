@@ -145,7 +145,7 @@ static int32_t streamguard_do_ecm(struct s_reader *reader, const ECM_REQUEST *er
 static int32_t streamguard_get_emm_type(EMM_PACKET *ep, struct s_reader *UNUSED(reader))
 {
   ep->type = UNKNOWN;
-  return TRUE;
+  return 1;
 }
 
 void streamguard_get_emm_filter(struct s_reader *UNUSED(reader), uchar *UNUSED(filter))

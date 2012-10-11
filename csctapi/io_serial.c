@@ -24,27 +24,26 @@
 
 #include "../globals.h"
 #ifdef WITH_CARDREADER
+
 #if defined(__HPUX__)
 #include <sys/modem.h>
 #endif
-#include <unistd.h>
-#include <fcntl.h>
+
 #ifdef HAVE_POLL
 #include <sys/poll.h>
 #else
 #include <sys/signal.h>
 #include <sys/types.h>
 #endif
-#include <sys/ioctl.h>
 
 #if defined(__linux__)
 #include <linux/serial.h>
 #endif
+
 #include "../oscam-time.h"
-#include "defines.h"
+#include "icc_async.h"
 #include "io_serial.h"
 #include "mc_global.h"
-#include "icc_async.h"
 
 #define IO_SERIAL_FILENAME_LENGTH 	32
 
@@ -335,7 +334,7 @@ bool IO_Serial_SetProperties (struct s_reader * reader, struct termios newtio)
 	return OK;
 }
 
-int32_t IO_Serial_SetParity (struct s_reader * reader, BYTE parity)
+int32_t IO_Serial_SetParity (struct s_reader * reader, unsigned char parity)
 {
 	if(reader->typ == R_INTERNAL)
 		return OK;
@@ -398,7 +397,7 @@ int32_t IO_Serial_SetParity (struct s_reader * reader, BYTE parity)
 
 void IO_Serial_Flush (struct s_reader * reader)
 {
-	BYTE b;
+	unsigned char b;
 
   tcflush(reader->handle, TCIOFLUSH);
 	if (reader->mhz > 2000) while(!IO_Serial_Read(reader, 1000*1000, 1, &b));
@@ -410,9 +409,9 @@ void IO_Serial_Sendbreak(struct s_reader * reader, int32_t duration)
 	tcsendbreak (reader->handle, duration);
 }
 
-bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, BYTE * data)
+bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, unsigned char * data)
 {
-	BYTE c;
+	unsigned char c;
 	uint32_t count = 0;
 #if defined(__SH4__)
 	bool readed;
@@ -421,7 +420,7 @@ bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, 
 	
 	if((reader->typ != R_INTERNAL) && (reader->written>0))
 	{
-		BYTE buf[256];
+		unsigned char buf[256];
 		int32_t n = reader->written;
 		reader->written = 0;
 		
@@ -434,12 +433,12 @@ bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, 
 #if defined(__SH4__)
 		gettimeofday(&tv,0);
 		memcpy(&tv_spent,&tv,sizeof(struct timeval));
-		readed=FALSE;
+		readed=0;
 		while( (((tv_spent.tv_sec-tv.tv_sec)*1000) + ((tv_spent.tv_usec-tv.tv_usec)/1000L)) < (time_t)timeout )
  		{
  			if (read (reader->handle, &c, 1) == 1)
  			{
- 				readed=TRUE;
+				readed=1;
 				break;
  			}
  			gettimeofday(&tv_spent,0);
@@ -480,10 +479,10 @@ bool IO_Serial_Read (struct s_reader * reader, uint32_t timeout, uint32_t size, 
 	return OK;
 }
 
-bool IO_Serial_Write (struct s_reader * reader, uint32_t delay, uint32_t size, const BYTE * data)
+bool IO_Serial_Write (struct s_reader * reader, uint32_t delay, uint32_t size, const unsigned char * data)
 {
 	uint32_t count, to_send, i_w;
-	BYTE data_w[512];
+	unsigned char data_w[512];
 	
 	uint32_t timeout = 1000;
 	if (reader->mhz > 2000)
@@ -747,7 +746,7 @@ static bool IO_Serial_WaitToWrite (struct s_reader * reader, uint32_t delay_ms, 
 bool IO_Serial_InitPnP (struct s_reader * reader)
 {
 	uint32_t PnP_id_size = 0;
-	BYTE PnP_id[IO_SERIAL_PNPID_SIZE];	/* PnP Id of the serial device */
+	unsigned char PnP_id[IO_SERIAL_PNPID_SIZE];	/* PnP Id of the serial device */
 
   if (IO_Serial_SetParams (reader, 1200, 7, PARITY_NONE, 1, IO_SERIAL_HIGH, IO_SERIAL_LOW))
 		return ERROR;

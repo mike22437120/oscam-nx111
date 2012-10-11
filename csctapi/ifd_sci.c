@@ -3,20 +3,17 @@
 		This module provides IFD handling functions for SCI internal reader.
 */
 
-#include "ifd_sci.h"
-#include "io_serial.h"
+#include "../globals.h"
+
 #ifdef WITH_CARDREADER
 
-#include <stdio.h>
-#include <time.h>
-#include <sys/ioctl.h>
 #include "../oscam-time.h"
+
+#include "atr.h"
+#include "ifd_sci.h"
+#include "io_serial.h"
 #include "sci_global.h"
 #include "sci_ioctl.h"
-#include "string.h"
-#if defined(__SH4__)
-#include <fcntl.h> 
-#endif
 
 #define ATR_TIMEOUT   800
 
@@ -108,7 +105,7 @@ int32_t Sci_Reset (struct s_reader * reader, ATR * atr)
 	}
 }
 
-int32_t Sci_WriteSettings (struct s_reader * reader, BYTE T, uint32_t fs, uint32_t ETU, uint32_t WWT, uint32_t BWT, uint32_t CWT, uint32_t EGT, unsigned char P, unsigned char I)
+int32_t Sci_WriteSettings (struct s_reader * reader, unsigned char T, uint32_t fs, uint32_t ETU, uint32_t WWT, uint32_t BWT, uint32_t CWT, uint32_t EGT, unsigned char P, unsigned char I)
 {
 	//int32_t n;
 	SCI_PARAMETERS params;

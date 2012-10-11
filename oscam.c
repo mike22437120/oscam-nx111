@@ -5,7 +5,6 @@
 #include "readers.h"
 
 #include "extapi/coolapi.h"
-#include "csctapi/icc_async.h"
 #include "module-anticasc.h"
 #include "module-cacheex.h"
 #include "module-cccam.h"
@@ -24,6 +23,7 @@
 #include "oscam-net.h"
 #include "oscam-string.h"
 #include "oscam-time.h"
+#include "reader-common.h"
 
 static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea);
 
@@ -321,9 +321,7 @@ static void remove_ecm_from_reader(ECM_REQUEST *ecm) {
 	            	if (er->parent == ecm) {
 	            		er->parent = NULL;
 	            		er->client = NULL;
-#ifdef CS_CACHEEX
-	            		er->csp_lastnodes = NULL;
-#endif
+	            		cacheex_set_csp_lastnode(er);
 	            	}
 	            }
             }
@@ -336,11 +334,8 @@ static void remove_ecm_from_reader(ECM_REQUEST *ecm) {
 void free_ecm(ECM_REQUEST *ecm) {
 	struct s_ecm_answer *ea, *nxt;
 
-#ifdef CS_CACHEEX
-        LLIST *l = ecm->csp_lastnodes;
-        ecm->csp_lastnodes = NULL;
-	ll_destroy_data(l);
-#endif
+	cacheex_free_csp_lastnodes(ecm);
+
 	//remove this ecm from reader queue to avoid segfault on very late answers (when ecm is already disposed)
 	//first check for outstanding answers:
 	remove_ecm_from_reader(ecm);
@@ -396,10 +391,7 @@ static void cleanup_ecmtasks(struct s_client *cl)
 	for (ecm = ecmcwcache; ecm; ecm = ecm->next) {
 		if (ecm->client == cl)
 			ecm->client = NULL;
-#ifdef CS_CACHEEX
-		if (ecm->cacheex_src == cl)
-			ecm->cacheex_src = NULL;
-#endif
+		cacheex_set_cacheex_src(ecm, cl);
 		//if cl is a reader, remove from matching_rdr:
 		for(ea_list = ecm->matching_rdr, ea_prev=NULL; ea_list; ea_prev = ea_list, ea_list = ea_list->next) {
 			if (ea_list->reader->client == cl) {
@@ -482,10 +474,8 @@ void cleanup_thread(void *var)
 		remove_reader_from_active(rdr);
 		if(rdr->ph.cleanup)
 			rdr->ph.cleanup(cl);
-#ifdef WITH_CARDREADER
 		if (cl->typ == 'r')
-			ICC_Async_Close(rdr);
-#endif
+			cardreader_close(rdr);
 		if (cl->typ == 'p')
 			network_tcp_connection_close(rdr, "cleanup");
 		cl->reader = NULL;
@@ -553,7 +543,7 @@ static void cs_cleanup(void)
 			// Stop MCR reader display thread
 			if (cl->typ == 'r' && cl->reader && cl->reader->typ == R_SC8in1
 					&& cl->reader->sc8in1_config && cl->reader->sc8in1_config->display_running) {
-				cl->reader->sc8in1_config->display_running = FALSE;
+				cl->reader->sc8in1_config->display_running = 0;
 			}
 		}
 	}
@@ -1183,9 +1173,7 @@ static void init_cardreader(void) {
 	cs_writelock(&system_lock);
 	struct s_reader *rdr;
 
-#ifdef WITH_CARDREADER
-	ICC_Async_Init_Locks();
-#endif
+	cardreader_init_locks();
 
 	LL_ITER itr = ll_iter_create(configured_readers);
 	while((rdr = ll_iter_next(&itr))) {
@@ -1266,10 +1254,7 @@ static void distribute_ecm(ECM_REQUEST *er, int32_t rc)
 	cs_readlock(&ecmcache_lock);
 	for (ecm = ecmcwcache; ecm; ecm = ecm->next) {
 		if (ecm != er && ecm->rc >= E_99 && ecm->ecmcacheptr == er) {
-#ifdef CS_CACHEEX
-			if (!ecm->cacheex_src)
-				ecm->cacheex_src = er->cacheex_src;
-#endif
+			cacheex_init_cacheex_src(ecm, er);
 			write_ecm_answer(er->selected_reader, ecm, rc, 0, er->cw, NULL);
 		}
 	}
@@ -1381,10 +1366,7 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 			reader->resetcounter = 0;
 			rdr_log(reader, "Resetting reader, resetcyle of %d ecms reached", reader->resetcycle);
 			reader->card_status = CARD_NEED_INIT;
-#ifdef WITH_CARDREADER
-      			//reader_reset(reader);
-      			add_job(cl, ACTION_READER_RESET, NULL, 0);
-#endif
+			cardreader_reset(cl);
 		}
 	}
 	else
@@ -2326,11 +2308,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 		ac_chk(client, er, 0);
 	}
 	struct s_ecm_answer *ea, *prv = NULL;
-#ifdef CS_CACHEEX
 	if(er->rc >= E_99 && !cacheex_is_match_alias(client, er)) {
-#else
-	if(er->rc >= E_99) {
-#endif
 		er->reader_avail=0;
 		struct s_reader *rdr;
 
@@ -2559,7 +2537,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
  * Function to filter emm by cardsystem.
  * Every cardsystem can export a function "get_emm_filter"
  *
- * the emm is checked against it an returns TRUE for a valid emm or FALSE if not
+ * the emm is checked against it an returns 1 for a valid emm or 0 if not
  */
 int8_t do_simple_emm_filter(struct s_reader *rdr, struct s_cardsystem *cs, EMM_PACKET *ep)
 {
@@ -2911,15 +2889,9 @@ static void check_status(struct s_client *cl) {
 			}
 
 			break;
-#ifdef WITH_CARDREADER
 		case 'r':
-			//check for card inserted or card removed on pysical reader
-			if (!rdr || !rdr->enable)
-				break;
-			reader_checkhealth(rdr);
-//			add_job(cl, ACTION_READER_CHECK_HEALTH, NULL, 0);
+			cardreader_checkhealth(cl, rdr);
 			break;
-#endif
 		case 'p':
 			//execute reader do idle on proxy reader after a certain time (rdr->tcp_ito = inactivitytimeout)
 			//disconnect when no keepalive available
@@ -2938,8 +2910,6 @@ static void check_status(struct s_client *cl) {
 				add_job(rdr->client, ACTION_READER_IDLE, NULL, 0);
 				rdr->last_check = time(NULL);
 			}
-			break;
-		default:
 			break;
 	}
 }
@@ -3013,10 +2983,9 @@ void * work_thread(void *ptr) {
 				pthread_mutex_unlock(&cl->thread_lock);
 
 				if (rc == -1)
-					cs_debug_mask(D_TRACE, "poll wakeup");
+					cs_debug_mask(D_TRACE, "poll() timeout");
 
 				if (rc>0) {
-					cs_debug_mask(D_TRACE, "data on socket");
 					data=&tmp_data;
 					data->ptr = NULL;
 
@@ -3098,12 +3067,10 @@ void * work_thread(void *ptr) {
 					break;
 				case ACTION_READER_REMOTELOG:
 					casc_do_sock_log(reader);
-	 				break;
-	#ifdef WITH_CARDREADER
+					break;
 				case ACTION_READER_RESET:
-			 		reader_reset(reader);
-	 				break;
-	#endif
+					cardreader_do_reset(reader);
+					break;
 				case ACTION_READER_ECM_REQUEST:
 					reader_get_ecm(reader, data->ptr);
 					break;
@@ -3121,15 +3088,13 @@ void * work_thread(void *ptr) {
 					cl->kill = 1;
 					restart_reader = 1;
 					break;
-#ifdef WITH_CARDREADER
 				case ACTION_READER_RESET_FAST:
 					reader->card_status = CARD_NEED_INIT;
-					reader_reset(reader);
+					cardreader_do_reset(reader);
 					break;
 				case ACTION_READER_CHECK_HEALTH:
-					reader_checkhealth(reader);
+					cardreader_do_checkhealth(reader);
 					break;
-#endif
 				case ACTION_CLIENT_UDP:
 					n = modules[cl->ctyp].recv(cl, data->ptr, data->len);
 					if (n<0) break;
