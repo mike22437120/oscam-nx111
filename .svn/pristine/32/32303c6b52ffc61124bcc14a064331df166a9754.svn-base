@@ -200,8 +200,6 @@ bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct te
     // "Conditional jump or move depends on uninitialised value(s)"
     nuts.baud_base = 0;
     nuts.custom_divisor = 0;
-    cfsetospeed(tio, IO_Serial_Bitrate(38400));
-    cfsetispeed(tio, IO_Serial_Bitrate(38400));
     ioctl(reader->handle, TIOCGSERIAL, &nuts);
     int32_t custom_baud_asked = bitrate * reader->mhz / reader->cardmhz;
     nuts.custom_divisor = (nuts.baud_base + (custom_baud_asked/2))/ custom_baud_asked;
@@ -220,6 +218,8 @@ bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct te
     nuts.flags &= ~ASYNC_SPD_MASK;
     nuts.flags |= ASYNC_SPD_CUST;
     ioctl(reader->handle, TIOCSSERIAL, &nuts);
+    cfsetospeed(tio, IO_Serial_Bitrate(38400));
+    cfsetispeed(tio, IO_Serial_Bitrate(38400));
   }
 #endif
   if (reader->typ == R_SC8in1) {
@@ -319,17 +319,21 @@ bool IO_Serial_SetProperties (struct s_reader * reader, struct termios newtio)
    if(reader->typ == R_INTERNAL)
       return OK;
 
-	if (tcsetattr (reader->handle, TCSANOW, &newtio) < 0)  // set terminal attributes.
+	if (tcsetattr (reader->handle, TCSANOW, &newtio) < 0)
 		return ERROR;
-		
-	int32_t mctl;
-	rdr_debug_mask(reader, D_DEVICE, "Getting readerstatus...");
-	if (ioctl (reader->handle, TIOCMGET, &mctl) >= 0) {  // get reader statusbits
-		mctl &= ~TIOCM_RTS;
-		rdr_debug_mask(reader, D_DEVICE, "Set reader ready to Send");
-		ioctl (reader->handle, TIOCMSET, &mctl);  // set reader ready to send.
+	//tcflush(reader->handle, TCIOFLUSH);
+	//if (tcsetattr (reader->handle, TCSAFLUSH, &newtio) < 0)
+	//	return ERROR;
+
+  int32_t mctl;
+	if (ioctl (reader->handle, TIOCMGET, &mctl) >= 0) {
+		mctl &= ~TIOCM_RTS; //should be mctl |= TIOCM_RTS; for readers with reversed polarity reset
+		ioctl (reader->handle, TIOCMSET, &mctl);
 	}
-	else rdr_log(reader, "WARNING: Cant get readerstatus!");
+	else
+		rdr_log(reader, "WARNING: Failed to reset reader");
+
+	rdr_debug_mask(reader, D_DEVICE, "Setting properties");
 	return OK;
 }
 
