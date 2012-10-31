@@ -19,7 +19,7 @@
 #define ATR_TIMEOUT   800000
 
 #define OK 		0 
-#define ERROR 		1
+#define ERROR 1
 
 int32_t Sci_GetStatus (struct s_reader * reader, int32_t * status)
 {
