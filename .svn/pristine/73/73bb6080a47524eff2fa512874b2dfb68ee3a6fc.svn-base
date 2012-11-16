@@ -40,7 +40,7 @@
 #endif
 
 #ifndef LCDSUPPORT
-#define LCDSUPPORT
+//#define LCDSUPPORT
 #endif
 
 #ifndef LEDSUPPORT
@@ -60,7 +60,7 @@
 #endif
 
 #ifndef MODULE_CAMD33
-#define MODULE_CAMD33
+//#define MODULE_CAMD33
 #endif
 
 #ifndef MODULE_CAMD35
@@ -152,10 +152,6 @@
 #define READER_TONGFANG
 #endif
 
-#ifndef READER_STREAMGUARD
-#define READER_STREAMGUARD
-#endif
-
 #ifndef READER_BULCRYPT
 #define READER_BULCRYPT
 #endif
@@ -211,7 +207,6 @@
 #define CARDREADER_STAPI
 #endif
 #endif
-
 
 #endif // WITH_CARDREADER
 
