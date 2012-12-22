@@ -82,7 +82,6 @@ extern void chk_reader(char *token, char *value, struct s_reader *rdr);
 
 extern void dvbapi_chk_caidtab(char *caidasc, char type);
 extern void dvbapi_read_priority(void);
-extern void dvbapi_main_exit();
 
 void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f);
 
@@ -93,7 +92,6 @@ extern int32_t write_services(void);
 extern int32_t write_userdb(void);
 extern int32_t write_config(void);
 extern int32_t write_server(void);
-extern void * read_cccamcfg(int32_t mode);
 
 #include "oscam-log.h"
 #include "oscam-log-reader.h"
