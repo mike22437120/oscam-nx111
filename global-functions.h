@@ -49,7 +49,7 @@ extern void free_ecm(ECM_REQUEST *ecm);
 
 #define debug_ecm(mask, args...) \
 	do { \
-		if (config_WITH_DEBUG()) { \
+		if (config_WITH_DEBUG() && ((mask) & cs_dblevel)) { \
 			char buf[ECM_FMT_LEN]; \
 			format_ecm(er, buf, ECM_FMT_LEN); \
 			cs_debug_mask(mask, ##args); \
@@ -85,6 +85,10 @@ extern void dvbapi_read_priority(void);
 extern void dvbapi_main_exit();
 
 void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f);
+#ifdef CS_CACHEEX
+void cspvaluetab_fn(const char *token, char *value, void *setting, FILE *f);
+void hitvaluetab_fn(const char *token, char *value, void *setting, FILE *f);
+#endif
 
 extern void cs_accounts_chk(void);
 extern void chk_account(const char *token, char *value, struct s_auth *account);
@@ -126,7 +130,7 @@ extern char *get_servicename(struct s_client *cl, uint16_t srvid, uint16_t caid,
 extern char *get_tiername(uint16_t tierid, uint16_t caid, char *buf);
 extern char *get_provider(uint16_t caid, uint32_t provid, char *buf, uint32_t buflen);
 void add_provider(uint16_t caid, uint32_t provid, const char *name, const char *sat, const char *lang);
-extern int32_t ecmfmt(uint16_t caid, uint32_t prid, uint16_t chid, uint16_t pid, uint16_t srvid, uint16_t l, char *ecmd5hex, char *result, size_t size);
+extern int32_t ecmfmt(uint16_t caid, uint32_t prid, uint16_t chid, uint16_t pid, uint16_t srvid, uint16_t l, char *ecmd5hex, char *csphash, char *cw, char *result, size_t size);
 extern int32_t format_ecm(ECM_REQUEST *ecm, char *result, size_t size);
 
 /* ===========================

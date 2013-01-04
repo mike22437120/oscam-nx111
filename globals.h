@@ -225,6 +225,8 @@ typedef unsigned char uchar;
 #define D_LB        0x0100  // Debug Loadbalancer
 #define D_CACHEEX   0x0200  // Debug CACHEEX
 #define D_CLIENTECM 0x0400  // Debug Client ECMs
+#define D_CSPCWC    0x0800  // Debug CSP/CWC
+#define D_CSPCWCFUL 0x1000  // Debug CSP/CWC FULL
 #define D_ALL_DUMP  0xFFFF  // dumps all
 
 #define MAX_DEBUG_LEVELS 11
@@ -433,8 +435,8 @@ enum {E2_GLOBAL=0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E2_
 #define AVAIL_CHECK_CONNECTED	0
 #define AVAIL_CHECK_LOADBALANCE	1
 
-#define ECM_FMT_LEN 60
-#define CXM_FMT_LEN 160
+#define ECM_FMT_LEN 109 //64
+#define CXM_FMT_LEN 209 // 160
 
 #define LB_MAX_STAT_TIME		10
 
@@ -771,17 +773,16 @@ typedef struct ecm_request_t {
 	struct s_client	*client;			//contains pointer to 'c' client while running in 'r' client
 	uint64_t        grp;
 	int32_t			msgid;				// client pending table index
-	int32_t			stage;				// processing stage in server module
-	int32_t			level;				// send-level in client module
+	uint8_t			stage;				// processing stage in server module
 	int8_t			rc;
 	uint8_t			rcEx;
 	struct timeb	tps;				// incoming time stamp
 	uchar			locals_done;
-	int32_t			btun; 				// mark er as betatunneled
+	int8_t			btun; 				// mark er as betatunneled
 	uint16_t			reader_avail; 		// count of available readers
 	uint16_t			reader_count; 		// count of contacted readers
 	uint16_t        	reader_requested;   // count of real requested readers
-	int32_t			checked;				//for doublecheck
+	int8_t			checked;				//for doublecheck
 	uchar			cw_checked[16];		//for doublecheck
 	struct s_reader 	*origin_reader;
 
@@ -856,7 +857,8 @@ struct s_client {
 	LLIST			*joblist;
 	IN_ADDR_T		ip;
 	in_port_t		port;
-	time_t			login;
+	time_t			login;		// connection
+	time_t			logout;		// disconnection
 	time_t			last;
 	time_t			lastswitch;
 	time_t			lastemm;
@@ -1078,6 +1080,26 @@ struct s_sc8in1_config {
 	pthread_t display_thread;
 };
 
+#ifdef CS_CACHEEX
+typedef struct ce_csp_tab {
+	uint16_t	n;
+	int32_t		caid[CS_MAXCAIDTAB];
+	int32_t		cmask[CS_MAXCAIDTAB];
+	int32_t		prid[CS_MAXCAIDTAB];
+	int32_t		srvid[CS_MAXCAIDTAB];
+	int16_t		awtime[CS_MAXCAIDTAB];
+	int16_t		dwtime[CS_MAXCAIDTAB];
+} CECSPVALUETAB;
+
+typedef struct ce_csp_t {
+	int8_t			mode;
+	int8_t			maxhop;
+	CECSPVALUETAB	filter_caidtab;
+	uint8_t			allow_request;
+	uint8_t			drop_csp;
+} CECSP;
+#endif
+
 struct s_reader  									//contains device info, reader info and card info
 {
 	uint8_t		changes_since_shareupdate;
@@ -1097,8 +1119,7 @@ struct s_reader  									//contains device info, reader info and card info
 	uint64_t		grp;
 	int8_t			fallback;
 #ifdef CS_CACHEEX
-	int8_t			cacheex;
-	int8_t			cacheex_maxhop;
+	CECSP			cacheex; //CacheEx Settings
 #endif
 	int32_t			typ;
 #ifdef WITH_COOLAPI
@@ -1218,7 +1239,6 @@ struct s_reader  									//contains device info, reader info and card info
 	DWORD			dwActiveProtocol;
 #endif
 #ifdef WITH_LIBUSB
-	uint8_t			device_endpoint; 				// usb endpoint for Infinity USB Smart in smartreader mode.
 	struct s_sr_config *sr_config;
 #endif
 #ifdef WITH_AZBOX
@@ -1343,8 +1363,7 @@ struct s_auth
 #endif
 	int8_t			uniq;
 #ifdef CS_CACHEEX
-	int8_t			cacheex;
-	int8_t			cacheex_maxhop;
+	CECSP			cacheex; //CacheEx Settings
 #endif
 	int16_t			allowedprotocols;
 	LLIST			*aureader_list;
@@ -1476,6 +1495,17 @@ struct s_cacheex_matcher
 
 	struct s_cacheex_matcher *next;
 };
+
+typedef struct csp_ce_hit_t {
+	time_t			time;
+	int16_t			ecmlen;
+	uint16_t		caid;
+	uint32_t		prid;
+	uint16_t		srvid;
+	uint64_t		grp;
+	struct csp_ce_hit_t	*prev;
+	struct csp_ce_hit_t	*next;
+} CSPCEHIT;
 
 struct s_config
 {
@@ -1687,11 +1717,10 @@ struct s_config
 #ifdef CS_CACHEEX
 	IN_ADDR_T	csp_srvip;
 	int32_t		csp_port;
-	uint32_t 	csp_wait_time;
-
+	CECSPVALUETAB	csp_wait_timetab;
+	CECSP		csp; //CSP Settings
 	uint32_t	cacheex_wait_time; 		//cache wait time in ms
 	uint8_t		cacheex_enable_stats;	//enable stats
-
 	struct s_cacheex_matcher *cacheex_matcher;
 #endif
 
@@ -1769,6 +1798,7 @@ extern uint32_t cfg_sidtab_generation;
 extern uint8_t cs_http_use_utf8;
 extern pthread_key_t getclient;
 extern struct s_client *first_client;
+extern CS_MUTEX_LOCK config_lock;
 extern CS_MUTEX_LOCK clientlist_lock;
 extern CS_MUTEX_LOCK readerlist_lock;
 extern uint32_t ecmcwcache_size;

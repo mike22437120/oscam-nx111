@@ -52,18 +52,6 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 		return;
 	}
 
-#ifdef WITH_LIBUSB
-	if (!strcmp(token, "device_out_endpoint")) {
-		if (strlen(value) > 0) {
-			sscanf(value, "0x%2X", &i);
-			rdr->device_endpoint = i;
-		} else {
-			rdr->device_endpoint = 0;
-		}
-		return;
-	}
-#endif
-
 	if (!strcmp(token, "key")) {
 		if (strlen(value) == 0){
 			return;
@@ -323,12 +311,29 @@ void chk_reader(char *token, char *value, struct s_reader *rdr)
 
 #ifdef CS_CACHEEX
 	if (!strcmp(token, "cacheex")) {
-		rdr->cacheex  = strToIntVal(value, 0);
+		rdr->cacheex.mode  = strToIntVal(value, 0);
 		return;
 	}
 
 	if (!strcmp(token, "cacheex_maxhop")) {
-		rdr->cacheex_maxhop  = strToIntVal(value, 0);
+		rdr->cacheex.maxhop  = strToIntVal(value, 0);
+		return;
+	}
+	if (!strcmp(token, "cacheex_ecm_filter")) {
+		if (strlen(value) == 0){
+			clear_csptab(&rdr->cacheex.filter_caidtab);
+			return;
+		} else {
+			chk_hitvaluetab(value, &rdr->cacheex.filter_caidtab);
+			return;
+		}
+	}
+	if (!strcmp(token, "cacheex_allow_request")) {
+		rdr->cacheex.allow_request  = strToIntVal(value, 1);
+		return;
+	}
+	if (!strcmp(token, "cacheex_drop_csp")) {
+		rdr->cacheex.drop_csp  = strToIntVal(value, 0);
 		return;
 	}
 #endif
@@ -1153,6 +1158,9 @@ void reader_set_defaults(struct s_reader *rdr) {
 #ifdef WITH_LB
 	rdr->lb_weight = 100;
 #endif
+#ifdef CS_CACHEEX
+	rdr->cacheex.allow_request = 1;
+#endif
 	cs_strncpy(rdr->pincode, "none", sizeof(rdr->pincode));
 	for (i=1; i<CS_MAXCAIDTAB; rdr->ctab.mask[i++]=0xffff);
 }
@@ -1322,12 +1330,6 @@ int32_t write_server(void)
 				fprintf(f, ",%d", rdr->l_port);
 			fprintf(f, "\n");
 
-#ifdef WITH_LIBUSB
-			if (isphysical)
-				if (rdr->device_endpoint || cfg.http_full_cfg)
-					fprintf_conf(f, "device_out_endpoint", "0x%2X\n", rdr->device_endpoint);
-#endif
-
 			if (rdr->ncd_key[0] || rdr->ncd_key[13] || cfg.http_full_cfg) {
 				fprintf_conf(f, "key", "%s", ""); // it should not have \n at the end
 				if(rdr->ncd_key[0] || rdr->ncd_key[13]){
@@ -1377,11 +1379,22 @@ int32_t write_server(void)
 				fprintf_conf(f, "fallback", "%d\n", rdr->fallback);
 
 #ifdef CS_CACHEEX
-			if (rdr->cacheex || cfg.http_full_cfg)
-				fprintf_conf(f, "cacheex", "%d\n", rdr->cacheex);
+			if (rdr->cacheex.mode || cfg.http_full_cfg)
+				fprintf_conf(f, "cacheex", "%d\n", rdr->cacheex.mode);
 
-			if (rdr->cacheex_maxhop || cfg.http_full_cfg)
-				fprintf_conf(f, "cacheex_maxhop", "%d\n", rdr->cacheex_maxhop);
+			if (rdr->cacheex.maxhop || cfg.http_full_cfg)
+				fprintf_conf(f, "cacheex_maxhop", "%d\n", rdr->cacheex.maxhop);
+
+			value = mk_t_hitvaluetab(&rdr->cacheex.filter_caidtab);
+			if (strlen(value) > 0 || cfg.http_full_cfg)
+				fprintf_conf(f, "cacheex_ecm_filter", "%s\n", value);
+			free_mk_t(value);
+
+			if (!rdr->cacheex.allow_request || cfg.http_full_cfg)
+							fprintf_conf(f, "cacheex_allow_request", "%d\n", rdr->cacheex.allow_request);
+
+			if (rdr->cacheex.drop_csp || cfg.http_full_cfg)
+							fprintf_conf(f, "cacheex_drop_csp", "%d\n", rdr->cacheex.drop_csp);
 #endif
 
 #ifdef WITH_COOLAPI

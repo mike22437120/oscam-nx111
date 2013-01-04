@@ -60,12 +60,14 @@ uint16_t cs_waittime = 60;
 char  cs_tmpdir[200]={0x00};
 pid_t server_pid=0;
 CS_MUTEX_LOCK system_lock;
+CS_MUTEX_LOCK config_lock;
 CS_MUTEX_LOCK gethostbyname_lock;
 CS_MUTEX_LOCK clientlist_lock;
 CS_MUTEX_LOCK readerlist_lock;
 CS_MUTEX_LOCK fakeuser_lock;
 CS_MUTEX_LOCK ecmcache_lock;
 CS_MUTEX_LOCK readdir_lock;
+CS_MUTEX_LOCK hitcache_lock;
 pthread_key_t getclient;
 static int32_t bg;
 static int32_t gbdb;
@@ -107,7 +109,7 @@ static void show_usage(void)
 "| |_| |___) | |_| (_| | | | | | |\n"
 " \\___/|____/ \\___\\__,_|_| |_| |_|\n\n");
 	printf("OSCam cardserver v%s, build #%s (%s)\n", CS_VERSION, CS_SVN_VERSION, CS_TARGET);
-	printf("Copyright (C) 2009-2012 OSCam developers.\n");
+	printf("Copyright (C) 2009-2013 OSCam developers.\n");
 	printf("This program is distributed under GPLv3.\n");
 	printf("OSCam is based on Streamboard mp-cardserver v0.9d written by dukat\n");
 	printf("Visit http://www.streamboard.tv/oscam/ for more details.\n\n");
@@ -259,7 +261,7 @@ static void parse_cmdline_params(int argc, char **argv) {
 			break;
 		}
 		case 'w': cs_waittime = strtoul(optarg, NULL, 10); break;
-		case 'p': max_pending = MAX(MIN(atoi(optarg), 255), 1); break;
+		case 'p': max_pending = atoi(optarg)<=0?32:MIN(atoi(optarg), 255); break;
 		case 'S': log_remove_sensitive = !log_remove_sensitive; break;
 		case 'V':
 			write_versionfile(true);
@@ -442,9 +444,10 @@ int32_t chk_bcaid(ECM_REQUEST *er, CAIDTAB *ctab)
 
 void cs_accounts_chk(void)
 {
-  struct s_auth *old_accounts = cfg.account;
+	struct s_auth *account1,*account2;
   struct s_auth *new_accounts = init_userdb();
-  struct s_auth *account1,*account2;
+  cs_writelock(&config_lock);
+  struct s_auth *old_accounts = cfg.account;  
   for (account1=cfg.account; account1; account1=account1->next) {
     for (account2=new_accounts; account2; account2=account2->next) {
       if (!strcmp(account1->usr, account2->usr)) {
@@ -465,29 +468,32 @@ void cs_accounts_chk(void)
   cfg.account = new_accounts;
   init_free_userdb(old_accounts);
   ac_clear();
+  cs_writeunlock(&config_lock);
 }
 
 static void remove_ecm_from_reader(ECM_REQUEST *ecm) {
-	struct s_ecm_answer *ea;
-	struct s_reader *rdr;
-	ECM_REQUEST *er;
-	int i;
+	int32_t i;
 
-	ea = ecm->matching_rdr;
+	struct s_ecm_answer *ea = ecm->matching_rdr;
 	while (ea) {
 	    if ((ea->status & REQUEST_SENT) && !(ea->status & REQUEST_ANSWERED)) {
-	        //we found a outstanding reader, clean it:
-            rdr = ea->reader;
-            if (rdr && rdr->client && rdr->client->ecmtask) {
-	            for (i = 0; i < cfg.max_pending; i++) {
-	            	er = &rdr->client->ecmtask[i];
-	            	if (er->parent == ecm) {
-	            		er->parent = NULL;
-	            		er->client = NULL;
-	            		cacheex_set_csp_lastnode(er);
+	      //we found a outstanding reader, clean it:
+        struct s_reader *rdr = ea->reader;
+        if (rdr){
+        	struct s_client *cl = rdr->client;
+        	if(cl) {
+        		ECM_REQUEST *ecmtask = cl->ecmtask;
+        		if(ecmtask){
+	            for (i = 0; i < cfg.max_pending; ++i) {
+	            	if (ecmtask[i].parent == ecm) {
+	            		ecmtask[i].parent = NULL;
+	            		ecmtask[i].client = NULL;
+	            		cacheex_set_csp_lastnode(&ecmtask[i]);
 	            	}
 	            }
-            }
+	          }
+          }
+        }
 	    }
 	    ea = ea->next;
 	}
@@ -857,7 +863,7 @@ static void init_signal_pre(void)
 }
 
 /* Sets the signal handlers.*/
-static void init_signal(void)
+static void init_signal(int8_t isDaemon)
 {
 		set_signal_handler(SIGINT, 3, cs_exit);
 		//set_signal_handler(SIGKILL, 3, cs_exit);
@@ -876,29 +882,30 @@ static void init_signal(void)
 		//  set_signal_handler(SIGALRM , 0, cs_alarm);
 		set_signal_handler(SIGALRM , 0, cs_master_alarm);
 		// set_signal_handler(SIGCHLD , 1, cs_child_chk);
-		set_signal_handler(SIGHUP  , 1, cs_reload_config);
+		set_signal_handler(SIGHUP  , 1, isDaemon?cs_dummy:cs_reload_config);
 		//set_signal_handler(SIGHUP , 1, cs_sighup);
-		set_signal_handler(SIGUSR1, 1, cs_debug_level);
-		set_signal_handler(SIGUSR2, 1, cs_card_info);
-		set_signal_handler(OSCAM_SIGNAL_WAKEUP, 0, cs_dummy);
+		set_signal_handler(SIGUSR1, 1, isDaemon?cs_dummy:cs_debug_level);
+		set_signal_handler(SIGUSR2, 1, isDaemon?cs_dummy:cs_card_info);
+		set_signal_handler(OSCAM_SIGNAL_WAKEUP, 0, isDaemon?cs_dummy:cs_dummy);
 
-		if (cs_capture_SEGV) {
-			set_signal_handler(SIGSEGV, 1, cs_exit);
-			set_signal_handler(SIGBUS, 1, cs_exit);
-		}
-		else if (cs_dump_stack) {
-			set_signal_handler(SIGSEGV, 1, cs_dumpstack);
-			set_signal_handler(SIGBUS, 1, cs_dumpstack);
-		}
+		if(!isDaemon){
+			if (cs_capture_SEGV) {
+				set_signal_handler(SIGSEGV, 1, cs_exit);
+				set_signal_handler(SIGBUS, 1, cs_exit);
+			}
+			else if (cs_dump_stack) {
+				set_signal_handler(SIGSEGV, 1, cs_dumpstack);
+				set_signal_handler(SIGBUS, 1, cs_dumpstack);
+			}
 
-
-		cs_log("signal handling initialized (type=%s)",
+			cs_log("signal handling initialized (type=%s)",
 #ifdef CS_SIGBSD
-		"bsd"
+			"bsd"
 #else
-		"sysv"
+			"sysv"
 #endif
-		);
+			);
+		}
 	return;
 }
 
@@ -1356,7 +1363,18 @@ static void init_cardreader(void) {
 }
 
 /**
- * ecm cache
+ * Check for NULL ecmd5
+ **/
+inline uint8_t checkECMD5(ECM_REQUEST *er)
+{
+	int8_t i;
+	for (i=0;i<CS_ECMSTORESIZE;i++)
+		if (er->ecmd5[i]) return 1;
+	return 0;
+}
+
+/**
+ * get ecm from ecmcache
  **/
 struct ecm_request_t *check_cwcache(ECM_REQUEST *er, struct s_client *cl)
 {
@@ -1365,7 +1383,11 @@ struct ecm_request_t *check_cwcache(ECM_REQUEST *er, struct s_client *cl)
 	time_t timeout = now-cfg.max_cache_time;
 	struct ecm_request_t *ecm;
 	uint64_t grp = cl?cl->grp:0;
-
+#ifdef CS_CACHEEX
+	// precalculate for better performance
+	uint8_t ecmd5chk = checkECMD5(er);
+	bool hasMatchAlias = cacheex_is_match_alias(cl, er);
+#endif
 	cs_readlock(&ecmcache_lock);
 	for (ecm = ecmcwcache; ecm; ecm = ecm->next) {
 		if (ecm->tps.time < timeout) {
@@ -1379,15 +1401,21 @@ struct ecm_request_t *check_cwcache(ECM_REQUEST *er, struct s_client *cl)
 			continue;
 
 #ifdef CS_CACHEEX
-		if (!cacheex_match_alias(cl, er, ecm)) {
-			//CWs from csp have no ecms, so ecm->ecmlen=0. ecmd5 is invalid, so do not check!
-			if (ecm->csp_hash != er->csp_hash)
+		if (!hasMatchAlias || !cacheex_match_alias(cl, er, ecm)) {
+			//CWs from csp/cacheex have no ecms, csp ecmd5 is invalid, cacheex has ecmd5
+			if (ecmd5chk && checkECMD5(ecm)){
+				if (memcmp(ecm->ecmd5, er->ecmd5, CS_ECMSTORESIZE))
+					continue; // no match
+			} else if (ecm->csp_hash != er->csp_hash) //fallback for csp only
 				continue; // no match
-
 		}
-#endif	
-		if (ecm->ecmlen > 0 && memcmp(ecm->ecmd5, er->ecmd5, CS_ECMSTORESIZE))
+#else
+		if (memcmp(ecm->ecmd5, er->ecmd5, CS_ECMSTORESIZE))
 				continue; // no match
+#endif
+
+		if (er->caid != ecm->caid && ecm->rc >= E_NOTFOUND && !is_betatunnel_caid(er->caid))
+			continue; //CW for the cached ECM wasn't found but now the client asks on a different caid so give it another try
 				
 		if (ecm->rc != E_99){
 			cs_readunlock(&ecmcache_lock);
@@ -1779,7 +1807,7 @@ int32_t send_dcw(struct s_client * client, ECM_REQUEST *er)
 		er->rc=E_FOUND;
 	}
 
-	if (cfg.double_check &&  er->rc < E_NOTFOUND && er->selected_reader && is_double_check_caid(er)) {
+	if (cfg.double_check &&  er->rc == E_FOUND && er->selected_reader && is_double_check_caid(er)) {
 	  if (er->checked == 0) {//First CW, save it and wait for next one
 	    er->checked = 1;
 	    er->origin_reader = er->selected_reader;
@@ -1901,7 +1929,7 @@ static void request_cw(ECM_REQUEST *er)
 			struct s_reader *rdr = ea->reader;
 			char ecmd5[17*3];                
             cs_hexdump(0, er->ecmd5, 16, ecmd5, sizeof(ecmd5));
-			cs_debug_mask(D_TRACE, "request_cw stage=%d to reader %s ecm hash=%s", er->stage, rdr?rdr->label:"", ecmd5);
+			cs_debug_mask(D_TRACE | D_CSPCWC, "request_cw stage=%d to reader %s ecm hash=%s", er->stage, rdr?rdr->label:"", ecmd5);
 			
 			ea->status |= REQUEST_SENT;
 			er->reader_requested++;
@@ -2088,7 +2116,7 @@ static void chk_dcw(struct s_client *cl, struct s_ecm_answer *ea)
 
 	if (ert->rc < E_99) {
 		if (cl) send_dcw(cl, ert);
-		if (!ert->ecmcacheptr)
+		if (!ert->ecmcacheptr && ert->rc != E_UNHANDLED)
 			distribute_ecm(ert, (ert->rc == E_FOUND)?E_CACHE2:ert->rc);
 	}
 
@@ -2275,6 +2303,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 	uint32_t line = 0;
 
 	er->client = client;
+	if(now - client->lastecm > cfg.hideclient_to) client->lastswitch = 0;		// user was on freetv or didn't request for some time so we reset lastswitch to get correct stats/webif display
 	client->lastecm = now;
 
 	if (client == first_client || !client ->account || client->account == first_client->account) {
@@ -2629,10 +2658,11 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 	}
 
 #ifdef CS_CACHEEX
-	int8_t cacheex = client->account?client->account->cacheex:0;
-
-	if ((cacheex == 1 || cfg.csp_wait_time) && er->rc == E_UNHANDLED) { //not found in cache, so wait!
-		uint32_t max_wait = (cacheex == 1)?cfg.cacheex_wait_time:cfg.csp_wait_time;
+	int8_t cacheex = client->account?client->account->cacheex.mode:0;
+	uint32_t c_csp_wait_time = get_csp_wait_time(er,client);
+	cs_debug_mask(D_CACHEEX | D_CSPCWC, "[GET_CW] c_csp_wait_time %d caid %04X prov %06X srvid %04X rc %d cacheex %d", c_csp_wait_time, er->caid, er->prid, er->srvid, er->rc, cacheex);
+	if ((cacheex == 1 || c_csp_wait_time) && er->rc == E_UNHANDLED) { //not found in cache, so wait!
+		int32_t max_wait = (cacheex == 1)?cfg.cacheex_wait_time:c_csp_wait_time; // uint32_t can't value <> n/50
 		while (max_wait > 0 && !client->kill) {
 			cs_sleepms(50);
 			max_wait -= 50;
@@ -2650,6 +2680,8 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 				break;
 			}
 		}
+		if (max_wait <= 0 )
+			cs_debug_mask(D_CACHEEX|D_CSPCWC, "[GET_CW] wait_time over");
 	}
 #endif
 
@@ -2727,9 +2759,11 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 	request_cw(er);
 
 #ifdef WITH_DEBUG
-	char buf[ECM_FMT_LEN];
-	format_ecm(er, buf, ECM_FMT_LEN);
-	cs_ddump_mask(D_CLIENTECM, er->ecm, er->ecmlen, "Client %s ECM dump %s", username(client), buf);
+	if (D_CLIENTECM & cs_dblevel) {
+		char buf[ECM_FMT_LEN];
+		format_ecm(er, buf, ECM_FMT_LEN);
+		cs_ddump_mask(D_CLIENTECM, er->ecm, er->ecmlen, "Client %s ECM dump %s", username(client), buf);
+  }
 #endif
 
 	if(timecheck_client){
@@ -3227,7 +3261,7 @@ void * work_thread(void *ptr) {
 			now = time(NULL);
 			time_t diff = (time_t)(cfg.ctimeout/1000)+1;
 			if (data != &tmp_data && data->time < now-diff) {
-				cs_log("dropping client data for %s time %ds", username(cl), (int32_t)(now-data->time));
+				cs_debug_mask(D_TRACE, "dropping client data for %s time %ds", username(cl), (int32_t)(now-data->time));
 				free_data(data);
 				data = NULL;
 				continue;
@@ -3641,6 +3675,8 @@ static void * check_thread(void) {
 
 		if (!msec_wait)
 			msec_wait = 3000;
+
+		cleanup_hitcache();
 	}
 	add_garbage(cl);
 	timecheck_client = NULL;
@@ -4134,6 +4170,7 @@ int32_t main (int32_t argc, char *argv[])
   };
 
   parse_cmdline_params(argc, argv);
+  init_signal(true);
 
   if (bg && do_daemon(1,0))
   {
@@ -4155,12 +4192,14 @@ int32_t main (int32_t argc, char *argv[])
   init_signal_pre(); // because log could cause SIGPIPE errors, init a signal handler first
   init_first_client();
   cs_lock_create(&system_lock, 5, "system_lock");
+  cs_lock_create(&config_lock, 10, "config_lock");
   cs_lock_create(&gethostbyname_lock, 10, "gethostbyname_lock");
   cs_lock_create(&clientlist_lock, 5, "clientlist_lock");
   cs_lock_create(&readerlist_lock, 5, "readerlist_lock");
   cs_lock_create(&fakeuser_lock, 5, "fakeuser_lock");
   cs_lock_create(&ecmcache_lock, 5, "ecmcache_lock");
   cs_lock_create(&readdir_lock, 5, "readdir_lock");
+  cs_lock_create(&hitcache_lock, 5, "hitcache_lock");
   coolapi_open_all();
   init_config();
   cs_init_log();
@@ -4189,7 +4228,7 @@ int32_t main (int32_t argc, char *argv[])
   init_sidtab();
   init_readerdb();
   cfg.account = init_userdb();
-  init_signal();
+  init_signal(false);
   init_srvid();
   init_tierid();
   init_provid();
@@ -4250,7 +4289,7 @@ int32_t main (int32_t argc, char *argv[])
 	cs_log("Binary without Seca Module - no EMM processing for Seca possible!");
 #endif
 #ifndef READER_VIACCESS
-	cs_log("Binary without Viaaccess Module - no EMM processing for Viaaccess possible!");
+	cs_log("Binary without Viaccess Module - no EMM processing for Viaccess possible!");
 #endif
 #ifndef READER_VIDEOGUARD
 	cs_log("Binary without Videoguard Module - no EMM processing for Videoguard possible!");

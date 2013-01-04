@@ -286,6 +286,7 @@ void network_tcp_connection_close(struct s_reader *reader, char *reason)
 
 	reader->tcp_connected = 0;
 	reader->card_status = UNKNOWN;
+	cl->logout=time((time_t *)0);
 
 	if (cl->ecmtask) {
 		for (i = 0; i < cfg.max_pending; i++) {
@@ -357,7 +358,7 @@ int32_t casc_process_ecm(struct s_reader * reader, ECM_REQUEST *er)
 
 		// ecm already pending
 		// ... this level at least
-		if ((ecm->rc>=10) &&  er->caid == ecm->caid && (!memcmp(er->ecmd5, ecm->ecmd5, CS_ECMSTORESIZE)) && (er->level<=ecm->level))
+		if ((ecm->rc>=10) &&  er->caid == ecm->caid && (!memcmp(er->ecmd5, ecm->ecmd5, CS_ECMSTORESIZE)))
 			sflag=0;
 
 		if (ecm->rc >=10)
@@ -386,9 +387,9 @@ int32_t casc_process_ecm(struct s_reader * reader, ECM_REQUEST *er)
 	}
 
 	cl->ecmtask[n].rc=10;
-	cs_debug_mask(D_TRACE, "---- ecm_task %d, idx %d, sflag=%d, level=%d", n, cl->ecmtask[n].idx, sflag, er->level);
+	cs_debug_mask(D_TRACE, "---- ecm_task %d, idx %d, sflag=%d", n, cl->ecmtask[n].idx, sflag);
 
-	cs_ddump_mask(D_ATR, er->ecm, er->ecmlen, "casc ecm:");
+	cs_ddump_mask(D_ATR, er->ecm, er->ecmlen, "casc ecm (%s):", (reader)?reader->label:"n/a");
 	rc=0;
 	if (sflag) {
 		if ((rc=reader->ph.c_send_ecm(cl, &cl->ecmtask[n], buf)))
