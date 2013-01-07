@@ -1,5 +1,5 @@
 #!/bin/sh
-oscam_version=1.20-svn8061
+oscam_version=1.20-svn8077
 
 quit_oscam(){
    CONF=/var/tuxbox/config/oscam.conf
