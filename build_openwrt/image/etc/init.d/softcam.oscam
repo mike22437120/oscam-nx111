@@ -2,7 +2,7 @@
 oscam_version=1.20-svn8086
 
 quit_oscam(){
-   CONF=/var/tuxbox/config/oscam.conf
+   CONF=/jffs/etc/config/oscam/oscam.conf
    PORT=`cat $CONF| sed -n -e '/\[cccam\]/,/port/p' | grep port | cut -f 2 -d= | sed -e 's/[[:space:]]//g'`
    OSCAM=`netstat -tlnp | grep $PORT |sed -e 's/[[:space:]][[:space:]]*/ /g'| cut -f7 -d' ' | cut -f2 -d/`
    [ _$OSCAM = _ ] && exit 0
