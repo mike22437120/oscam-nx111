@@ -1,5 +1,5 @@
 #!/bin/sh
-oscam_version=1.20-svn8088
+oscam_version=1.20-svn8093
 
 quit_oscam(){
    CONF=/jffs/etc/config/oscam/oscam.conf
