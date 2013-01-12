@@ -215,7 +215,6 @@ elseif (HAVE_PTHREAD)
     message(STATUS "  no pthread found. No smartreader ")
 endif (HAVE_PTHREAD)
 
-message(STATUS "CS_OSTYPE:" ${CS_OSTYPE})
 if  (${CMAKE_SYSTEM_PROCESSOR} MATCHES "powerpc" AND OSCAM_SYSTEM_NAME MATCHES "Tuxbox")
 else (${CMAKE_SYSTEM_PROCESSOR} MATCHES "powerpc" AND OSCAM_SYSTEM_NAME MATCHES "Tuxbox")
 check_include_file ("openssl/aes.h" HAVE_LIBCRYPTO)
