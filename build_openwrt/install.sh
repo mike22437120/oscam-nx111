@@ -1,6 +1,6 @@
 #!/bin/sh
 
-plat=mipsel
+plat=openwrt
 plat_dir=build_openwrt
 
 if [ `dirname $0` != "." ]; then 
@@ -18,6 +18,7 @@ PATH=$TOOLCHAIN_ROOT/mipsel-openwrt-linux-uclibc/toolchain-mips_r2_gcc-4.6-linar
 cmake 	-DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-mips-wrt54g.cmake \
       	-DLIBUSBDIR=$TOOLCHAIN_ROOT/mipsel-openwrt-linux-uclibc/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2 \
       	-DLIBRTDIR=$TOOLCHAIN_ROOT/mipsel-openwrt-linux-uclibc/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2 \
+	-DOPTIONAL_INCLUDE_DIR=$TOOLCHAIN_ROOT/mipsel-openwrt-linux-uclibc/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2/mips-openwrt-linux-uclibc/include \
       	.. 
 make
 

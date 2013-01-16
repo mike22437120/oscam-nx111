@@ -11,7 +11,7 @@ rm -f oscam oscam-$plat-svn*.tar.gz oscam-$plat-svn*.deb
 ${TOOLCHAIN_ROOT:=`pwd`/../../toolchains} 2>/dev/null
 
 make clean
-
+echo "TOOLCHAIN_ROOT:$TOOLCHAIN_ROOT"
 if [ -d $TOOLCHAIN_ROOT/i686-pc-linux-gnu/bin ]; then
 	PATH=$TOOLCHAIN_ROOT/i686-pc-linux-gnu/bin:$PATH \
 	cmake	-DCMAKE_TOOLCHAIN_FILE=../toolchains/toolchain-i686-pc-linux.cmake \

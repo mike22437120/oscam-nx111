@@ -4108,7 +4108,6 @@ int32_t main (int32_t argc, char *argv[])
 #ifdef READER_VIDEOGUARD
 	reader_videoguard1,
 	reader_videoguard2,
-	reader_videoguard11,
 	reader_videoguard12,
 #endif
 #ifdef READER_DRE

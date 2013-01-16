@@ -9,7 +9,6 @@ void reader_conax(struct s_cardsystem *);
 void reader_seca(struct s_cardsystem *);
 void reader_videoguard1(struct s_cardsystem *);
 void reader_videoguard2(struct s_cardsystem *);
-void reader_videoguard11(struct s_cardsystem *);
 void reader_videoguard12(struct s_cardsystem *);
 void reader_dre(struct s_cardsystem *);
 void reader_tongfang(struct s_cardsystem *);
