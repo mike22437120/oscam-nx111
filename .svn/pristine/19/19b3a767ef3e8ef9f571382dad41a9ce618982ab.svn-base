@@ -547,7 +547,7 @@ static char *send_oscam_config_newcamd(struct templatevars *vars, struct uripara
 		free_mk_t(value);
 
 		if (cfg.ncd_keepalive)
-			tpl_addVar(vars, TPLADD, "KEEPALIVECHECKED", "checked");
+			tpl_addVar(vars, TPLADD, "KEEPALIVE", "checked");
 		if (cfg.ncd_mgclient)
 			tpl_addVar(vars, TPLADD, "MGCLIENTCHK", "checked");
 	}
@@ -622,8 +622,6 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 	if (cfg.cc_stealth)
 		tpl_addVar(vars, TPLADD, "STEALTH", "selected");
 
-	tpl_printf(vars,TPLADD, "CCCFGFILE","%s",cfg.cc_cfgfile);
-
 	tpl_printf(vars, TPLADD, "NODEID", "%02X%02X%02X%02X%02X%02X%02X%02X",
 		cfg.cc_fixed_nodeid[0], cfg.cc_fixed_nodeid[1], cfg.cc_fixed_nodeid[2], cfg.cc_fixed_nodeid[3],
 	    cfg.cc_fixed_nodeid[4], cfg.cc_fixed_nodeid[5], cfg.cc_fixed_nodeid[6], cfg.cc_fixed_nodeid[7]);
@@ -643,8 +641,6 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 	if (cfg.cc_keep_connected)
 		tpl_addVar(vars, TPLADD, "KEEPCONNECTED", "selected");
 
-	if (cfg.cc_autosidblock)
-		tpl_printf(vars, TPLADD, "AUTOSIDBLOCK", "selected");
 
 	return tpl_getTpl(vars, "CONFIGCCCAM");
 }
@@ -748,9 +744,6 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 		tpl_addVar(vars, TPLADD, "HTTPPREPENDEMBEDDEDCSS", "checked");
 
 	tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
-	if(cfg.http_use_utf8)
-		tpl_addVar(vars,TPLADD,"HTTPUTF8","selected");
-
 	tpl_printf(vars, TPLADD, "HTTPREFRESH", "%d", cfg.http_refresh);
 	tpl_addVar(vars, TPLADD, "HTTPTPL", cfg.http_tpl);
 	tpl_addVar(vars, TPLADD, "HTTPSCRIPT", cfg.http_script);
@@ -1243,13 +1236,6 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 
 	// Reset Cycle
 	tpl_printf(vars, TPLADD, "RESETCYCLE", "%d", rdr->resetcycle);
-
-	// Reset Cycle For NOK
-	tpl_printf(vars, TPLADD, "RESETCYCLENOK", "%d", rdr->resetcycle_nok);
-
-	// Auto Restart after
-	tpl_printf(vars, TPLADD, "AUTORESTARTSECONDS", "%d", rdr->autorestartseconds);
-
 
 	// Disable Serverfilter
 	if(!apicall) {
@@ -2118,7 +2104,7 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 	//Keepalive
 	if(!apicall){
 		if (account->ncd_keepalive)
-			tpl_addVar(vars, TPLADD, "KEEPALIVECHECKED", "selected");
+			tpl_addVar(vars, TPLADD, "KEEPALIVE", "selected");
 	} else {
 		tpl_printf(vars, TPLADD, "KEEPALIVEVALUE", "%d", account->ncd_keepalive);
 	}

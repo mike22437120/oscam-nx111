@@ -153,8 +153,6 @@ bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct te
     // "Conditional jump or move depends on uninitialised value(s)"
     nuts.baud_base = 0;
     nuts.custom_divisor = 0;
-    cfsetospeed(tio, IO_Serial_Bitrate(38400));
-    cfsetispeed(tio, IO_Serial_Bitrate(38400));
     ioctl(reader->handle, TIOCGSERIAL, &nuts);
     int32_t custom_baud_asked = bitrate * reader->mhz / reader->cardmhz;
     nuts.custom_divisor = (nuts.baud_base + (custom_baud_asked/2))/ custom_baud_asked;
@@ -173,6 +171,8 @@ bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct te
     nuts.flags &= ~ASYNC_SPD_MASK;
     nuts.flags |= ASYNC_SPD_CUST;
     ioctl(reader->handle, TIOCSSERIAL, &nuts);
+    cfsetospeed(tio, IO_Serial_Bitrate(38400));
+    cfsetispeed(tio, IO_Serial_Bitrate(38400));
   }
 #endif
   if (reader->typ == R_SC8in1) {
