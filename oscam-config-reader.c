@@ -1566,8 +1566,11 @@ int32_t write_server(void)
 			if ((rdr->tcp_ito != DEFAULT_INACTIVITYTIMEOUT || cfg.http_full_cfg) && !isphysical)
 				fprintf_conf(f, "inactivitytimeout", "%d\n", rdr->tcp_ito);
 
-			if ((rdr->resetcycle != 0 || cfg.http_full_cfg) && isphysical)
+			if ((rdr->resetcycle != 0 || cfg.http_full_cfg))
 				fprintf_conf(f, "resetcycle", "%d\n", rdr->resetcycle);
+
+			if ((rdr->resetcycle_nok != 0 || cfg.http_full_cfg))
+				fprintf_conf(f, "resetcycle_nok", "%d\n", rdr->resetcycle_nok);
 
 			if ((rdr->tcp_rto != DEFAULT_TCP_RECONNECT_TIMEOUT || cfg.http_full_cfg) && !isphysical)
 				fprintf_conf(f, "reconnecttimeout", "%d\n", rdr->tcp_rto);
