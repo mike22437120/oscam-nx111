@@ -57,9 +57,7 @@ extern void free_ecm(ECM_REQUEST *ecm);
 	} while(0)
 
 extern void dvbapi_read_priority(void);
-extern void dvbapi_main_exit();
 extern void cs_accounts_chk(void);
-extern void * read_cccamcfg(int32_t mode);
 
 #include "oscam-log.h"
 #include "oscam-log-reader.h"

@@ -549,7 +549,7 @@ static char *send_oscam_config_newcamd(struct templatevars *vars, struct uripara
 		free_mk_t(value);
 
 		if (cfg.ncd_keepalive)
-			tpl_addVar(vars, TPLADD, "KEEPALIVECHECKED", "checked");
+			tpl_addVar(vars, TPLADD, "KEEPALIVE", "checked");
 		if (cfg.ncd_mgclient)
 			tpl_addVar(vars, TPLADD, "MGCLIENTCHK", "checked");
 	}
@@ -624,8 +624,6 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 	if (cfg.cc_stealth)
 		tpl_addVar(vars, TPLADD, "STEALTH", "selected");
 
-	tpl_printf(vars,TPLADD, "CCCFGFILE","%s",cfg.cc_cfgfile);
-
 	tpl_printf(vars, TPLADD, "NODEID", "%02X%02X%02X%02X%02X%02X%02X%02X",
 		cfg.cc_fixed_nodeid[0], cfg.cc_fixed_nodeid[1], cfg.cc_fixed_nodeid[2], cfg.cc_fixed_nodeid[3],
 	    cfg.cc_fixed_nodeid[4], cfg.cc_fixed_nodeid[5], cfg.cc_fixed_nodeid[6], cfg.cc_fixed_nodeid[7]);
@@ -645,8 +643,6 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 	if (cfg.cc_keep_connected)
 		tpl_addVar(vars, TPLADD, "KEEPCONNECTED", "selected");
 
-	if (cfg.cc_autosidblock)
-		tpl_printf(vars, TPLADD, "AUTOSIDBLOCK", "selected");
 
 	return tpl_getTpl(vars, "CONFIGCCCAM");
 }
@@ -750,9 +746,6 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 		tpl_addVar(vars, TPLADD, "HTTPPREPENDEMBEDDEDCSS", "checked");
 
 	tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
-	if(cfg.http_use_utf8)
-		tpl_addVar(vars,TPLADD,"HTTPUTF8","selected");
-
 	tpl_printf(vars, TPLADD, "HTTPREFRESH", "%d", cfg.http_refresh);
 	tpl_addVar(vars, TPLADD, "HTTPTPL", cfg.http_tpl);
 	tpl_addVar(vars, TPLADD, "HTTPSCRIPT", cfg.http_script);
@@ -1248,13 +1241,6 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	// Reset Cycle
 	tpl_printf(vars, TPLADD, "RESETCYCLE", "%d", rdr->resetcycle);
 
-	// Reset Cycle For NOK
-	tpl_printf(vars, TPLADD, "RESETCYCLENOK", "%d", rdr->resetcycle_nok);
-
-	// Auto Restart after
-	tpl_printf(vars, TPLADD, "AUTORESTARTSECONDS", "%d", rdr->autorestartseconds);
-
-
 	// Disable Serverfilter
 	if(!apicall) {
 		tpl_addVar(vars, TPLADD, "DISABLESERVERFILTERCHECKED", (rdr->ncd_disable_server_filt == 1) ? "checked" : "");
@@ -1458,17 +1444,17 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 		i = 0;
 		while(sidtab != NULL) {
 			tpl_addVar(vars, TPLADD, "SIDLABEL", xml_encode(vars, sidtab->label));
-			if(rdr->sidtabs.ok&((SIDTABBITS)1<<i)) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
+			if(rdr->sidtabok&((SIDTABBITS)1<<i)) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
 			else tpl_addVar(vars, TPLADD, "CHECKED", "");
 			tpl_addVar(vars, TPLAPPEND, "SIDS", tpl_getTpl(vars, "READERCONFIGSIDOKBIT"));
-			if(rdr->sidtabs.no&((SIDTABBITS)1<<i)) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
+			if(rdr->sidtabno&((SIDTABBITS)1<<i)) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
 			else tpl_addVar(vars, TPLADD, "CHECKED", "");
 			tpl_addVar(vars, TPLAPPEND, "SIDS", tpl_getTpl(vars, "READERCONFIGSIDNOBIT"));
 			sidtab=sidtab->next;
 			i++;
 		}
 	} else {
-		value = mk_t_service(&rdr->sidtabs);
+		value = mk_t_service((uint64_t)rdr->sidtabok, (uint64_t)rdr->sidtabno);
 		if (strlen(value) > 0)
 			tpl_addVar(vars, TPLADD, "SERVICES", value);
 		free_mk_t(value);
@@ -2046,17 +2032,17 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 		i=0;
 		while(sidtab != NULL) {
 			tpl_addVar(vars, TPLADD, "SIDLABEL", xml_encode(vars, sidtab->label));
-			if(account->sidtabs.ok&((SIDTABBITS)1<<i)) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
+			if(account->sidtabok&((SIDTABBITS)1<<i)) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
 			else tpl_addVar(vars, TPLADD, "CHECKED", "");
 			tpl_addVar(vars, TPLAPPEND, "SIDS", tpl_getTpl(vars, "USEREDITSIDOKBIT"));
-			if(account->sidtabs.no&((SIDTABBITS)1<<i)) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
+			if(account->sidtabno&((SIDTABBITS)1<<i)) tpl_addVar(vars, TPLADD, "CHECKED", "checked");
 			else tpl_addVar(vars, TPLADD, "CHECKED", "");
 			tpl_addVar(vars, TPLAPPEND, "SIDS", tpl_getTpl(vars, "USEREDITSIDNOBIT"));
 			sidtab=sidtab->next;
 			i++;
 		}
 	} else {
-		value = mk_t_service(&account->sidtabs);
+		value = mk_t_service((uint64_t)account->sidtabok, (uint64_t)account->sidtabno);
 		if (strlen(value) > 0)
 			tpl_addVar(vars, TPLADD, "SERVICES", value);
 		free_mk_t(value);
@@ -2122,7 +2108,7 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 	//Keepalive
 	if(!apicall){
 		if (account->ncd_keepalive)
-			tpl_addVar(vars, TPLADD, "KEEPALIVECHECKED", "selected");
+			tpl_addVar(vars, TPLADD, "KEEPALIVE", "selected");
 	} else {
 		tpl_printf(vars, TPLADD, "KEEPALIVEVALUE", "%d", account->ncd_keepalive);
 	}
@@ -3455,7 +3441,7 @@ static char *send_oscam_services_edit(struct templatevars *vars, struct uriparam
 		cs_strncpy((char *)sidtab->label, label, sizeof(sidtab->label));
 		++cfg_sidtab_generation;
 		tpl_addMsg(vars, "New service has been added");
-		// Adding is uncritical as the new service is appended to sidtabs.ok/sidtabs.no and accounts/clients/readers have zeros there
+		// Adding is uncritical as the new service is appended to sidtabok/sidtabno and accounts/clients/readers have zeros there
 		if (write_services()!=0) tpl_addMsg(vars, "Writing services to disk failed!");
 	}
 
@@ -3467,7 +3453,7 @@ static char *send_oscam_services_edit(struct templatevars *vars, struct uriparam
 		}
 		++cfg_sidtab_generation;
 		tpl_addMsg(vars, "Services updated");
-		// We don't need any refresh here as accounts/clients/readers sidtabs.ok/sidtabs.no are unaffected!
+		// We don't need any refresh here as accounts/clients/readers sidtabok/sidtabno are unaffected!
 		if (write_services()!=0) tpl_addMsg(vars, "Write Config failed!");
 
 		for (sidtab = cfg.sidtab; sidtab != NULL && strcmp(label, sidtab->label) != 0; sidtab=sidtab->next);
@@ -3541,21 +3527,21 @@ static char *send_oscam_services(struct templatevars *vars, struct uriparams *pa
 						sidtab_prev->next = sidtab->next;
 
 					for (account = cfg.account; (account); account = account->next) {
-						delete_from_SIDTABBITS(&account->sidtabs.ok, position, sidtablength);
-						delete_from_SIDTABBITS(&account->sidtabs.no, position, sidtablength);
+						delete_from_SIDTABBITS(&account->sidtabok, position, sidtablength);
+						delete_from_SIDTABBITS(&account->sidtabno, position, sidtablength);
 					
 						for (cl=first_client->next; cl ; cl=cl->next){
 							if(account == cl->account){
-								cl->sidtabs.ok = account->sidtabs.ok;
-								cl->sidtabs.no = account->sidtabs.no;
+								cl->sidtabok = account->sidtabok;
+								cl->sidtabno = account->sidtabno;
 							}
 						}
 					}
 
 					LL_ITER itr = ll_iter_create(configured_readers);
 					while((rdr = ll_iter_next(&itr))){
-						delete_from_SIDTABBITS(&rdr->sidtabs.ok, position, sidtablength);
-						delete_from_SIDTABBITS(&rdr->sidtabs.no, position, sidtablength);
+						delete_from_SIDTABBITS(&rdr->sidtabok, position, sidtablength);
+						delete_from_SIDTABBITS(&rdr->sidtabno, position, sidtablength);
 					}
 					free_sidtab(sidtab);
 					++counter;

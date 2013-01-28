@@ -372,24 +372,6 @@ static void http_dyndns_fn(const char *token, char *value, void *UNUSED(setting)
 	}
 }
 
-static void httputf8_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
-	cfg.http_use_utf8 = cs_http_use_utf8;
-	if (value) {
-		if (value[0]) {
-			if (value[0] == '+') {
-				cfg.http_use_utf8 = strtoul(value + 1, NULL, 10);
-			} else {
-				cfg.http_use_utf8 = strtoul(value, NULL, 10);
-			}
-			cs_http_use_utf8 = cfg.http_use_utf8;
-		}
-		return;
-	}
-
-	if(cfg.http_use_utf8 !=1 || cfg.http_full_cfg)
-		fprintf_conf(f, token, "%d\n", cfg.http_use_utf8);
-}
-
 static bool webif_should_save_fn(void *UNUSED(var)) { return cfg.http_port; }
 
 static const struct config_list webif_opts[] = {
@@ -402,7 +384,6 @@ static const struct config_list webif_opts[] = {
 	DEF_OPT_STR("httpscript"				, OFS(http_script),				NULL ),
 	DEF_OPT_STR("httptpl"					, OFS(http_tpl),				NULL ),
 	DEF_OPT_STR("httphelplang"				, OFS(http_help_lang),			"en" ),
-	DEF_OPT_FUNC("httputf8"					, OFS(http_use_utf8),			httputf8_fn ),
 	DEF_OPT_STR("httpcert"					, OFS(http_cert),				NULL ),
 	DEF_OPT_INT32("http_prepend_embedded_css"	, OFS(http_prepend_embedded_css), 0 ),
 	DEF_OPT_INT32("httprefresh"				, OFS(http_refresh),			0 ),
@@ -616,8 +597,6 @@ static const struct config_list cccam_opts[] = {
 	DEF_OPT_INT32("updateinterval"			, OFS(cc_update_interval),	DEFAULT_UPDATEINTERVAL ),
 	DEF_OPT_INT8("minimizecards"			, OFS(cc_minimize_cards),	0 ),
 	DEF_OPT_INT8("keepconnected"			, OFS(cc_keep_connected),	1 ),
-	DEF_OPT_STR("cccamcfgfile"				, OFS(cc_cfgfile),		NULL ),
-	DEF_OPT_INT8("autosidblock"				, OFS(cc_autosidblock),		1),
 	DEF_OPT_UINT32("recv_timeout"			, OFS(cc_recv_timeout),		DEFAULT_CC_RECV_TIMEOUT ),
 	DEF_LAST_OPT
 };

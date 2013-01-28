@@ -372,24 +372,6 @@ static void http_dyndns_fn(const char *token, char *value, void *UNUSED(setting)
 	}
 }
 
-static void httputf8_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
-	cfg.http_use_utf8 = cs_http_use_utf8;
-	if (value) {
-		if (value[0]) {
-			if (value[0] == '+') {
-				cfg.http_use_utf8 = strtoul(value + 1, NULL, 10);
-			} else {
-				cfg.http_use_utf8 = strtoul(value, NULL, 10);
-			}
-			cs_http_use_utf8 = cfg.http_use_utf8;
-		}
-		return;
-	}
-
-	if(cfg.http_use_utf8 !=1 || cfg.http_full_cfg)
-		fprintf_conf(f, token, "%d\n", cfg.http_use_utf8);
-}
-
 static bool webif_should_save_fn(void *UNUSED(var)) { return cfg.http_port; }
 
 static const struct config_list webif_opts[] = {
@@ -402,7 +384,6 @@ static const struct config_list webif_opts[] = {
 	DEF_OPT_STR("httpscript"				, OFS(http_script),				NULL ),
 	DEF_OPT_STR("httptpl"					, OFS(http_tpl),				NULL ),
 	DEF_OPT_STR("httphelplang"				, OFS(http_help_lang),			"en" ),
-	DEF_OPT_FUNC("httputf8"					, OFS(http_use_utf8),			httputf8_fn ),
 	DEF_OPT_STR("httpcert"					, OFS(http_cert),				NULL ),
 	DEF_OPT_INT32("http_prepend_embedded_css"	, OFS(http_prepend_embedded_css), 0 ),
 	DEF_OPT_INT32("httprefresh"				, OFS(http_refresh),			0 ),
@@ -489,10 +470,8 @@ static const struct config_list camd35_opts[] = {
 static const struct config_list camd35_opts[] = { DEF_LAST_OPT };
 #endif
 
-#if defined(MODULE_CAMD35_TCP) || defined(MODULE_NEWCAMD)
-#define PORTTAB_CS378X  1
-#define PORTTAB_NEWCAMD 2
-static void porttab_fn(const char *token, char *value, void *setting, long type, FILE *f) {
+#ifdef MODULE_CAMD35_TCP
+static void porttab_cs378x_fn(const char *token, char *value, void *setting, FILE *f) {
 	PTAB *ptab = setting;
 	if (value) {
 		if(strlen(value) == 0) {
@@ -502,18 +481,16 @@ static void porttab_fn(const char *token, char *value, void *setting, long type,
 		}
 		return;
 	}
-	value = (type == PORTTAB_CS378X) ? mk_t_camd35tcp_port() : mk_t_newcamd_port();
+	value = mk_t_camd35tcp_port();
 	fprintf_conf(f, token, "%s\n", value);
 	free_mk_t(value);
 }
-#endif
 
-#ifdef MODULE_CAMD35_TCP
 static bool cs378x_should_save_fn(void *UNUSED(var)) { return cfg.c35_tcp_ptab.nports && cfg.c35_tcp_ptab.ports[0].s_port; }
 
 static const struct config_list cs378x_opts[] = {
 	DEF_OPT_SAVE_FUNC(cs378x_should_save_fn),
-	DEF_OPT_FUNC_X("port"					, OFS(c35_tcp_ptab),			porttab_fn, PORTTAB_CS378X ),
+	DEF_OPT_FUNC("port"						, OFS(c35_tcp_ptab),			porttab_cs378x_fn ),
 	DEF_OPT_FUNC("serverip"					, OFS(c35_tcp_srvip),			serverip_fn ),
 	DEF_OPT_INT8("suppresscmd08"			, OFS(c35_tcp_suppresscmd08),	0 ),
 	DEF_LAST_OPT
@@ -522,37 +499,45 @@ static const struct config_list cs378x_opts[] = {
 static const struct config_list cs378x_opts[] = { DEF_LAST_OPT };
 #endif
 
-void newcamd_key_fn(const char *token, char *value, void *setting, FILE *f) {
-	#define ncd_key_len  16 /* sizeof(ncd_key) */
-	#define ncd_key_size 14 /* How much bytes the key have */
-	uint8_t *ncd_key = setting;
+#ifdef MODULE_NEWCAMD
+static void porttab_newcamd_fn(const char *token, char *value, void *setting, FILE *f) {
+	PTAB *ptab = setting;
 	if (value) {
-		if (strlen(value) == 0) {
-			memset(ncd_key, 0, ncd_key_len);
-		} else if (key_atob_l(value, ncd_key, ncd_key_size * 2)) {
-			fprintf(stderr, "ERROR: Can't parse config setting %s=%s\n", token, value);
-			memset(ncd_key, 0, ncd_key_len);
+		if(strlen(value) == 0) {
+			clear_ptab(ptab);
+		} else {
+			chk_port_tab(value, ptab);
 		}
 		return;
 	}
-	int32_t ok = check_filled(ncd_key, ncd_key_size);
-	if (ok || cfg.http_full_cfg) {
-		fprintf_conf(f, token, "%s", ""); // it should not have \n at the end
-		if (ok) {
-			for (ok = 0; ok < ncd_key_size; ok++) {
-				fprintf(f, "%02X", ncd_key[ok]);
-			}
-		}
-		fprintf(f, "\n");
-	}
+	value = mk_t_newcamd_port();
+	fprintf_conf(f, token, "%s\n", value);
+	free_mk_t(value);
 }
 
-#ifdef MODULE_NEWCAMD
+static void newcamd_key_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
+	if (value) {
+		if (strlen(value) == 0) {
+			memset(cfg.ncd_key, 0, sizeof(cfg.ncd_key));
+		} else if (key_atob_l(value, cfg.ncd_key, 28)) {
+			fprintf(stderr, "Configuration newcamd: Error in Key\n");
+			memset(cfg.ncd_key, 0, sizeof(cfg.ncd_key));
+		}
+		return;
+	}
+	fprintf_conf(f, token, "%s", ""); // it should not have \n at the end
+	unsigned int i;
+	for (i = 0; i < 14; i++) {
+		fprintf(f,"%02X", cfg.ncd_key[i]);
+	}
+	fprintf(f,"\n");
+}
+
 static bool newcamd_should_save_fn(void *UNUSED(var)) { return cfg.ncd_ptab.nports && cfg.ncd_ptab.ports[0].s_port; }
 
 static const struct config_list newcamd_opts[] = {
 	DEF_OPT_SAVE_FUNC(newcamd_should_save_fn),
-	DEF_OPT_FUNC_X("port"					, OFS(ncd_ptab),			porttab_fn, PORTTAB_NEWCAMD ),
+	DEF_OPT_FUNC("port"						, OFS(ncd_ptab),			porttab_newcamd_fn ),
 	DEF_OPT_FUNC("serverip"					, OFS(ncd_srvip),			serverip_fn ),
 	DEF_OPT_FUNC("allowed"					, OFS(ncd_allowed),			iprange_fn ),
 	DEF_OPT_FUNC("key"						, OFS(ncd_key),				newcamd_key_fn ),
@@ -616,8 +601,6 @@ static const struct config_list cccam_opts[] = {
 	DEF_OPT_INT32("updateinterval"			, OFS(cc_update_interval),	DEFAULT_UPDATEINTERVAL ),
 	DEF_OPT_INT8("minimizecards"			, OFS(cc_minimize_cards),	0 ),
 	DEF_OPT_INT8("keepconnected"			, OFS(cc_keep_connected),	1 ),
-	DEF_OPT_STR("cccamcfgfile"				, OFS(cc_cfgfile),		NULL ),
-	DEF_OPT_INT8("autosidblock"				, OFS(cc_autosidblock),		1),
 	DEF_OPT_UINT32("recv_timeout"			, OFS(cc_recv_timeout),		DEFAULT_CC_RECV_TIMEOUT ),
 	DEF_LAST_OPT
 };
@@ -704,17 +687,14 @@ static void dvbapi_boxtype_fn(const char *token, char *value, void *UNUSED(setti
 
 static void dvbapi_services_fn(const char *UNUSED(token), char *value, void *UNUSED(setting), FILE *UNUSED(f)) {
 	if (value)
-		chk_services(value, &cfg.dvbapi_sidtabs);
+		chk_services(value, &cfg.dvbapi_sidtabok, &cfg.dvbapi_sidtabno);
 	// THIS OPTION IS NOT SAVED
 }
 
 extern struct s_dvbapi_priority *dvbapi_priority;
 
-static void dvbapi_caidtab_fn(const char *UNUSED(token), char *caidasc, void *UNUSED(setting), long cmd, FILE *UNUSED(f)) {
+static void dvbapi_chk_caidtab(char *caidasc, char type) {
 	char *ptr1, *ptr3, *saveptr1 = NULL;
-	if (!caidasc)
-		return;
-	char type = (char)cmd;
 	for (ptr1 = strtok_r(caidasc, ",", &saveptr1); (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1)) {
 		uint32_t caid, prov;
 		if ( (ptr3 = strchr(trim(ptr1), ':')) )
@@ -746,6 +726,15 @@ static void dvbapi_caidtab_fn(const char *UNUSED(token), char *caidasc, void *UN
 			}
 		}
 	}
+}
+
+static void dvbapi_caidtab_fn(const char *token, char *value, void *UNUSED(setting), FILE *UNUSED(f)) {
+	char cmd = ' ';
+	if (streq(token, "priority")) cmd = 'p';
+	if (streq(token, "ignore"))   cmd = 'i';
+	if (streq(token, "cw_delay")) cmd = 'd';
+	if (value && cmd != ' ')
+		dvbapi_chk_caidtab(value, cmd);
 	// THIS OPTION IS NOT SAVED
 }
 
@@ -762,11 +751,11 @@ static const struct config_list dvbapi_opts[] = {
 	DEF_OPT_INT32("delayer"					, OFS(dvbapi_delayer),		0 ),
 	DEF_OPT_STR("user"						, OFS(dvbapi_usr),			NULL ),
 	DEF_OPT_FUNC("boxtype"					, OFS(dvbapi_boxtype),		dvbapi_boxtype_fn ),
-	DEF_OPT_FUNC("services"					, OFS(dvbapi_sidtabs.ok),		dvbapi_services_fn ),
+	DEF_OPT_FUNC("services"					, OFS(dvbapi_sidtabok),		dvbapi_services_fn ),
 	// OBSOLETE OPTIONS
-	DEF_OPT_FUNC_X("priority"				, 0,						dvbapi_caidtab_fn, 'p' ),
-	DEF_OPT_FUNC_X("ignore"					, 0,						dvbapi_caidtab_fn, 'i' ),
-	DEF_OPT_FUNC_X("cw_delay"				, 0,						dvbapi_caidtab_fn, 'd' ),
+	DEF_OPT_FUNC("priority"					, 0,						dvbapi_caidtab_fn ),
+	DEF_OPT_FUNC("ignore"					, 0,						dvbapi_caidtab_fn ),
+	DEF_OPT_FUNC("cw_delay"					, 0,						dvbapi_caidtab_fn ),
 	DEF_LAST_OPT
 };
 #else
