@@ -59,7 +59,7 @@ char  cs_confdir[128]=CS_CONFDIR;
 uint16_t cs_dblevel=0;   // Debug Level
 int32_t thread_pipe[2] = {0, 0};
 int8_t cs_restart_mode=1; //Restartmode: 0=off, no restart fork, 1=(default)restart fork, restart by webif, 2=like=1, but also restart on segfaults
-uint8_t cs_http_use_utf8 = 1;
+uint8_t cs_http_use_utf8 = 0;
 int8_t cs_capture_SEGV=0;
 int8_t cs_dump_stack=0;
 uint16_t cs_waittime = 60;
@@ -114,7 +114,7 @@ static void show_usage(void)
 "| | | \\___ \\| |  / _` | '_ ` _ \\\n"
 "| |_| |___) | |_| (_| | | | | | |\n"
 " \\___/|____/ \\___\\__,_|_| |_| |_|\n\n");
-	printf("OSCam cardserver v%s, build r%s (%s)\n", CS_VERSION, CS_SVN_VERSION, CS_TARGET);
+	printf("OSCam cardserver v%s, build #%s (%s)\n", CS_VERSION, CS_SVN_VERSION, CS_TARGET);
 	printf("Copyright (C) 2009-2013 OSCam developers.\n");
 	printf("This program is distributed under GPLv3.\n");
 	printf("OSCam is based on Streamboard mp-cardserver v0.9d written by dukat\n");
@@ -163,7 +163,6 @@ static void show_usage(void)
 	_check(READER_VIDEOGUARD, "videoguard");
 	_check(READER_DRE, "dre");
 	_check(READER_TONGFANG, "tongfang");
-	_check(READER_STREAMGUARD, "streamguard");
 	_check(READER_BULCRYPT, "bulcrypt");
 	printf("\n");
 
@@ -899,7 +898,7 @@ void cs_dumpstack(int32_t sig)
 
 	fprintf(stderr, "crashed with signal %d on %swriting oscam.crash\n", sig, buf);
 
-	fprintf(fp, "%sOSCam cardserver v%s, build r%s (%s)\n", buf, CS_VERSION, CS_SVN_VERSION, CS_TARGET);
+	fprintf(fp, "%sOSCam cardserver v%s, build #%s (%s)\n", buf, CS_VERSION, CS_SVN_VERSION, CS_TARGET);
 	fprintf(fp, "FATAL: Signal %d: %s Fault. Logged StackTrace:\n\n", sig, (sig == SIGSEGV) ? "Segmentation" : ((sig == SIGBUS) ? "Bus" : "Unknown"));
 	fclose(fp);
 
@@ -1046,13 +1045,8 @@ void cs_exit(int32_t sig)
 	if (!exit_oscam)
 	  exit_oscam = sig?sig:1;
 
-	if (sig == SIGINT){
-#ifdef HAVE_DVBAPI
-		dvbapi_main_exit();
-#endif
-
+	if (sig == SIGINT)
 		exit(sig);
-	}
 }
 
 /* Checks if the date of the system is correct and waits if necessary. */
@@ -1497,7 +1491,6 @@ struct ecm_request_t *check_cwcache(ECM_REQUEST *er, struct s_client *cl)
 	return NULL; // nothing found so return null
 }
 
-
 /*
  * write_ecm_request():
  */
@@ -1634,21 +1627,6 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 			cardreader_reset(cl);
 		}
 	}
-	else
-	if (reader && rc == E_NOTFOUND && (rcEx == E2_CCCAM_NOK1 || rcEx == E2_CCCAM_NOK2) && reader->resetcycle_nok > 0)
-	{
-		reader->resetcounter_nok++;
-		if (reader->resetcounter_nok > reader->resetcycle_nok) {
-			reader->resetcounter_nok = 0;
-			rdr_log(reader, "Resetting reader, resetcyle of %d NOK ecms reached", reader->resetcycle_nok);
-			reader->card_status = CARD_NEED_INIT;
-#ifdef WITH_CARDREADER
-      			//reader_reset(reader);
-      			add_job(cl, ACTION_READER_RESET, NULL, 0);
-#endif
-		}
-	}
-
 
 	return res;
 }
@@ -2620,6 +2598,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 		cacheex_update_hash(er);
 		ac_chk(client, er, 0);
 	}
+
 	struct s_ecm_answer *ea, *prv = NULL;
 	if(er->rc >= E_99 && !cacheex_is_match_alias(client, er)) {
 		er->reader_avail=0;
@@ -2644,7 +2623,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 #endif
 			if (match) {
 				if (!cs_malloc(&ea, sizeof(struct s_ecm_answer)))
-					break;
+					goto OUT;
 				ea->reader = rdr;
 				if (prv)
 					prv->next = ea;
@@ -2670,6 +2649,7 @@ void get_cw(struct s_client * client, ECM_REQUEST *er)
 			}
 		}
 
+OUT:
 		cs_readunlock(&clientlist_lock);
 		cs_readunlock(&readerlist_lock);
 
@@ -3932,17 +3912,6 @@ void * reader_check(void) {
 		for (cl=first_client->next; cl ; cl=cl->next) {
 			if (!cl->thread_active)
 				check_status(cl);
-			struct s_reader *rdr=cl->reader;
-			if (rdr && rdr->autorestartseconds
- 			    && (cl->login + (time_t)rdr->autorestartseconds) < time(NULL)){
-				if(rdr->enable){
-					rdr->enable=0;
-					kill_thread(cl);
-					cs_sleepms(cfg.reader_restart_seconds * 1000);
-				}
-				rdr->enable=1;
-				restart_cardreader(rdr, 1);
-			}
 		}
 		cs_readlock(&readerlist_lock);
 		for (rdr=first_active_reader; rdr; rdr=rdr->next) {
@@ -4197,9 +4166,6 @@ int32_t main (int32_t argc, char *argv[])
 #endif
 #ifdef READER_TONGFANG
 	reader_tongfang,
-#endif
-#ifdef READER_STREAMGUARD
-	reader_streamguard,
 #endif
 #ifdef READER_BULCRYPT
 	reader_bulcrypt,

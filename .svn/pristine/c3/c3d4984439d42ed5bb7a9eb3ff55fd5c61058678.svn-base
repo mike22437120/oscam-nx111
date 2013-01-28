@@ -330,30 +330,25 @@ void account_set_defaults(struct s_auth *account) {
 
 struct s_auth *init_userdb(void)
 {
+	FILE *fp = open_config_file(cs_user);
+	if (!fp)
+		return NULL;
 
 	struct s_auth *authptr = NULL;
-	int32_t tag = 0, nr = 0, expired = 0, disabled = 0, checked = 0;
-	char *value, *token;
+	int32_t tag = 0, nr = 0, expired = 0, disabled = 0;
+	char *token;
 	struct s_auth *account = NULL;
 	struct s_auth *probe = NULL;
 	if (!cs_malloc(&token, MAXLINESIZE))
 		return NULL;
 
-	if(cfg.cc_cfgfile)
-		authptr=(struct s_auth*)read_cccamcfg(CCCAMCFGUSER);
-	
-	for(account=authptr;account;account=account->next);
-
-	FILE *fp = open_config_file(cs_user);
-
-     if (fp){
 	while (fgets(token, MAXLINESIZE, fp)) {
 		int32_t l;
 		void *ptr;
+
 		if ((l=strlen(trim(token))) < 3)
 			continue;
-
-		if ((token[0] == '[') && (token[l-1] == ']')) {
+		if (token[0] == '[' && token[l-1] == ']') {
 			token[l - 1] = 0;
 			tag = streq("account", strtolower(token + 1));
 			if (!cs_malloc(&ptr, sizeof(struct s_auth)))
@@ -366,19 +361,20 @@ struct s_auth *init_userdb(void)
 			account = ptr;
 			account_set_defaults(account);
 			nr++;
+
 			continue;
 		}
 
 		if (!tag)
 			continue;
-
-		if (!(value=strchr(token, '=')))
+		char *value = strchr(token, '=');
+		if (!value)
 			continue;
 
 		*value++ = '\0';
 
 		// check for duplicate useraccounts and make the name unique
-		if (!strcmp(trim(strtolower(token)), "user")) {
+		if (streq(trim(strtolower(token)), "user")) {
 			for(probe = authptr; probe; probe = probe->next){
 				if (!strcmp(probe->usr, trim(value))){
 					fprintf(stderr, "Warning: duplicate account '%s'\n", value);
@@ -386,35 +382,14 @@ struct s_auth *init_userdb(void)
 				}
 			}
 		}
-
 		chk_account(trim(strtolower(token)), trim(value), account);
-
-		if(!checked && account->usr[0] && account->pwd){
-			struct s_auth *pusr=NULL,*last=NULL;
-			checked=1;
-			uint32_t found=0;
-			for(pusr=authptr;pusr && pusr != account;last=pusr,pusr=pusr->next){
-				if(!strcmp(pusr->usr,account->usr)){
-					if(last)
-						last->next=pusr->next;
-					free(pusr);
-					found=1;
-					break;
-				}
-			}
-			if(!found)
-				cs_debug_mask(D_TRACE,"Add usr:%s",account->usr);
-			else
-				cs_debug_mask(D_TRACE,"Clean up duplicate usr:%s",account->usr);
-		}
-	    }
-	    fclose(fp);
-      }
+	}
 	free(token);
+	fclose(fp);
+
 	for(account = authptr; account; account = account->next){
 		if(account->expirationdate && account->expirationdate < time(NULL))
 			++expired;
-
 		if(account->disabled)
 			++disabled;
 	}
@@ -434,7 +409,6 @@ int32_t init_free_userdb(struct s_auth *ptr) {
 		ptr = ptr_next;
 	}
 	cs_log("userdb %d accounts freed", nro);
-
 	return nro;
 }
 
