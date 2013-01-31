@@ -424,26 +424,6 @@ static const struct config_list webif_opts[] = { DEF_LAST_OPT };
 #endif
 
 #ifdef MODULE_CAMD33
-static void camd33_key_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
-	if (value) {
-		cfg.c33_crypted = 1;
-		if (!strlen(value))
-			cfg.c33_crypted = 0;
-		else if (key_atob_l(value, cfg.c33_key, 32)) {
-			cfg.c33_crypted = 0;
-			memset(cfg.c33_key, 0, sizeof(cfg.c33_key));
-			fprintf(stderr, "ERROR: camd3.3 config error in 'key'.\n");
-		}
-		return;
-	}
-	unsigned int i;
-	fprintf_conf(f, token, "%s", ""); // it should not have \n at the end
-	for (i = 0; i < sizeof(cfg.c33_key); i++) {
-		fprintf(f, "%02X", cfg.c33_key[i]);
-	}
-	fprintf(f, "\n");
-}
-
 static bool camd33_should_save_fn(void *UNUSED(var)) { return cfg.c33_port; }
 
 static const struct config_list camd33_opts[] = {
@@ -452,7 +432,7 @@ static const struct config_list camd33_opts[] = {
 	DEF_OPT_FUNC("serverip"					, OFS(c33_srvip),				serverip_fn ),
 	DEF_OPT_FUNC("nocrypt"					, OFS(c33_plain),				iprange_fn ),
 	DEF_OPT_INT32("passive"					, OFS(c33_passive),				0 ),
-	DEF_OPT_FUNC("key"						, OFS(c33_key),					camd33_key_fn ),
+	DEF_OPT_HEX("key"						, OFS(c33_key),					SIZEOF(c33_key) ),
 	DEF_LAST_OPT
 };
 #else
@@ -522,31 +502,6 @@ static const struct config_list cs378x_opts[] = {
 static const struct config_list cs378x_opts[] = { DEF_LAST_OPT };
 #endif
 
-void newcamd_key_fn(const char *token, char *value, void *setting, FILE *f) {
-	#define ncd_key_len  16 /* sizeof(ncd_key) */
-	#define ncd_key_size 14 /* How much bytes the key have */
-	uint8_t *ncd_key = setting;
-	if (value) {
-		if (strlen(value) == 0) {
-			memset(ncd_key, 0, ncd_key_len);
-		} else if (key_atob_l(value, ncd_key, ncd_key_size * 2)) {
-			fprintf(stderr, "ERROR: Can't parse config setting %s=%s\n", token, value);
-			memset(ncd_key, 0, ncd_key_len);
-		}
-		return;
-	}
-	int32_t ok = check_filled(ncd_key, ncd_key_size);
-	if (ok || cfg.http_full_cfg) {
-		fprintf_conf(f, token, "%s", ""); // it should not have \n at the end
-		if (ok) {
-			for (ok = 0; ok < ncd_key_size; ok++) {
-				fprintf(f, "%02X", ncd_key[ok]);
-			}
-		}
-		fprintf(f, "\n");
-	}
-}
-
 #ifdef MODULE_NEWCAMD
 static bool newcamd_should_save_fn(void *UNUSED(var)) { return cfg.ncd_ptab.nports && cfg.ncd_ptab.ports[0].s_port; }
 
@@ -555,7 +510,7 @@ static const struct config_list newcamd_opts[] = {
 	DEF_OPT_FUNC_X("port"					, OFS(ncd_ptab),			porttab_fn, PORTTAB_NEWCAMD ),
 	DEF_OPT_FUNC("serverip"					, OFS(ncd_srvip),			serverip_fn ),
 	DEF_OPT_FUNC("allowed"					, OFS(ncd_allowed),			iprange_fn ),
-	DEF_OPT_FUNC("key"						, OFS(ncd_key),				newcamd_key_fn ),
+	DEF_OPT_HEX("key"						, OFS(ncd_key),				SIZEOF(ncd_key) ),
 	DEF_OPT_INT8("keepalive"				, OFS(ncd_keepalive),		DEFAULT_NCD_KEEPALIVE ),
 	DEF_OPT_INT8("mgclient"					, OFS(ncd_mgclient),		0 ),
 	DEF_LAST_OPT
@@ -582,31 +537,12 @@ static void cccam_port_fn(const char *token, char *value, void *UNUSED(setting),
 	free_mk_t(value);
 }
 
-static void cccam_nodeid_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
-	if (value) {
-		int i, valid = 0;
-		memset(cfg.cc_fixed_nodeid, 0, 8);
-		for (i = 0; i < 8 && value[i] != 0; i++) {
-			cfg.cc_fixed_nodeid[i] = gethexval(value[i*2]) << 4 | gethexval(value[i*2+1]);
-			if (cfg.cc_fixed_nodeid[i])
-				valid = 1;
-		}
-		cfg.cc_use_fixed_nodeid = valid && i == 8;
-		return;
-	}
-	if (cfg.cc_use_fixed_nodeid || cfg.http_full_cfg) {
-		fprintf_conf(f, token, "%02X%02X%02X%02X%02X%02X%02X%02X\n",
-			cfg.cc_fixed_nodeid[0], cfg.cc_fixed_nodeid[1], cfg.cc_fixed_nodeid[2], cfg.cc_fixed_nodeid[3],
-			cfg.cc_fixed_nodeid[4], cfg.cc_fixed_nodeid[5], cfg.cc_fixed_nodeid[6], cfg.cc_fixed_nodeid[7]);
-	}
-}
-
 static bool cccam_should_save_fn(void *UNUSED(var)) { return cfg.cc_port[0]; }
 
 static const struct config_list cccam_opts[] = {
 	DEF_OPT_SAVE_FUNC(cccam_should_save_fn),
 	DEF_OPT_FUNC("port"						, OFS(cc_port),				cccam_port_fn ),
-	DEF_OPT_FUNC("nodeid"					, OFS(cc_fixed_nodeid),		cccam_nodeid_fn ),
+	DEF_OPT_HEX("nodeid"					, OFS(cc_fixed_nodeid),		SIZEOF(cc_fixed_nodeid) ),
 	DEF_OPT_SSTR("version"					, OFS(cc_version),			"", SIZEOF(cc_version) ),
 	DEF_OPT_INT8("reshare"					, OFS(cc_reshare),			10 ),
 	DEF_OPT_INT8("reshare_mode"				, OFS(cc_reshare_services),	0 ),

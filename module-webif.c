@@ -542,7 +542,8 @@ static char *send_oscam_config_newcamd(struct templatevars *vars, struct uripara
 		if (IP_ISSET(cfg.ncd_srvip))
 			tpl_addVar(vars, TPLADD, "SERVERIP", cs_inet_ntoa(cfg.ncd_srvip));
 
-		for (i = 0; i < 14; i++) tpl_printf(vars, TPLAPPEND, "KEY", "%02X", cfg.ncd_key[i]);
+		for (i = 0; i < (int32_t)sizeof(cfg.ncd_key); i++)
+			tpl_printf(vars, TPLAPPEND, "KEY", "%02X", cfg.ncd_key[i]);
 
 		value = mk_t_iprange(cfg.ncd_allowed);
 		tpl_addVar(vars, TPLADD, "ALLOWED", value);
@@ -1230,7 +1231,7 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	}
 
 	// Key Newcamd
-	for (i=0; i<14; i++)
+	for (i = 0; i < (int32_t)sizeof(rdr->ncd_key); i++)
 		tpl_printf(vars, TPLAPPEND, "NCD_KEY", "%02X", rdr->ncd_key[i]);
 
 	// Pincode
@@ -1244,6 +1245,13 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 
 	// Receive timeout
 	tpl_printf(vars, TPLADD, "RECEIVETIMEOUT", "%d", rdr->tcp_rto);
+
+	// Connect on init (newcamd only)
+	if(!apicall) {
+		tpl_addVar(vars, TPLADD, "CONNECTONINITCHECKED", (rdr->ncd_connect_on_init == 1) ? "checked" : "");
+	} else {
+		tpl_addVar(vars, TPLADD, "CONNECTONINITCHECKED", (rdr->ncd_connect_on_init == 1) ? "1" : "0");
+	}
 
 	// Reset Cycle
 	tpl_printf(vars, TPLADD, "RESETCYCLE", "%d", rdr->resetcycle);
@@ -1354,19 +1362,21 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	}
 
 	// BoxKey
-	len = check_filled(rdr->nagra_boxkey, 8);
-	if(len > 0) {
-		for (i = 0; i < 8 ; i++) tpl_printf(vars, TPLAPPEND, "BOXKEY", "%02X", rdr->nagra_boxkey[i]);
+	if (check_filled(rdr->boxkey, sizeof(rdr->boxkey))) {
+		for (i = 0; i < (int32_t)sizeof(rdr->boxkey) ; i++)
+			tpl_printf(vars, TPLAPPEND, "BOXKEY", "%02X", rdr->boxkey[i]);
 	}
 
 	// ins7E
-	if(rdr->ins7E[0x1A]) {
-		for (i = 0; i < 26 ; i++) tpl_printf(vars, TPLAPPEND, "INS7E", "%02X", rdr->ins7E[i]);
+	if (check_filled(rdr->ins7E, sizeof(rdr->ins7E))) {
+		for (i = 0; i < (int32_t)sizeof(rdr->ins7E) ; i++)
+			tpl_printf(vars, TPLAPPEND, "INS7E", "%02X", rdr->ins7E[i]);
 	}
 
 	// ins7E11
-	if(rdr->ins7E11[0x01]) {
-		tpl_printf(vars, TPLAPPEND, "INS7E11", "%02X", rdr->ins7E11[0]);
+	if (check_filled(rdr->ins7E11, sizeof(rdr->ins7E11))) {
+		for (i = 0; i < (int32_t)sizeof(rdr->ins7E11) ; i++)
+			tpl_printf(vars, TPLAPPEND, "INS7E11", "%02X", rdr->ins7E11[i]);
 	}
 
 	// ATR
@@ -5399,14 +5409,10 @@ void webif_client_reset_lastresponsetime(struct s_client *cl) {
 }
 
 void webif_client_add_lastresponsetime(struct s_client *cl, int32_t ltime, time_t timestamp, int32_t rc) {
-	if (cl->cwlastresptimes_last == CS_ECM_RINGBUFFER_MAX - 1) {
-		cl->cwlastresptimes_last = 0;
-	} else {
-		cl->cwlastresptimes_last++;
-	}
-	cl->cwlastresptimes[cl->cwlastresptimes_last].duration = ltime > 9999 ? 9999 : ltime;
-	cl->cwlastresptimes[cl->cwlastresptimes_last].timestamp = timestamp;
-	cl->cwlastresptimes[cl->cwlastresptimes_last].rc = rc;
+	int32_t last = cl->cwlastresptimes_last = (cl->cwlastresptimes_last + 1) & (CS_ECM_RINGBUFFER_MAX - 1);
+	cl->cwlastresptimes[last].duration = ltime > 9999 ? 9999 : ltime;
+	cl->cwlastresptimes[last].timestamp = timestamp;
+	cl->cwlastresptimes[last].rc = rc;
 }
 
 void webif_client_init_lastreader(struct s_client *client, ECM_REQUEST *er, struct s_reader *er_reader, const char *stxt[]) {

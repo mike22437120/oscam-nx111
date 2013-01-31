@@ -205,7 +205,7 @@ typedef unsigned char uchar;
 #define CS_CLIENT_MAXIDLE 120
 #define CS_BIND_TIMEOUT   120
 #define CS_DELAY          0
-#define CS_ECM_RINGBUFFER_MAX 20 // max size for ECM last responsetimes ringbuffer
+#define CS_ECM_RINGBUFFER_MAX 0x10 // max size for ECM last responsetimes ringbuffer. Keep this set to power of 2 values!
 
 #ifndef PTHREAD_STACK_MIN
 #define PTHREAD_STACK_MIN 64000
@@ -578,7 +578,7 @@ typedef struct s_port {
 	int32_t			fd;
 	int32_t			s_port;
 	int32_t			ncd_key_is_set;    //0 or 1
-	uchar			ncd_key[16];
+	uint8_t			ncd_key[14];
 	FTAB			ftab;
 } PORT;
 
@@ -1178,7 +1178,7 @@ struct s_reader  									//contains device info, reader info and card info
 	CAIDTAB			ctab;
 	uint32_t		boxid;
 	int8_t			nagra_read;						// read nagra ncmed records: 0 Disabled (default), 1 read all records, 2 read valid records only
-	uchar			nagra_boxkey[16];				// n3 boxkey 8byte  or tiger idea key 16byte
+	uint8_t			boxkey[8];						// n3 boxkey 8byte
 	char			country_code[3];				// irdeto country code.
 	int8_t			force_irdeto;
 	uchar			rsa_mod[120];					// rsa modulus for nagra cards.
@@ -1212,8 +1212,9 @@ struct s_reader  									//contains device info, reader info and card info
 	struct s_module ph;
 	struct s_cardreader crdr;
 	struct s_cardsystem csystem;
-	uchar			ncd_key[16];
+	uint8_t			ncd_key[14];
 	uchar			ncd_skey[16];
+	int8_t			ncd_connect_on_init;
 	int8_t			ncd_disable_server_filt;
 	int8_t			ncd_proto;
 #ifdef MODULE_CCCAM
@@ -1351,8 +1352,8 @@ struct s_reader  									//contains device info, reader info and card info
 	time_t			cooldowntime;
 	struct ecmrl	rlecmh[MAXECMRATELIMIT];
 	int8_t			fix_9993;
-	uint8_t			ins7E[0x1A+1];
-	uint8_t			ins7E11[0x01+1];
+	uint8_t			ins7E[0x1A];
+	uint8_t			ins7E11[0x01];
 	int8_t			ins7e11_fast_reset;
 	struct s_sc8in1_config *sc8in1_config;
 	uint8_t			sc8in1_dtrrts_patch; // fix for kernel commit 6a1a82df91fa0eb1cc76069a9efe5714d087eccd
@@ -1598,7 +1599,7 @@ struct s_config
 	LLIST 			*v_list;						// Failban list
 	int32_t			c33_port;
 	IN_ADDR_T		c33_srvip;
-	uchar			c33_key[16];
+	uint8_t			c33_key[16];
 	int32_t			c33_crypted;
 	int32_t			c33_passive;
 	struct s_ip 	*c33_plain;
@@ -1611,7 +1612,7 @@ struct s_config
 	IN_ADDR_T		c35_tcp_srvip;
 	PTAB			ncd_ptab;
 	IN_ADDR_T		ncd_srvip;
-	uchar			ncd_key[16];
+	uint8_t			ncd_key[14];
 	int8_t			ncd_keepalive;
 	int8_t			ncd_mgclient;
 	struct s_ip 	*ncd_allowed;
@@ -1629,7 +1630,6 @@ struct s_config
 	int8_t			cc_stealth;
 	int8_t			cc_reshare_services;
 	int8_t			cc_forward_origin_card;
-	int8_t			cc_use_fixed_nodeid;
 	uint8_t			cc_fixed_nodeid[8];
 	int8_t			cc_autosidblock;
 	char			*cc_cfgfile;	//cccam.cfg file path

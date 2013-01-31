@@ -183,14 +183,14 @@ set card init mode for AzBox internal reader, default:none
 
 <B>cool_timeout_init</B> = <B>timeout</B>
 <DL COMPACT><DT><DD>
-set timeout for SC init in milli-seconds for Coolstream internal reader only, default:50
+set timeout for SC init in milli-seconds for Coolstream internal reader only, default:0
 </DL>
 
 <P>
 
 <B>cool_timeout_after_init</B> = <B>timeout</B>
 <DL COMPACT><DT><DD>
-set read/transmit timeout after SC init in milli-seconds for Coolstream internal reader only, default:150
+set read/transmit timeout after SC init in milli-seconds for Coolstream internal reader only, default:0
 </DL>
 
 <P>
@@ -405,6 +405,13 @@ inactivity timeout for all TCP based remote readers, default:0
 <B>reconnecttimeout</B> = <B>seconds</B>
 <DL COMPACT><DT><DD>
 reconnect if missing answers from a remote reader, default:30
+</DL>
+
+<P>
+
+<B>connectoninit</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+1 = allow newcamd connections to be established on startup although there isn't a request yet, default:0
 </DL>
 
 <P>

@@ -8,6 +8,8 @@
 #include "module-cccshare.h"
 #include "oscam-chk.h"
 #include "oscam-client.h"
+#include "oscam-ecm.h"
+#include "oscam-emm.h"
 #include "oscam-failban.h"
 #include "oscam-garbage.h"
 #include "oscam-lock.h"
@@ -3723,6 +3725,10 @@ void cc_cleanup(struct s_client *cl) {
 
 void cc_update_nodeid(void)
 {
+	if (check_filled(cfg.cc_fixed_nodeid, sizeof(cfg.cc_fixed_nodeid))) {
+		memcpy(cc_node_id, cfg.cc_fixed_nodeid, 8);
+		return;
+	}
 	//Partner Detection:
 	uint16_t sum = 0x1234; //This is our checksum
 	int32_t i;
@@ -3745,16 +3751,7 @@ void cc_update_nodeid(void)
 	cc_node_id[6] = sum >> 8;
 	cc_node_id[7] = sum & 0xff;
 
-	int8_t valid = 0;
-	if (cfg.cc_use_fixed_nodeid) {
-		for (i=0;i<8;i++)
-			if (cfg.cc_fixed_nodeid[i])
-				valid = 1;
-	}
-	if (valid)
-		memcpy(cc_node_id, cfg.cc_fixed_nodeid, 8);
-	else
-		memcpy(cfg.cc_fixed_nodeid, cc_node_id, 8);
+	memcpy(cfg.cc_fixed_nodeid, cc_node_id, 8);
 }
 
 bool cccam_forward_origin_card(ECM_REQUEST *er) {
