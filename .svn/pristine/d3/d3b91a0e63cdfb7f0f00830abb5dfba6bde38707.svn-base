@@ -369,14 +369,6 @@ static inline int config_READER_TONGFANG(void) {
 	#endif
 }
 
-static inline int config_READER_STREAMGUARD(void) {
-	#ifdef READER_STREAMGUARD
-	return config_WITH_CARDREADER() ? 1 : 0;
-	#else
-	return 0;
-	#endif
-}
-
 static inline int config_READER_BULCRYPT(void) {
 	#ifdef READER_BULCRYPT
 	return config_WITH_CARDREADER() ? 1 : 0;
