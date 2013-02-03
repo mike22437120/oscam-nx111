@@ -1009,21 +1009,6 @@ int32_t write_ecm_answer(struct s_reader * reader, ECM_REQUEST *er, int8_t rc, u
 			cardreader_reset(cl);
 		}
 	}
-	else
-	if (reader && rc == E_NOTFOUND && (rcEx == E2_CCCAM_NOK1 || rcEx == E2_CCCAM_NOK2) && reader->resetcycle_nok > 0)
-	{
-		reader->resetcounter_nok++;
-		if (reader->resetcounter_nok > reader->resetcycle_nok) {
-			reader->resetcounter_nok = 0;
-			rdr_log(reader, "Resetting reader, resetcyle of %d NOK ecms reached", reader->resetcycle_nok);
-			reader->card_status = CARD_NEED_INIT;
-#ifdef WITH_CARDREADER
-      			//reader_reset(reader);
-      			add_job(cl, ACTION_READER_RESET, NULL, 0);
-#endif
-		}
-	}
-
 
 	return res;
 }
@@ -1062,7 +1047,7 @@ static void guess_cardsystem(ECM_REQUEST *er)
 	if (!er->caid)
 		er->caid = last_hope;
 }
-#undef OUT
+
 void get_cw(struct s_client * client, ECM_REQUEST *er)
 {
 	int32_t i, j, m;

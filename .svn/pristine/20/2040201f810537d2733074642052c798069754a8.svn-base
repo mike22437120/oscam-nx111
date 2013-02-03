@@ -62,7 +62,7 @@ char  cs_confdir[128]=CS_CONFDIR;
 uint16_t cs_dblevel=0;   // Debug Level
 int32_t thread_pipe[2] = {0, 0};
 int8_t cs_restart_mode=1; //Restartmode: 0=off, no restart fork, 1=(default)restart fork, restart by webif, 2=like=1, but also restart on segfaults
-uint8_t cs_http_use_utf8 = 1;
+uint8_t cs_http_use_utf8 = 0;
 int8_t cs_capture_SEGV=0;
 int8_t cs_dump_stack=0;
 uint16_t cs_waittime = 60;
@@ -166,7 +166,6 @@ static void show_usage(void)
 	_check(READER_VIDEOGUARD, "videoguard");
 	_check(READER_DRE, "dre");
 	_check(READER_TONGFANG, "tongfang");
-	_check(READER_STREAMGUARD, "streamguard");
 	_check(READER_BULCRYPT, "bulcrypt");
 	_check(READER_GRIFFIN, "griffin");
 	printf("\n");
@@ -872,13 +871,8 @@ void cs_exit(int32_t sig)
 	if (!exit_oscam)
 	  exit_oscam = sig?sig:1;
 
-	if (sig == SIGINT){
-#ifdef HAVE_DVBAPI
-		dvbapi_main_exit();
-#endif
-
+	if (sig == SIGINT)
 		exit(sig);
-	}
 }
 
 /* Checks if the date of the system is correct and waits if necessary. */
@@ -1523,17 +1517,6 @@ void * reader_check(void) {
 		for (cl=first_client->next; cl ; cl=cl->next) {
 			if (!cl->thread_active)
 				client_check_status(cl);
-			struct s_reader *rdr=cl->reader;
-			if (rdr && rdr->autorestartseconds
- 			    && (cl->login + (time_t)rdr->autorestartseconds) < time(NULL)){
-				if(rdr->enable){
-					rdr->enable=0;
-					kill_thread(cl);
-					cs_sleepms(cfg.reader_restart_seconds * 1000);
-				}
-				rdr->enable=1;
-				restart_cardreader(rdr, 1);
-			}
 		}
 		cs_readlock(&readerlist_lock);
 		for (rdr=first_active_reader; rdr; rdr=rdr->next) {
@@ -1788,9 +1771,6 @@ int32_t main (int32_t argc, char *argv[])
 #endif
 #ifdef READER_TONGFANG
 	reader_tongfang,
-#endif
-#ifdef READER_STREAMGUARD
-	reader_streamguard,
 #endif
 #ifdef READER_BULCRYPT
 	reader_bulcrypt,
