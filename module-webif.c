@@ -35,6 +35,10 @@
 
 extern struct s_module modules[CS_MAX_MOD];
 extern struct s_cardreader cardreaders[CS_MAX_MOD];
+extern char cs_confdir[];
+extern uint32_t ecmcwcache_size;
+extern uint8_t cs_http_use_utf8;
+extern uint32_t cfg_sidtab_generation;
 
 extern char *CSS;
 extern char *entitlement_type[];
@@ -78,6 +82,8 @@ static pthread_t httpthread;
 #define MNU_CFG_MONITOR 9
 #define MNU_CFG_SERIAL 10
 #define MNU_CFG_DVBAPI 11
+#define MNU_CFG_WEBIF 12
+#define MNU_CFG_LCD 13
 
 #define MNU_CFG_FVERSION 12
 #define MNU_CFG_FCONF 13
@@ -281,6 +287,9 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 	free_mk_t(value);
 	if(cfg.disablelog == 1) tpl_addVar(vars, TPLADD, "DISABLELOGCHECKED", "selected");
 	tpl_printf(vars, TPLADD, "MAXLOGSIZE", "%d", cfg.max_log_size);
+
+	if (cfg.logduplicatelines)
+		tpl_addVar(vars, TPLADD, "LOGDUPSCHECKED", "selected");
 
 	if (cfg.cwlogdir != NULL) tpl_addVar(vars, TPLADD, "CWLOGDIR", cfg.cwlogdir);
 	if (cfg.emmlogdir != NULL) tpl_addVar(vars, TPLADD, "EMMLOGDIR", cfg.emmlogdir);
@@ -668,55 +677,12 @@ static bool is_ext(const char *path, const char *ext)
 	return memcmp(path + lenpath - lenext, ext, lenext) == 0;
 }
 
-static char *send_oscam_config_monitor(struct templatevars *vars, struct uriparams *params) {
+static char *send_oscam_config_webif(struct templatevars *vars, struct uriparams *params) {
 	int32_t i;
 
-	setActiveSubMenu(vars, MNU_CFG_MONITOR);
+	setActiveSubMenu(vars, MNU_CFG_WEBIF);
 
-	if (strcmp(getParam(params, "action"),"execute") == 0) {
-		if(cfg.http_readonly) {
-			tpl_addMsg(vars, "WebIf is in readonly mode. No changes are possible!");
-		} else {
-			for(i = 0; i < (*params).paramcount; ++i) {
-				if ((strcmp((*params).params[i], "part")) && (strcmp((*params).params[i], "action"))) {
-					//we use the same function as used for parsing the config tokens
-					if (strstr((*params).params[i], "lcd")) {
-						config_set("lcd", (*params).params[i], (*params).values[i]);
-					} else {
-						// FIXME: The following is A HACK! It must be removed when monitor/webif/lcd
-						// options are split.
-						// The hack is added so we don't get such errors when saving webif:
-						//     WARNING: In section [webif] unknown setting 'port=1122' tried.
-						int r, ok = 1;
-						const char *monitor_hack[4] = { "port", "serverip", "nocrypt", "monlevel" };
-						for (r = 0; r < 4; r++) {
-							if (streq(monitor_hack[r], (*params).params[i])) {
-								ok = 0;
-								break;
-							}
-						}
-						if (ok)
-							config_set("webif", (*params).params[i], (*params).values[i]);
-#ifdef MODULE_MONITOR
-						if (!strstr((*params).params[i], "http"))
-							config_set("monitor", (*params).params[i], (*params).values[i]);
-#endif
-					}
-				}
-			}
-			tpl_addMsg(vars, "Configuration was saved. You should restart OSCam now.");
-			if(write_config()==0) refresh_oscam(REFR_SERVER);
-			else tpl_addMsg(vars, "Write Config failed!");
-		}
-	}
-	tpl_printf(vars, TPLADD, "MONPORT", "%d", cfg.mon_port);
-	if (IP_ISSET(cfg.mon_srvip))
-	tpl_addVar(vars, TPLADD, "SERVERIP", cs_inet_ntoa(cfg.mon_srvip));
-
-	tpl_printf(vars, TPLADD, "AULOW", "%d", cfg.aulow);
-	tpl_printf(vars, TPLADD, "HIDECLIENTTO", "%d", cfg.hideclient_to);
-	if (cfg.appendchaninfo)
-		tpl_addVar(vars, TPLADD, "APPENDCHANINFO", "checked");
+	webif_save_config("webif", vars, params);
 
 	tpl_printf(vars, TPLADD, "HTTPPORT", "%s%d", cfg.http_use_ssl ? "+" : "", cfg.http_port);
 
@@ -769,11 +735,7 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	tpl_addVar(vars, TPLADD, "HTTPHIDETYPE", cfg.http_hide_type);
 	if (cfg.http_showpicons > 0) tpl_addVar(vars, TPLADD, "SHOWPICONSCHECKED", "checked");
 
-	char *value = mk_t_iprange(cfg.mon_allowed);
-	tpl_addVar(vars, TPLADD, "NOCRYPT", value);
-	free_mk_t(value);
-
-	value = mk_t_iprange(cfg.http_allowed);
+	char *value = mk_t_iprange(cfg.http_allowed);
 	tpl_addVar(vars, TPLADD, "HTTPALLOW", value);
 	free_mk_t(value);
 
@@ -784,10 +746,6 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 		}
 	}
 
-	//Monlevel selector
-	tpl_printf(vars, TPLADD, "TMP", "MONSELECTED%d", cfg.mon_level);
-	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
-
 	if (cfg.http_full_cfg)
 		tpl_addVar(vars, TPLADD, "HTTPSAVEFULLSELECT", "selected");
 
@@ -796,7 +754,20 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 		tpl_addVar(vars, TPLADD, "HTTPFORCESSLV3SELECT", "selected");
 #endif
 
+	tpl_printf(vars, TPLADD, "AULOW", "%d", cfg.aulow);
+	tpl_printf(vars, TPLADD, "HIDECLIENTTO", "%d", cfg.hideclient_to);
+	if (cfg.appendchaninfo)
+		tpl_addVar(vars, TPLADD, "APPENDCHANINFO", "checked");
+
+	return tpl_getTpl(vars, "CONFIGWEBIF");
+}
+
 #ifdef LCDSUPPORT
+static char *send_oscam_config_lcd(struct templatevars *vars, struct uriparams *params) {
+	setActiveSubMenu(vars, MNU_CFG_LCD);
+
+	webif_save_config("lcd", vars, params);
+
 	if(cfg.enablelcd)
 		tpl_addVar(vars, TPLADD, "ENABLELCDSELECTED", "selected");
 	if (cfg.lcd_output_path != NULL)
@@ -804,10 +775,37 @@ static char *send_oscam_config_monitor(struct templatevars *vars, struct uripara
 	if (cfg.lcd_hide_idle)
 		tpl_addVar(vars, TPLADD, "LCDHIDEIDLE", "selected");
 	tpl_printf(vars, TPLADD, "LCDREFRESHINTERVAL", "%d", cfg.lcd_write_intervall);
+
+	return tpl_getTpl(vars, "CONFIGLCD");
+}
 #endif
+
+#ifdef MODULE_MONITOR
+static char *send_oscam_config_monitor(struct templatevars *vars, struct uriparams *params) {
+	setActiveSubMenu(vars, MNU_CFG_MONITOR);
+
+	webif_save_config("monitor", vars, params);
+
+	tpl_printf(vars, TPLADD, "MONPORT", "%d", cfg.mon_port);
+	if (IP_ISSET(cfg.mon_srvip))
+	tpl_addVar(vars, TPLADD, "SERVERIP", cs_inet_ntoa(cfg.mon_srvip));
+
+	tpl_printf(vars, TPLADD, "AULOW", "%d", cfg.aulow);
+	tpl_printf(vars, TPLADD, "HIDECLIENTTO", "%d", cfg.hideclient_to);
+	if (cfg.appendchaninfo)
+		tpl_addVar(vars, TPLADD, "APPENDCHANINFO", "checked");
+
+	char *value = mk_t_iprange(cfg.mon_allowed);
+	tpl_addVar(vars, TPLADD, "NOCRYPT", value);
+	free_mk_t(value);
+
+	//Monlevel selector
+	tpl_printf(vars, TPLADD, "TMP", "MONSELECTED%d", cfg.mon_level);
+	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
 
 	return tpl_getTpl(vars, "CONFIGMONITOR");
 }
+#endif
 
 #ifdef MODULE_SERIAL
 static char *send_oscam_config_serial(struct templatevars *vars, struct uriparams *params) {
@@ -902,7 +900,13 @@ static char *send_oscam_config(struct templatevars *vars, struct uriparams *para
 	setActiveMenu(vars, MNU_CONFIG);
 
 	char *part = getParam(params, "part");
-	if (!strcmp(part,"monitor")) return send_oscam_config_monitor(vars, params);
+	if (!strcmp(part,"webif")) return send_oscam_config_webif(vars, params);
+#ifdef MODULE_MONITOR
+	else if (!strcmp(part,"monitor")) return send_oscam_config_monitor(vars, params);
+#endif
+#ifdef LCDSUPPORT
+	else if (!strcmp(part,"lcd")) return send_oscam_config_lcd(vars, params);
+#endif
 #ifdef MODULE_CAMD33
 	else if (!strcmp(part,"camd33")) return send_oscam_config_camd33(vars, params);
 #endif
@@ -1305,9 +1309,6 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	tpl_printf(vars, TPLADD, "COOLTIMEOUTINIT", "%d", rdr->cool_timeout_init);
 	tpl_printf(vars, TPLADD, "COOLTIMEOUTAFTERINIT", "%d", rdr->cool_timeout_after_init);
 #endif
-
-	// Logport
-	tpl_printf(vars, TPLADD, "LOGPORT", "%d", rdr->log_port);
 
 	// BoxID
 	if(rdr->boxid)
@@ -3774,7 +3775,7 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 
 	if (strcmp(getParam(params, "file"), "conf") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FCONF);
-		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.conf");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.conf");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.conf");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
@@ -3788,49 +3789,49 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 
 	else if (strcmp(getParam(params, "file"), "user") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FUSER);
-		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.user");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.user");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.user");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "server") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FSERVER);
-		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.server");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.server");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.server");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "services") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FSERVICES);
-		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.services");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.services");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.services");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "whitelist") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_WHITELIST);
-		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.whitelist");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.whitelist");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.whitelist");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "srvid") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FSRVID);
-		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.srvid");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.srvid");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.srvid");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "provid") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FPROVID);
-		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.provid");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.provid");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.provid");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
 	}
 	else if (strcmp(getParam(params, "file"), "tiers") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FTIERS);
-		snprintf(targetfile, 255,"%s%s", cs_confdir, "oscam.tiers");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.tiers");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.tiers");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;
@@ -3919,7 +3920,7 @@ static char *send_oscam_files(struct templatevars *vars, struct uriparams *param
 #ifdef HAVE_DVBAPI
 	else if (strcmp(getParam(params, "file"), "dvbapi") == 0) {
 		if(!apicall) setActiveSubMenu(vars, MNU_CFG_FDVBAPI);
-		snprintf(targetfile, 255, "%s%s", cs_confdir, "oscam.dvbapi");
+		get_config_filename(targetfile, sizeof(targetfile), "oscam.dvbapi");
 		tpl_addVar(vars, TPLADD, "APIFILENAME", "oscam.dvbapi");
 		tpl_addVar(vars, TPLADD, "APIWRITABLE", "1");
 		writable = 1;

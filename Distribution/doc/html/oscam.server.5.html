@@ -397,7 +397,7 @@ example: auprovid = 123456
 
 <B>inactivitytimeout</B> = <B>seconds</B>
 <DL COMPACT><DT><DD>
-inactivity timeout for all TCP based remote readers, default:0
+inactivity timeout for all TCP based remote readers, -1 = reconnect on network failure for newcamd based readers, even in idle, default:0
 </DL>
 
 <P>
@@ -488,13 +488,6 @@ drop incoming Cardservproxy cache (mode 2 only), detection is zero ecmd5, defaul
 <B>cacheex_allow_request</B> = <B>0</B>|<B>1</B>
 <DL COMPACT><DT><DD>
 allow incoming ECM request (mode 2), default:1
-</DL>
-
-<P>
-
-<B>logport</B> = <B>0</B>|<B>port</B>
-<DL COMPACT><DT><DD>
-camd 3.x reader logport, camd 3.x UDP must be activated, only works if there's no camd 3.x cascading, 0 = disabled, default=0
 </DL>
 
 <P>

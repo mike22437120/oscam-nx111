@@ -45,7 +45,6 @@ struct s_cardsystem cardsystems[CS_MAX_MOD];
 struct s_cardreader cardreaders[CS_MAX_MOD];
 
 struct s_client * first_client = NULL; //Pointer to clients list, first client is master
-struct s_client * first_client_hashed[CS_CLIENT_HASHBUCKETS];  // Alternative hashed client list
 struct s_reader * first_active_reader = NULL; //list of active readers (enable=1 deleted = 0)
 LLIST * configured_readers = NULL; //list of all (configured) readers
 
@@ -781,6 +780,11 @@ static void init_check(void){
 
 #ifdef __linux__
 #include <sys/prctl.h>
+// PR_SET_NAME is introduced in 2.6.9 (which is ancient, released 18 Oct 2004)
+// but apparantly we can't count on having at least that version :(
+#ifndef PR_SET_NAME
+#define PR_SET_NAME    15
+#endif
 // Set the thread name (comm) under linux (the limit is 16 chars)
 void set_thread_name(const char *thread_name) {
 	prctl(PR_SET_NAME, thread_name, NULL, NULL, NULL);
@@ -1458,7 +1462,7 @@ int32_t main (int32_t argc, char *argv[])
   memset(&cfg, 0, sizeof(struct s_config));
   cfg.max_pending = max_pending;
 
-  if (cs_confdir[strlen(cs_confdir)]!='/') strcat(cs_confdir, "/");
+  if (cs_confdir[strlen(cs_confdir) - 1] != '/') strcat(cs_confdir, "/");
   init_signal_pre(); // because log could cause SIGPIPE errors, init a signal handler first
   init_first_client();
   cs_lock_create(&system_lock, 5, "system_lock");

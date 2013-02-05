@@ -642,8 +642,6 @@ struct s_module {
 	int32_t			(*c_init)(struct s_client*);
 	int32_t			(*c_send_ecm)(struct s_client *, struct ecm_request_t *, uchar *);
 	int32_t			(*c_send_emm)(struct emm_packet_t *);
-	int32_t			(*c_init_log)(void);
-	int32_t			(*c_recv_log)(uint16_t *, uint32_t *, uint16_t *);
 	int32_t			(*c_available)(struct s_reader *, int32_t, struct ecm_request_t *); 	//Schlocke: available check for load-balancing,
 										// params:
 										// rdr (reader to check)
@@ -1150,7 +1148,6 @@ struct s_reader  									//contains device info, reader info and card info
 	char			r_pwd[64];
 	char			l_pwd[64];
 	int32_t			l_port;
-	int32_t			log_port;
 	CAIDTAB			ctab;
 	uint32_t		boxid;
 	int8_t			nagra_read;						// read nagra ncmed records: 0 Disabled (default), 1 read all records, 2 read valid records only
@@ -1527,6 +1524,7 @@ struct s_config
 	char			*mailfile;
 	uint8_t			logtostdout;
 	uint8_t 		logtosyslog;
+	int8_t			logduplicatelines;
 #if defined(WEBIF) || defined(MODULE_MONITOR)
 	uint32_t		loghistorysize;
 #endif
@@ -1540,10 +1538,12 @@ struct s_config
 	//Todo #ifdef CCCAM
 	struct s_provid *provid;
 	struct s_sidtab *sidtab;
+#ifdef MODULE_MONITOR
 	int32_t			mon_port;
 	IN_ADDR_T		mon_srvip;
 	struct s_ip 	*mon_allowed;
 	uint8_t			mon_level;
+#endif
 	int32_t			aulow;
 	int32_t			hideclient_to;
 	int8_t			appendchaninfo;
@@ -1783,27 +1783,18 @@ typedef struct emm_packet_t
 /* ===========================
  *      global variables
  * =========================== */
-extern char cs_tmpdir[200];
-extern uint32_t cfg_sidtab_generation;
-extern uint8_t cs_http_use_utf8;
 extern pthread_key_t getclient;
 extern struct s_client *first_client;
-extern struct s_client *first_client_hashed[CS_CLIENT_HASHBUCKETS];
 extern CS_MUTEX_LOCK config_lock;
 extern CS_MUTEX_LOCK clientlist_lock;
 extern CS_MUTEX_LOCK readerlist_lock;
-extern uint32_t ecmcwcache_size;
 extern struct s_reader *first_active_reader;		//points to list of _active_ readers (enable = 1, deleted = 0)
 extern LLIST *configured_readers;
-extern uint16_t cs_dblevel;
-extern uint16_t len4caid[256];
-extern struct s_config cfg;
-extern char cs_confdir[];
-extern int32_t exit_oscam;
-
-extern int log_remove_sensitive;
 
 // These are used pretty much everywhere
+extern struct s_config cfg;
+extern uint16_t cs_dblevel;
+
 #include "oscam-log.h"
 #include "oscam-log-reader.h"
 

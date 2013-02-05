@@ -8,6 +8,7 @@
 #include "oscam-string.h"
 
 #define cs_conf "oscam.conf"
+extern uint8_t cs_http_use_utf8;
 
 static void disablelog_fn(const char *token, char *value, void *UNUSED(setting), FILE *f) {
 	if (value) {
@@ -216,6 +217,7 @@ static const struct config_list global_opts[] = {
 #endif
 	DEF_OPT_FUNC("serverip"					, OFS(srvip),				serverip_fn ),
 	DEF_OPT_FUNC("logfile"					, OFS(logfile),				logfile_fn ),
+	DEF_OPT_INT8("logduplicatelines"		, OFS(logduplicatelines),	0 ),
 	DEF_OPT_STR("pidfile"					, OFS(pidfile),				NULL ),
 	DEF_OPT_INT8("disableuserfile"			, OFS(disableuserfile),		1 ),
 	DEF_OPT_INT8("disablemail"				, OFS(disablemail),			1 ),

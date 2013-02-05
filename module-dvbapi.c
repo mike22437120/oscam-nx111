@@ -10,6 +10,7 @@
 #include "module-stat.h"
 #include "oscam-chk.h"
 #include "oscam-client.h"
+#include "oscam-config.h"
 #include "oscam-ecm.h"
 #include "oscam-emm.h"
 #include "oscam-files.h"
@@ -1128,8 +1129,7 @@ void dvbapi_read_priority(void) {
 
 	const char *cs_prio="oscam.dvbapi";
 
-	snprintf(token, sizeof(token), "%s%s", cs_confdir, cs_prio);
-	fp=fopen(token, "r");
+	fp = fopen(get_config_filename(token, sizeof(token), cs_prio), "r");
 
 	if (!fp) {
 		cs_debug_mask(D_DVBAPI, "ERROR: Can't open priority file %s", token);
@@ -1344,8 +1344,7 @@ int32_t dvbapi_write_prio() {
 
 	if(!priority_is_changed || !dvbapi_priority )return 0;
 
-	snprintf(token, 127, "%s%s", cs_confdir, cs_prio);
-	fp=fopen(token, "w");
+	fp = fopen(get_config_filename(token, sizeof(token), cs_prio), "w");
 	
 	if (!fp) {
 		cs_log("can't open priority file %s to write", token);
