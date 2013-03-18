@@ -88,7 +88,7 @@ maximum log file size, 0 = unlimited, default:10
 
 <B>logduplicatelines</B> = <B>0</B>|<B>1</B>
 <DL COMPACT><DT><DD>
-1 = disable detection of duplicate lines in log file, default:0
+1 = enable logging of duplicate lines in the log, default:0
 </DL>
 
 <P>
@@ -98,10 +98,6 @@ maximum log file size, 0 = unlimited, default:10
 1 = disable log file, default:0
 </DL>
 
-<P>
-<P>
-<P>
-<P>
 <P>
 
 <B>cwlogdir</B> = <B>path</B>
@@ -184,13 +180,6 @@ define file saving NDS Videoguard mail messages from provider, default:none
 
 <P>
 
-<B>serialreadertimeout</B> = <B>milli-seconds</B>
-<DL COMPACT><DT><DD>
-timeout for serial reader, default:1500
-</DL>
-
-<P>
-
 <B>waitforcards</B> = <B>0</B>|<B>1</B> 
 <DL COMPACT><DT><DD>
 1 = wait for local SCs on startup before opening network ports, default:1
@@ -229,43 +218,6 @@ seconds beetween restarts, 0 = disable reader restart, default:5
 <B>block_same_name</B> = <B>0</B>|<B>1</B>
 <DL COMPACT><DT><DD>
 1 = reject looping ECMs from clients to readers with the same name, default:1
-</DL>
-
-<P>
-
-<B>cachedelay</B> = <B>milli-seconds</B>
-<DL COMPACT><DT><DD>
-value to delay cached requests, default:0
-</DL>
-
-<P>
-
-<B>max_cache_time</B> = <B>seconds</B>
-<DL COMPACT><DT><DD>
-maximum time CWs resist in cache after 1st client request, the time must be 2 seconds highter than the parameter <B>clienttimeout</B>, default:15
-</DL>
-
-<P>
-
-<B>max_cache_count</B> = <B>count</B>
-<DL COMPACT><DT><DD>
-maximum CWs in cache, default:1000
-</DL>
-
-<P>
-
-<B>cacheexwaittime</B> = <B>delay</B>
-<DL COMPACT><DT><DD>
-wait time for a cache exchange entry in milli-seconds, default:50
-</DL>
-
-<P>
-
-<B>cacheexenablestats</B> = <B>0|1</B>
-<DL COMPACT><DT><DD>
-1 = enable statistics for cache exchange mode, default:0
-<P>
-<I>Please consider memory consumption.</I>
 </DL>
 
 <P>
@@ -623,15 +575,10 @@ monlevel can be overwritten per user in <B>oscam.user</B>
 
 <B>hideclient_to</B> = <B>seconds</B>
 <DL COMPACT><DT><DD>
-time to hide clients in the monitor if not sending requests, 0 = disabled, default:15
+time to hide clients in the monitor if not sending requests, 0 = disabled, default:25
 </DL>
 
 <P>
-
-<B>appendchaninfo</B> = <B>0</B>|<B>1</B>
-<DL COMPACT><DT><DD>
-1 = append channel name on log messages, default:0
-</DL>
 
 <A NAME="lbAG">&nbsp;</A>
 <H3>The [webif] section</H3>
@@ -813,27 +760,57 @@ LCD refresh interval (minimum 5), default:10
 
 
 <A NAME="lbAI">&nbsp;</A>
-<H3>The [csp] section</H3>
+<H3>The [cache] section</H3>
 
-<B>port</B> = <B>port</B>
+<B>delay</B> = <B>milli-seconds</B>
 <DL COMPACT><DT><DD>
-TCP port of Cardservproxy for cache exchange, default:none
+value to delay cached requests, default:0
 </DL>
 
 <P>
 
-<B>serverip</B> = <B>IP</B>
+<B>max_time</B> = <B>seconds</B>
 <DL COMPACT><DT><DD>
-IP address of Cardservproxy for cache exchange, default:none
+maximum time CWs resist in cache after 1st client request, the time must be 2 seconds highter than the parameter <B>clienttimeout</B>, default:15
+</DL>
+
+<P>
+
+<B>max_count</B> = <B>count</B>
+<DL COMPACT><DT><DD>
+maximum CWs in cache, default:1000
 </DL>
 
 <P>
 
 <B>wait_time</B> = <B>[caid][&amp;mask][@provid][$servid][:awtime][:]dwtime,n</B>
 <DL COMPACT><DT><DD>
-wait time in milli-seconds for cache exchange (mode 2 and 3 only) and Cardservproxy before sending ECMs to reader or proxy, default:none
+wait time in milli-seconds for cache exchange and Cardservproxy before sending ECMs to reader or proxy, default:none
 <P>
 <BR>&nbsp;example:&nbsp;wait_time&nbsp;=&nbsp;0:50:250,<A HREF="mailto:0200@00009X">0200@00009X</A>:50:150,15:950,<A HREF="mailto:0500@000001">0500@000001</A>:150,1602&amp;ffdf:1200
+</DL>
+
+<P>
+
+<B>cacheexenablestats</B> = <B>0|1</B>
+<DL COMPACT><DT><DD>
+1 = enable statistics for cache exchange mode, default:0
+<P>
+<I>Please consider memory consumption.</I>
+</DL>
+
+<P>
+
+<B>csp_port</B> = <B>port</B>
+<DL COMPACT><DT><DD>
+TCP port of Cardservproxy for cache exchange, default:none
+</DL>
+
+<P>
+
+<B>csp_serverip</B> = <B>IP</B>
+<DL COMPACT><DT><DD>
+IP address of Cardservproxy for cache exchange, default:none
 </DL>
 
 <P>
@@ -848,6 +825,60 @@ Cardservproxy incoming ECM filter setting, default:none
 <B>csp_allow_request</B> = <B>0</B>|<B>1</B>
 <DL COMPACT><DT><DD>
 allow incoming ECM request from Cardservproxy, default:1
+</DL>
+
+<P>
+
+<B>cwcycle_check_enable</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+1 = enable CW cycle check, default:0
+</DL>
+
+<P>
+
+<B>cwcycle_check_caid</B> = <B>CAID</B>[,<B>CAID</B>]...
+<DL COMPACT><DT><DD>
+CAID enabled for CW cycle check, default:none
+</DL>
+
+<P>
+
+<B>cwcycle_maxlist</B> = <B>count</B>
+<DL COMPACT><DT><DD>
+maximum CW cycle list entries, default:500, maximum:4000
+</DL>
+
+<P>
+
+<B>cwcycle_keeptime</B> = <B>minutes</B>
+<DL COMPACT><DT><DD>
+minimum time a learned cycle time resists in memory, default:0, maximum:15
+</DL>
+
+<P>
+
+<B>cwcycle_onbad</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+0 = log bad CW cycle only, 1 = drop bad CW cycle, default:0
+</DL>
+
+<P>
+
+<B>cwcycle_dropold</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+1= drop old CW cycle, default:0
+</DL>
+
+<P>
+
+<B>cwcycle_sensitive</B> = <B>0</B>|<B>2</B>|<B>3</B>|<B>4</B>
+<DL COMPACT><DT><DD>
+drop CW mode:
+<P>
+<BR>&nbsp;<B>0</B>&nbsp;=&nbsp;disabled&nbsp;(default)
+<BR>&nbsp;<B>2</B>&nbsp;=&nbsp;2&nbsp;(or&nbsp;more)&nbsp;same&nbsp;bytes&nbsp;and&nbsp;drop&nbsp;new&nbsp;CW
+<BR>&nbsp;<B>3</B>&nbsp;=&nbsp;3&nbsp;(or&nbsp;more)&nbsp;same&nbsp;bytes&nbsp;and&nbsp;drop&nbsp;new&nbsp;CW
+<BR>&nbsp;<B>4</B>&nbsp;=&nbsp;4&nbsp;(or&nbsp;more)&nbsp;same&nbsp;bytes&nbsp;and&nbsp;drop&nbsp;new&nbsp;CW
 </DL>
 
 <A NAME="lbAJ">&nbsp;</A>
@@ -1192,23 +1223,23 @@ set CCcam node ID in hex, default:none
 
 <P>
 
-<B>port</B> = <B>0</B>|<B>port</B>
+<B>gbox_hostname</B> = <B>hostname</B>| <B>IP address</B>
 <DL COMPACT><DT><DD>
-UDP port for gbox clients, 0 = disabled, default:0
+set hostname or IP address for gbox protocol, default:none
 </DL>
 
 <P>
 
-<B>password</B> = <B>password</B>
+<B>gbox_reconnect</B> = <B>time</B>
 <DL COMPACT><DT><DD>
-password for gbox server
+send message to peers in seconds, default:300
 </DL>
 
 <P>
 
-<B>gsmsfile</B> = <B>file name</B>
+<B>gbox_local_cards</B> = <B>&lt;local card 1&gt;</B>[,<B>&lt;local card 2&gt;</B>]...
 <DL COMPACT><DT><DD>
-gsms file for gbox server, default:none
+list of local cards presented to peers, (maximum see CS_GBOX_MAX_LOCAL_CARDS in globals.h), default:none
 </DL>
 
 <A NAME="lbAR">&nbsp;</A>
@@ -1488,14 +1519,19 @@ read again
 set debug level (<B>monlevel</B> &gt; 3 required)
 <P>
 debug level mask:
-<BR>&nbsp;&nbsp;&nbsp;<B>0</B>&nbsp;=&nbsp;no&nbsp;debugging&nbsp;(default)
-<BR>&nbsp;&nbsp;&nbsp;<B>2</B>&nbsp;=&nbsp;ATR&nbsp;parsing&nbsp;info,&nbsp;ECM&nbsp;dumps,&nbsp;CW&nbsp;dumps
-<BR>&nbsp;&nbsp;&nbsp;<B>4</B>&nbsp;=&nbsp;traffic&nbsp;from/to&nbsp;the&nbsp;reader
-<BR>&nbsp;&nbsp;&nbsp;<B>8</B>&nbsp;=&nbsp;traffic&nbsp;from/to&nbsp;the&nbsp;clients
-<BR>&nbsp;&nbsp;<B>16</B>&nbsp;=&nbsp;traffic&nbsp;to&nbsp;the&nbsp;reader-device&nbsp;on&nbsp;IFD&nbsp;layer&nbsp;
-<BR>&nbsp;&nbsp;<B>32</B>&nbsp;=&nbsp;traffic&nbsp;to&nbsp;the&nbsp;reader-device&nbsp;on&nbsp;I/O&nbsp;layer
-<BR>&nbsp;&nbsp;<B>64</B>&nbsp;=&nbsp;EMM&nbsp;logging&nbsp;
-<BR>&nbsp;<B>255</B>&nbsp;=&nbsp;debug&nbsp;all
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<B>0</B>&nbsp;=&nbsp;no&nbsp;debugging&nbsp;(default)
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<B>1</B>&nbsp;=&nbsp;detailed&nbsp;error&nbsp;messages
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<B>2</B>&nbsp;=&nbsp;ATR&nbsp;parsing&nbsp;info,&nbsp;ECM&nbsp;dumps,&nbsp;CW&nbsp;dumps
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<B>4</B>&nbsp;=&nbsp;traffic&nbsp;from/to&nbsp;the&nbsp;reader
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<B>8</B>&nbsp;=&nbsp;traffic&nbsp;from/to&nbsp;the&nbsp;clients
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>16</B>&nbsp;=&nbsp;traffic&nbsp;to&nbsp;the&nbsp;reader-device&nbsp;on&nbsp;IFD&nbsp;layer
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>32</B>&nbsp;=&nbsp;traffic&nbsp;to&nbsp;the&nbsp;reader-device&nbsp;on&nbsp;I/O&nbsp;layer
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>64</B>&nbsp;=&nbsp;EMM&nbsp;logging
+<BR>&nbsp;&nbsp;&nbsp;<B>128</B>&nbsp;=&nbsp;DVB&nbsp;API&nbsp;logging
+<BR>&nbsp;&nbsp;&nbsp;<B>256</B>&nbsp;=&nbsp;load&nbsp;balacing&nbsp;logging
+<BR>&nbsp;&nbsp;&nbsp;<B>512</B>&nbsp;=&nbsp;cache&nbsp;exchange&nbsp;logging
+<BR>&nbsp;&nbsp;<B>1024</B>&nbsp;=&nbsp;client&nbsp;ECM&nbsp;logging
+<BR>&nbsp;<B>65535</B>&nbsp;=&nbsp;debug&nbsp;all
 <DT>&bull;<DD>
 <B>version</B>
 <P>
@@ -1533,46 +1569,6 @@ ECM and CW in cache already.
 ECM and checksum in cache already.
 </DL>
 <A NAME="lbAX">&nbsp;</A>
-<H2>EXAMPLES</H2>
-
-<BR>&nbsp;[global]
-<BR>&nbsp;logfile&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;/var/log/oscam/oscam.log
-<BR>&nbsp;usrfile&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;/var/log/oscam/oscamuser.log
-<P>
-<BR>&nbsp;waitforcards&nbsp;=&nbsp;1
-<P>
-<BR>&nbsp;[monitor]
-<BR>&nbsp;port&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;988
-<BR>&nbsp;monlevel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1
-<BR>&nbsp;nocrypt&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;127.0.0.1
-<BR>&nbsp;
-<BR>&nbsp;[webif]
-<BR>&nbsp;httpport&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;8888
-<BR>&nbsp;httpuser&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;myusername
-<BR>&nbsp;httppwd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;mypassword
-<BR>&nbsp;
-<BR>&nbsp;[newcamd]
-<BR>&nbsp;key&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;0102030405060708091011121314
-<BR>&nbsp;port&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;<A HREF="mailto:10000@0100">10000@0100</A>:100000;20000{0102030405060708091011121314}@0200:200000,300000,400000
-<BR>&nbsp;
-<BR>&nbsp;[radegast]
-<BR>&nbsp;port&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;30000
-<BR>&nbsp;user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;radegastuser
-<BR>&nbsp;allowed&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;127.0.0.1,192.168.0.0-192.168.255.255
-<P>
-<BR>&nbsp;[camd33]
-<BR>&nbsp;port&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;40000
-<BR>&nbsp;serverip&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;192.168.0.1
-<BR>&nbsp;key&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;01020304050607080910111213141516
-<BR>&nbsp;
-<BR>&nbsp;[cs378x]
-<BR>&nbsp;port&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;<A HREF="mailto:50000@0300">50000@0300</A>:600000
-<BR>&nbsp;
-<BR>&nbsp;[gbox]
-<BR>&nbsp;hostname&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;host.example.com
-<BR>&nbsp;port&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;56789
-<BR>&nbsp;password&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;password4
-<A NAME="lbAY">&nbsp;</A>
 <H2>SEE ALSO</H2>
 
 <B><A HREF="/cgi-bin/man/man2html?1+list_smargo">list_smargo</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?1+oscam">oscam</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ac">oscam.ac</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cacheex">oscam.cacheex</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cert">oscam.cert</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.dvbapi">oscam.dvbapi</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.guess">oscam.guess</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ird">oscam.ird</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.provid">oscam.provid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.server">oscam.server</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.services">oscam.services</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid">oscam.srvid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.tiers">oscam.tiers</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.user">oscam.user</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.whitelist">oscam.whitelist</A></B>(5)
@@ -1589,7 +1585,7 @@ ECM and checksum in cache already.
 <DT><A HREF="#lbAF">The [monitor] section</A><DD>
 <DT><A HREF="#lbAG">The [webif] section</A><DD>
 <DT><A HREF="#lbAH">The [lcd] section</A><DD>
-<DT><A HREF="#lbAI">The [csp] section</A><DD>
+<DT><A HREF="#lbAI">The [cache] section</A><DD>
 <DT><A HREF="#lbAJ">The [camd33] section</A><DD>
 <DT><A HREF="#lbAK">The [cs357x] section</A><DD>
 <DT><A HREF="#lbAL">The [cs378x] section</A><DD>
@@ -1605,8 +1601,7 @@ ECM and checksum in cache already.
 <DT><A HREF="#lbAU">MONITOR</A><DD>
 <DT><A HREF="#lbAV">WEB INTERFACE</A><DD>
 <DT><A HREF="#lbAW">CACHING</A><DD>
-<DT><A HREF="#lbAX">EXAMPLES</A><DD>
-<DT><A HREF="#lbAY">SEE ALSO</A><DD>
+<DT><A HREF="#lbAX">SEE ALSO</A><DD>
 </DL>
 </BODY>
 </HTML>

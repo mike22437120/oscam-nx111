@@ -1,8 +1,8 @@
 #!/bin/sh
 
-addons="WEBIF TOUCH HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX LCDSUPPORT LEDSUPPORT IPV6SUPPORT"
+addons="WEBIF TOUCH HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX CW_CYCLE_CHECK LCDSUPPORT LEDSUPPORT IPV6SUPPORT"
 protocols="MODULE_CAMD33 MODULE_CAMD35 MODULE_CAMD35_TCP MODULE_NEWCAMD MODULE_CCCAM MODULE_CCCSHARE MODULE_GBOX MODULE_RADEGAST MODULE_SERIAL MODULE_CONSTCW MODULE_PANDORA MODULE_GHTTP"
-readers="READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_STREAMGUARD READER_BULCRYPT READER_GRIFFIN"
+readers="READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_STREAMGUARD  READER_BULCRYPT READER_GRIFFIN READER_DGCRYPT"
 card_readers="CARDREADER_PHOENIX CARDREADER_INTERNAL CARDREADER_SC8IN1 CARDREADER_MP35 CARDREADER_SMARGO CARDREADER_DB2COM CARDREADER_STAPI"
 
 defconfig="
@@ -16,6 +16,7 @@ CONFIG_MODULE_MONITOR=y
 # CONFIG_WITH_SSL=n
 CONFIG_WITH_LB=y
 CONFIG_CS_CACHEEX=y
+CONFIG_CW_CYCLE_CHECK=y
 # CONFIG_LCDSUPPORT=n
 # CONFIG_LEDSUPPORT=n
 # CONFIG_IPV6SUPPORT=n
@@ -43,6 +44,7 @@ CONFIG_READER_DRE=y
 CONFIG_READER_TONGFANG=y
 CONFIG_READER_BULCRYPT=y
 CONFIG_READER_GRIFFIN=y
+CONFIG_READER_DGCRYPT=y
 CARDREADER_PHOENIX=y
 CARDREADER_INTERNAL=y
 CARDREADER_SC8IN1=y
@@ -84,8 +86,6 @@ Usage: `basename $0` [parameters]
  -v, --oscam-version       Display OSCam version.
  -r, --oscam-revision      Display OSCam SVN revision.
 
- -m, --make-config.mak     Create or update config.mak
-
  -O, --detect-osx-sdk-version  Find where OS X SDK is located
 
  -h, --help                Display this help text.
@@ -117,13 +117,64 @@ Available options:
 "
 }
 
+# Output directory for config.mak set by --objdir parameter
+OBJDIR=.
+
+# Use flags set by --use-flags parameter
+USE_FLAGS=
+
+have_flag() {
+	for FLAG in $USE_FLAGS
+	do
+		[ $FLAG = "$1" ] && return 0
+	done
+	return 1
+}
+
+have_all_flags() {
+	for opt ; do
+		have_flag $opt || return 1
+	done
+	return 0
+}
+
+have_any_flags() {
+	for opt ; do
+		have_flag $opt && return 0
+	done
+	return 1
+}
+
+not_have_flag() {
+	for FLAG in $USE_FLAGS
+	do
+		[ $FLAG = "$1" ] && return 1
+	done
+	return 0
+}
+
+not_have_all_flags() {
+	for opt ; do
+		not_have_flag $opt || return 1
+	done
+	return 0
+}
+
+not_have_any_flags() {
+	for opt ; do
+		not_have_flag $opt && return 0
+	done
+	return 1
+}
+
+# Config functions
 enabled() {
-	grep "^\#define $1$" config.h >/dev/null 2>/dev/null
+	grep "^\#define $1 1$" config.h >/dev/null 2>/dev/null
 	return $?
 }
 
 disabled() {
-	grep "^\#define $1$" config.h >/dev/null 2>/dev/null
+	grep "^\#define $1 1$" config.h >/dev/null 2>/dev/null
 	test $? = 0 && return 1
 	return 0
 }
@@ -178,7 +229,7 @@ valid_opt() {
 
 enable_opt() {
 	valid_opt $1 && disabled $1 && {
-		sed -i.bak -e "s|//#define $1$|#define $1|g" config.h && rm config.h.bak
+		sed -i.bak -e "s|//#define $1 1$|#define $1 1|g" config.h && rm config.h.bak
 		echo "Enable $1"
 	}
 }
@@ -192,7 +243,7 @@ enable_opts() {
 
 disable_opt() {
 	valid_opt $1 && enabled $1 && {
-		sed -i.bak -e "s|#define $1$|//#define $1|g" config.h && rm config.h.bak
+		sed -i.bak -e "s|#define $1 1$|//#define $1 1|g" config.h && rm config.h.bak
 		echo "Disable $1"
 	}
 }
@@ -216,8 +267,93 @@ get_opts() {
 	echo $OPTS
 }
 
+update_deps() {
+	# Calculate dependencies
+	enabled_any $(get_opts readers) $(get_opts card_readers) && enable_opt WITH_CARDREADER >/dev/null
+	disabled_all $(get_opts readers) $(get_opts card_readers) && disable_opt WITH_CARDREADER >/dev/null
+	enabled MODULE_CCCSHARE && enable_opt MODULE_CCCAM >/dev/null
+	enabled_any CARDREADER_DB2COM CARDREADER_MP35 CARDREADER_SC8IN1 && enable_opt CARDREADER_PHOENIX >/dev/null
+}
+
+list_config() {
+	update_deps
+	# Handle use flags
+	have_flag USE_STAPI && echo "CONFIG_WITH_STAPI=y" || echo "# CONFIG_WITH_STAPI=n"
+	have_flag USE_COOLAPI && echo "CONFIG_WITH_COOLAPI=y" || echo "# CONFIG_WITH_COOLAPI=n"
+	have_flag USE_AZBOX && echo "CONFIG_WITH_AZBOX=y" || echo "# CONFIG_WITH_AZBOX=n"
+	have_flag USE_MCA && echo "CONFIG_WITH_MCA=y" || echo "# CONFIG_WITH_MCA=n"
+	have_flag USE_LIBCRYPTO && echo "CONFIG_WITH_LIBCRYPTO=y" || echo "# CONFIG_WITH_LIBCRYPTO=n"
+	for OPT in $addons $protocols WITH_CARDREADER $readers
+	do
+		enabled $OPT && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
+	done
+	for OPT in $card_readers
+	do
+		if [ $OPT = CARDREADER_INTERNAL ]
+		then
+			# Internal card reader is actually three different readers depending on USE flags
+			enabled $OPT && have_flag USE_AZBOX && echo "CONFIG_${OPT}_AZBOX=y" || echo "# CONFIG_${OPT}_AZBOX=n"
+			enabled $OPT && have_flag USE_COOLAPI && echo "CONFIG_${OPT}_COOLAPI=y" || echo "# CONFIG_${OPT}_COOLAPI=n"
+			enabled $OPT && not_have_all_flags USE_AZBOX USE_COOLAPI && echo "CONFIG_${OPT}_SCI=y" || echo "# CONFIG_${OPT}_SCI=n"
+			continue
+		fi
+		if [ $OPT = CARDREADER_STAPI ]
+		then
+			# Enable CARDREADER_STAPI only if USE_STAPI is set
+			enabled $OPT && have_flag USE_STAPI && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
+			continue
+		fi
+		enabled $OPT && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
+	done
+	have_flag USE_LIBUSB && echo "CONFIG_CARDREADER_SMART=y" || echo "# CONFIG_CARDREADER_SMART=n"
+	have_flag USE_PCSC && echo "CONFIG_CARDREADER_PCSC=y" || echo "# CONFIG_CARDREADER_PCSC=n"
+	# Extra modules/libraries
+	enabled_any MODULE_GBOX WEBIF && echo "CONFIG_LIB_MINILZO=y" || echo "# CONFIG_LIB_MINILZO=n"
+	not_have_flag USE_LIBCRYPTO && echo "CONFIG_LIB_AES=y" || echo "# CONFIG_LIB_AES=n"
+	enabled MODULE_CCCAM && echo "CONFIG_LIB_RC6=y" || echo "# CONFIG_LIB_RC6=n"
+	not_have_flag USE_LIBCRYPTO && enabled MODULE_CCCAM && echo "CONFIG_LIB_SHA1=y" || echo "# CONFIG_LIB_SHA1=n"
+	enabled_any MODULE_NEWCAMD READER_DRE && echo "CONFIG_LIB_DES=y" || echo "# CONFIG_LIB_DES=n"
+	enabled_any MODULE_CCCAM READER_NAGRA && echo "CONFIG_LIB_IDEA=y" || echo "# CONFIG_LIB_IDEA=n"
+	not_have_flag USE_LIBCRYPTO && enabled_any READER_CONAX READER_CRYPTOWORKS READER_NAGRA && echo "CONFIG_LIB_BIGNUM=y" || echo "# CONFIG_LIB_BIGNUM=n"
+}
+
+make_config_c() {
+	OPENSSL=$(which openssl 2>/dev/null)
+	if [ "$OPENSSL" = "" ]
+	then
+		echo "// openssl not found!"
+		echo "const char *config_mak = \"CFG: openssl not found in PATH!\";"
+	else
+		echo "// This file is generated by ./config.sh --objdir $OBJDIR --make-config.mak"
+		echo "const char *config_mak ="
+		printf "  \"\\\nCFG: strings FILE | sed -n 's/^CFG~//p' | openssl enc -d -base64 | gzip -d\\\n\"\n"
+		gzip -9 < $OBJDIR/config.mak | $OPENSSL enc -base64 | while read LINE
+		do
+			printf "  \"CFG~%s\\\\n\"\n" "$LINE"
+		done
+		echo "  ;"
+	fi
+}
+
+make_config_mak() {
+	TMPFILE=$(mktemp -t config.mak.XXXXXX) || exit 1
+	list_config > $TMPFILE
+	[ ! -d $OBJDIR ] && mkdir -p $OBJDIR 2>/dev/null
+	cmp $TMPFILE $OBJDIR/config.mak >/dev/null 2>/dev/null
+	if [ $? != 0 ]
+	then
+		cat $TMPFILE  > $OBJDIR/config.mak
+		make_config_c > $OBJDIR/config.c
+	else
+		make_config_c > $TMPFILE
+		cmp $TMPFILE $OBJDIR/config.c >/dev/null 2>/dev/null
+		[ $? != 0 ] && cat $TMPFILE > $OBJDIR/config.c
+	fi
+	rm -rf $TMPFILE
+}
+
 check_test() {
-	if [ "$(cat $tempfileconfig | grep "^#define $1$")" != "" ]; then
+	if [ "$(cat $tempfileconfig | grep "^#define $1 1$")" != "" ]; then
 		echo "on"
 	else
 		echo "off"
@@ -226,14 +362,14 @@ check_test() {
 
 disable_all() {
 	for i in $1; do
-		sed -i.bak -e "s/^#define ${i}$/\/\/#define ${i}/g" $tempfileconfig
+		sed -i.bak -e "s/^#define ${i} 1$/\/\/#define ${i} 1/g" $tempfileconfig
 	done
 }
 
 enable_package() {
 	for i in $(cat $tempfile); do
 		strip=$(echo $i | sed "s/\"//g")
-		sed -i.bak -e "s/\/\/#define ${strip}$/#define ${strip}/g" $tempfileconfig
+		sed -i.bak -e "s/\/\/#define ${strip} 1$/#define ${strip} 1/g" $tempfileconfig
 	done
 }
 
@@ -279,6 +415,7 @@ menu_addons() {
 		WITH_SSL			"OpenSSL support"			$(check_test "WITH_SSL") \
 		WITH_LB				"Loadbalancing"				$(check_test "WITH_LB") \
 		CS_CACHEEX			"Cache exchange"			$(check_test "CS_CACHEEX") \
+		CW_CYCLE_CHECK			"CW Cycle Check"			$(check_test "CW_CYCLE_CHECK") \
 		LCDSUPPORT			"LCD support"				$(check_test "LCDSUPPORT") \
 		LEDSUPPORT			"LED support"				$(check_test "LEDSUPPORT") \
 		IPV6SUPPORT			"IPv6 support (experimental)"		$(check_test "IPV6SUPPORT") \
@@ -328,6 +465,7 @@ menu_readers() {
 		READER_STREAMGUARD	"Streamguard"		$(check_test "READER_STREAMGUARD") \
 		READER_BULCRYPT		"Bulcrypt"			$(check_test "READER_BULCRYPT") \
 		READER_GRIFFIN		"Griffin"			$(check_test "READER_GRIFFIN") \
+		READER_DGCRYPT		"DGCrypt"			$(check_test "READER_DGCRYPT") \
 		2> ${tempfile}
 
 	opt=${?}
@@ -357,20 +495,20 @@ menu_card_readers() {
 
 
 config_dialog() {
-	tempfile=/tmp/test$$
-	tempfileconfig=/tmp/config.h
-	configfile=config.h
-	DIALOG=${DIALOG:-`which dialog`}
-
 	height=30
 	width=65
 	listheight=16
 
+	DIALOG=${DIALOG:-`which dialog`}
 	if [ -z "${DIALOG}" ]; then
 		echo "Please install dialog package." 1>&2
 		exit 1
 	fi
 
+	configfile=config.h
+	tempfile=$(mktemp -t oscam-config.dialog.XXXXXX) || exit 1
+	tempfileconfig=$(mktemp -t oscam-config.h.XXXXXX) || exit 1
+	trap 'rm -f $tempfile $tempfileconfig $tempfileconfig.bak 2>/dev/null' INT TERM EXIT
 	cp -f $configfile $tempfileconfig
 
 	while true; do
@@ -383,7 +521,7 @@ config_dialog() {
 			2> ${tempfile}
 
 		opt=${?}
-		if [ $opt != 0 ]; then clear; rm $tempfile; rm $tempfileconfig; exit; fi
+		if [ $opt != 0 ]; then clear; exit; fi
 
 		menuitem=`cat $tempfile`
 		case $menuitem in
@@ -393,10 +531,8 @@ config_dialog() {
 			CardReaders) menu_card_readers ;;
 			Save)
 				print_components
-				rm $tempfile
-				rm $tempfileconfig
-				$0 --make-config.mak
-				exit
+				update_deps
+				exit 0
 			;;
 		esac
 	done
@@ -442,7 +578,7 @@ do
 		do
 			case "$1" in
 			-*)
-				$0 --make-config.mak
+				update_deps
 				continue 2
 				;;
 			all|addons|protocols|readers|card_readers)
@@ -454,7 +590,7 @@ do
 			esac
 			shift
 		done
-		$0 --make-config.mak
+		update_deps
 		;;
 	'-D'|'--disable')
 		shift
@@ -462,7 +598,7 @@ do
 		do
 			case "$1" in
 			-*)
-				$0 --make-config.mak
+				update_deps
 				continue 2
 				;;
 			all|addons|protocols|readers|card_readers)
@@ -474,7 +610,7 @@ do
 			esac
 			shift
 		done
-		$0 --make-config.mak
+		update_deps
 		;;
 	'-R'|'--restore')
 		echo $defconfig | sed -e 's|# ||g' | xargs printf "%s\n" | grep "=y$" | sed -e 's|^CONFIG_||g;s|=.*||g' |
@@ -487,7 +623,7 @@ do
 		do
 			disable_opt "$OPT"
 		done
-		$0 --make-config.mak
+		update_deps
 		;;
 	'-e'|'--enabled')
 		enabled $2 && echo "Y" && exit 0 || echo "N" && exit 1
@@ -526,30 +662,20 @@ do
 		break
 	;;
 	'-l'|'--list-config')
-		enabled_any $(get_opts readers) && enable_opt WITH_CARDREADER >/dev/null
-		disabled_all $(get_opts readers) && disable_opt WITH_CARDREADER >/dev/null
-		enabled MODULE_CCCSHARE && enable_opt MODULE_CCCAM >/dev/null
-		enabled_any CARDREADER_DB2COM CARDREADER_MP35 CARDREADER_SC8IN1 && enable_opt CARDREADER_PHOENIX >/dev/null
-		for OPT in $addons $protocols WITH_CARDREADER $readers $card_readers
-		do
-			enabled $OPT && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
-		done
-		# Calculate dependencies
-		enabled MODULE_GBOX && echo "CONFIG_LIB_MINILZO=y" || echo "# CONFIG_LIB_MINILZO=n"
-		enabled MODULE_CCCAM && echo "CONFIG_LIB_RC6=y" || echo "# CONFIG_LIB_RC6=n"
-		enabled MODULE_CCCAM && echo "CONFIG_LIB_SHA1=y" || echo "# CONFIG_LIB_SHA1=n"
-		enabled_any MODULE_NEWCAMD READER_DRE && echo "CONFIG_LIB_DES=y" || echo "# CONFIG_LIB_DES=n"
-		enabled_any MODULE_CCCAM READER_NAGRA && echo "CONFIG_LIB_IDEA=y" || echo "# CONFIG_LIB_IDEA=n"
-		enabled_any READER_CONAX READER_CRYPTOWORKS READER_NAGRA && echo "CONFIG_LIB_BIGNUM=y" || echo "# CONFIG_LIB_BIGNUM=n"
+		list_config
 		exit 0
 	;;
 	'-m'|'--make-config.mak')
-		TMPFILE=$(mktemp -t config.mak.XXXXXX) || exit 1
-		$0 --list-config > $TMPFILE
-		cmp $TMPFILE config.mak >/dev/null 2>/dev/null
-		test $? = 0 && rm $TMPFILE || cat $TMPFILE > config.mak
-		rm -rf $TMPFILE
+		make_config_mak
 		exit 0
+	;;
+	'--use-flags')
+		shift
+		USE_FLAGS=$1
+	;;
+	'--objdir')
+		shift
+		OBJDIR=$1
 	;;
 	'-h'|'--help')
 		usage

@@ -1,14 +1,6 @@
 #ifndef __NDS_COMMON__
 #define __NDS_COMMON__
 
-#include "globals.h"
-
-#include <termios.h>
-#include <unistd.h>
-#if defined(__linux__)
-#include <linux/serial.h>
-#endif
-
 #define write_cmd_vg(cmd, data) (card_write(reader, cmd, data, cta_res, &cta_lr) == 0)
 
 #define NDSUNKNOWN    0
@@ -17,6 +9,34 @@
 #define NDS11	11
 #define NDS12    12
 #define NDS2    2
+
+struct s_CmdTabEntry {
+	uint8_t cla;
+	uint8_t cmd;
+	uint8_t len;
+	uint8_t mode;
+};
+
+struct s_CmdTab {
+	uint8_t index;
+	uint8_t size;
+	uint8_t Nentries;
+	uint8_t dummy;
+	struct s_CmdTabEntry e[1];
+};
+
+struct videoguard_data {
+	const char 		*card_desc;
+	int32_t			card_baseyear;
+	int32_t			card_tierstart;
+	int32_t			card_system_version;
+	time_t			card_valid_to;
+	struct s_CmdTab *cmd_table;
+	uint16_t		cardkeys[3][32];
+	unsigned char	stateD3A[16];
+	AES_KEY			ekey;
+	AES_KEY			astrokey;
+};
 
 typedef struct nds_atr {
     uchar atr[MAX_ATR_LEN];

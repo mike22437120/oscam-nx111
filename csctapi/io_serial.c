@@ -31,8 +31,12 @@
 
 #include <sys/poll.h>
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
 #include <linux/serial.h>
+#endif
+
+#if defined(__ANDROID__)
+#include "../extapi/linux/serial.h"
 #endif
 
 #include "../oscam-time.h"
@@ -52,9 +56,10 @@ static int32_t IO_Serial_Bitrate(int32_t bitrate);
 
 static bool IO_Serial_WaitToWrite (struct s_reader * reader, uint32_t delay_us, uint32_t timeout_us);
 
+static int32_t oscam_sem;
+
 void IO_Serial_Ioctl_Lock(struct s_reader * reader, int32_t flag)
 {
-  static int32_t oscam_sem=0;
   if ((reader->typ != R_DB2COM1) && (reader->typ != R_DB2COM2)) return;
   if (!flag)
     oscam_sem=0;
@@ -175,9 +180,6 @@ bool IO_Serial_SetBitrate (struct s_reader * reader, uint32_t bitrate, struct te
     ioctl(reader->handle, TIOCSSERIAL, &nuts);
   }
 #endif
-  if (reader->typ == R_SC8in1) {
-	  reader->sc8in1_config->current_baudrate = bitrate;
-  }
 	return OK;
 }
 

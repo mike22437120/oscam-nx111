@@ -2,6 +2,8 @@
 
 #ifdef MODULE_CCCAM
 
+#include "cscrypt/md5.h"
+#include "cscrypt/sha1.h"
 #include "module-cacheex.h"
 #include "module-cccam.h"
 #include "module-cccam-data.h"
@@ -20,11 +22,11 @@
 #include "oscam-work.h"
 
 //Mode names for CMD_05 command:
-const char *cmd05_mode_name[] = { "UNKNOWN", "PLAIN", "AES", "CC_CRYPT", "RC4",
+static const char *cmd05_mode_name[] = { "UNKNOWN", "PLAIN", "AES", "CC_CRYPT", "RC4",
 		"LEN=0" };
 
 //Mode names for CMD_0C command:
-const char *cmd0c_mode_name[] = { "NONE", "RC6", "RC4", "CC_CRYPT", "AES", "IDEA" };
+static const char *cmd0c_mode_name[] = { "NONE", "RC6", "RC4", "CC_CRYPT", "AES", "IDEA" };
 
 const char *cc_msg_name[]={"MSG_CLI_DATA","MSG_CW_ECM","MSG_EMM_ACK","MSG_VALUE_03",
 			    "MSG_CARD_REMOVED","MSG_CMD_05","MSG_KEEPALIVE","MSG_NEW_CARD",
@@ -660,9 +662,9 @@ int32_t cc_cmd_send(struct s_client *cl, uint8_t *buf, int32_t len, cc_msg_type_
 
 #define CC_DEFAULT_VERSION 1
 #define CC_VERSIONS 8
-char *version[CC_VERSIONS]  = { "2.0.11", "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.2.0", "2.2.1", "2.3.0"};
-char *build[CC_VERSIONS]    = { "2892",   "2971",  "3094",  "3165",  "3191",  "3290",  "3316",  "3367"};
-char extcompat[CC_VERSIONS] = { 0,        0,       0,       0,       0,       1,       1,       1}; //Supporting new card format starting with 2.2.0
+static char *version[CC_VERSIONS]  = { "2.0.11", "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.2.0", "2.2.1", "2.3.0"};
+static char *build[CC_VERSIONS]    = { "2892",   "2971",  "3094",  "3165",  "3191",  "3290",  "3316",  "3367"};
+static char extcompat[CC_VERSIONS] = { 0,        0,       0,       0,       0,       1,       1,       1}; //Supporting new card format starting with 2.2.0
 
 /**
  * reader+server
@@ -1256,7 +1258,6 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 
 	//No Card? Waiting for shares
 	if (!ll_has_elements(cc->cards)) {
-		rdr->fd_error++;
 		cs_debug_mask(D_READER, "%s NO CARDS!", getprefix());
 		return 0;
 	}
@@ -1395,7 +1396,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf) {
 			}
 			eei->tps = cur_er->tps;
 
-			rdr->cc_currenthops = card->hop;
+			rdr->currenthops = card->hop;
 			rdr->card_status = CARD_INSERTED;
 
 			cs_debug_mask(
@@ -3589,7 +3590,6 @@ int32_t cc_cli_connect(struct s_client *cl) {
 	rdr->caid = rdr->ftab.filts[0].caid;
 	rdr->nprov = rdr->ftab.filts[0].nprids;
 	for (n = 0; n < rdr->nprov; n++) {
-		rdr->availkeys[n][0] = 1;
 		rdr->prid[n][0] = rdr->ftab.filts[0].prids[n] >> 24;
 		rdr->prid[n][1] = rdr->ftab.filts[0].prids[n] >> 16;
 		rdr->prid[n][2] = rdr->ftab.filts[0].prids[n] >> 8;
@@ -3807,11 +3807,8 @@ void module_cccam(struct s_module *ph) {
 	ph->large_ecm_support = 1;
 	ph->listenertype = LIS_CCCAM;
 	ph->num = R_CCCAM;
-	ph->logtxt = ", crypted";
 	ph->recv = cc_recv;
 	ph->cleanup = cc_cleanup;
-	ph->multi = 1;
-	ph->c_multi = 1;
 	ph->bufsize = 2048;
 	ph->c_init = cc_cli_init;
 	ph->c_idle = cc_idle;
@@ -3835,16 +3832,12 @@ void module_cccam(struct s_module *ph) {
 	cc_update_nodeid();
 
 #ifdef MODULE_CCCSHARE
-	static PTAB ptab; //since there is always only 1 cccam server running, this is threadsafe
-	memset(&ptab, 0, sizeof(PTAB));
 	int32_t i;
 	for (i=0;i<CS_MAXPORTS;i++) {
 		if (!cfg.cc_port[i]) break;
-		ptab.ports[i].s_port = cfg.cc_port[i];
-		ptab.nports++;
+		ph->ptab.ports[i].s_port = cfg.cc_port[i];
+		ph->ptab.nports++;
 	}
-
-	ph->ptab = &ptab;
 
 	if (cfg.cc_port[0])
 		cccam_init_share();

@@ -17,6 +17,8 @@
 #include "module-led.h"
 #include "module-stat.h"
 #include "module-webif.h"
+#include "module-webif-tpl.h"
+#include "module-cw-cycle-check.h"
 #include "oscam-chk.h"
 #include "oscam-client.h"
 #include "oscam-config.h"
@@ -32,15 +34,17 @@
 #include "oscam-work.h"
 #include "reader-common.h"
 
+extern char *config_mak;
+
 /*****************************************************************************
         Globals
 *****************************************************************************/
 const char *syslog_ident = "oscam";
-char *oscam_pidfile = NULL;
-char default_pidfile[64];
+static char *oscam_pidfile;
+static char default_pidfile[64];
 
 int32_t exit_oscam=0;
-struct s_module modules[CS_MAX_MOD];
+static struct s_module modules[CS_MAX_MOD];
 struct s_cardsystem cardsystems[CS_MAX_MOD];
 struct s_cardreader cardreaders[CS_MAX_MOD];
 
@@ -52,11 +56,11 @@ uint16_t  len4caid[256];    // table for guessing caid (by len)
 char  cs_confdir[128]=CS_CONFDIR;
 uint16_t cs_dblevel=0;   // Debug Level
 int32_t thread_pipe[2] = {0, 0};
-int8_t cs_restart_mode=1; //Restartmode: 0=off, no restart fork, 1=(default)restart fork, restart by webif, 2=like=1, but also restart on segfaults
+static int8_t cs_restart_mode=1; //Restartmode: 0=off, no restart fork, 1=(default)restart fork, restart by webif, 2=like=1, but also restart on segfaults
 uint8_t cs_http_use_utf8 = 1;
-int8_t cs_capture_SEGV=0;
-int8_t cs_dump_stack=0;
-uint16_t cs_waittime = 60;
+static int8_t cs_capture_SEGV;
+static int8_t cs_dump_stack;
+static uint16_t cs_waittime = 60;
 char  cs_tmpdir[200]={0x00};
 CS_MUTEX_LOCK system_lock;
 CS_MUTEX_LOCK config_lock;
@@ -66,6 +70,7 @@ CS_MUTEX_LOCK readerlist_lock;
 CS_MUTEX_LOCK fakeuser_lock;
 CS_MUTEX_LOCK ecmcache_lock;
 CS_MUTEX_LOCK readdir_lock;
+CS_MUTEX_LOCK cwcycle_lock;
 CS_MUTEX_LOCK hitcache_lock;
 pthread_key_t getclient;
 static int32_t bg;
@@ -82,18 +87,12 @@ struct  s_config  cfg;
 
 int log_remove_sensitive = 1;
 
-char    *prog_name = NULL;
+static char *prog_name;
 char    *processUsername = NULL;
 
 /*****************************************************************************
         Statics
 *****************************************************************************/
-#define _check(CONFIG_VAR, text) \
-	do { \
-		if (config_##CONFIG_VAR()) \
-			printf(" %s", text); \
-	} while(0)
-
 /* Prints usage information and information about the built-in modules. */
 static void show_usage(void)
 {
@@ -109,67 +108,6 @@ static void show_usage(void)
 	printf("OSCam is based on Streamboard mp-cardserver v0.9d written by dukat\n");
 	printf("Visit http://www.streamboard.tv/oscam/ for more details.\n\n");
 
-	printf(" Features   :");
-	_check(WEBIF, "webif");
-	_check(TOUCH, "touch");
-	_check(MODULE_MONITOR, "monitor");
-	_check(WITH_SSL, "ssl");
-	if (!config_WITH_STAPI())
-		_check(HAVE_DVBAPI, "dvbapi");
-	else
-		_check(WITH_STAPI, "dvbapi_stapi");
-	_check(IRDETO_GUESSING, "irdeto-guessing");
-	_check(CS_ANTICASC, "anticascading");
-	_check(WITH_DEBUG, "debug");
-	_check(WITH_LB, "loadbalancing");
-	_check(LCDSUPPORT, "lcd");
-	_check(LEDSUPPORT, "led");
-	printf("\n");
-
-	printf(" Protocols  :");
-	_check(MODULE_CAMD33, "camd33");
-	_check(MODULE_CAMD35, "camd35_udp");
-	_check(MODULE_CAMD35_TCP, "camd35_tcp");
-	_check(MODULE_NEWCAMD, "newcamd");
-	_check(MODULE_CCCAM, "cccam");
-	_check(MODULE_CCCSHARE, "cccam_share");
-	_check(MODULE_PANDORA, "pandora");
-	_check(MODULE_GHTTP, "ghttp");
-	_check(CS_CACHEEX, "cache-exchange");
-	_check(MODULE_GBOX, "gbox");
-	_check(MODULE_RADEGAST, "radegast");
-	_check(MODULE_SERIAL, "serial");
-	_check(MODULE_CONSTCW, "constcw");
-	printf("\n");
-
-	printf(" Readers    :");
-	_check(READER_NAGRA, "nagra");
-	_check(READER_IRDETO, "irdeto");
-	_check(READER_CONAX, "conax");
-	_check(READER_CRYPTOWORKS, "cryptoworks");
-	_check(READER_SECA, "seca");
-	_check(READER_VIACCESS, "viaccess");
-	_check(READER_VIDEOGUARD, "videoguard");
-	_check(READER_DRE, "dre");
-	_check(READER_TONGFANG, "tongfang");
-	_check(READER_STREAMGUARD, "streamguard");
-	_check(READER_BULCRYPT, "bulcrypt");
-	_check(READER_GRIFFIN, "griffin");
-	printf("\n");
-
-	printf(" CardReaders:");
-	_check(CARDREADER_PHOENIX, "phoenix");
-	_check(CARDREADER_INTERNAL_AZBOX, "internal_azbox");
-	_check(CARDREADER_INTERNAL_COOLAPI, "internal_coolapi");
-	_check(CARDREADER_INTERNAL_SCI, "internal_sci");
-	_check(CARDREADER_SC8IN1, "sc8in1");
-	_check(CARDREADER_MP35, "mp35");
-	_check(CARDREADER_SMARGO, "smargo");
-	_check(CARDREADER_PCSC, "pcsc");
-	_check(CARDREADER_SMART, "smartreader");
-	_check(CARDREADER_DB2COM, "db2com");
-	_check(CARDREADER_STAPI, "stapi");
-	printf("\n");
 	printf(" ConfigDir  : %s\n", CS_CONFDIR);
 	printf("\n");
 	printf(" Usage: oscam [parameters]\n");
@@ -185,7 +123,7 @@ static void show_usage(void)
 	printf("\n Startup:\n");
 	printf(" -b, --daemon            | Start in the background as daemon.\n");
 	printf(" -B, --pidfile <pidfile> | Create pidfile when starting.\n");
-	if (config_WEBIF()) {
+	if (config_enabled(WEBIF)) {
 	printf(" -r, --restart <level>   | Set restart level:\n");
 	printf("                         .   0 - Restart disabled (exit on restart request).\n");
 	printf("                         .   1 - WebIf restart is active (default).\n");
@@ -214,7 +152,7 @@ static void show_usage(void)
 	printf("\n Settings:\n");
 	printf(" -p, --pending-ecm <num> | Set the maximum number of pending ECM packets.\n");
 	printf("                         . Default: 32 Max: 255\n");
-	if (config_WEBIF()) {
+	if (config_enabled(WEBIF)) {
 	printf(" -u, --utf8              | Enable WebIf support for UTF-8 charset.\n");
 	}
 	printf("\n Debug parameters:\n");
@@ -229,7 +167,6 @@ static void show_usage(void)
 	printf(" -h, --help              | Show command line help text.\n");
 	printf(" -V, --build-info        | Show OSCam binary configuration and version.\n");
 }
-#undef _check
 
 /* Keep the options sorted */
 static const char short_options[] = "aB:bc:d:g:hI:p:r:Sst:uVw:";
@@ -292,7 +229,7 @@ static void parse_cmdline_params(int argc, char **argv) {
 			max_pending = atoi(optarg) <= 0 ? 32 : MIN(atoi(optarg), 255);
 			break;
 		case 'r': // --restart
-			if (config_WEBIF()) {
+			if (config_enabled(WEBIF)) {
 				cs_restart_mode = atoi(optarg);
 			}
 			break;
@@ -314,7 +251,7 @@ static void parse_cmdline_params(int argc, char **argv) {
 			break;
 		}
 		case 'u': // --utf8
-			if (config_WEBIF()) {
+			if (config_enabled(WEBIF)) {
 				cs_http_use_utf8 = 1;
 				printf("WARNING: Web interface UTF-8 mode enabled. Carefully read documentation as bugs may arise.\n");
 			}
@@ -331,21 +268,19 @@ static void parse_cmdline_params(int argc, char **argv) {
 }
 
 #define write_conf(CONFIG_VAR, text) \
-	fprintf(fp, "%-30s %s\n", text ":", config_##CONFIG_VAR() ? "yes" : "no")
+	fprintf(fp, "%-30s %s\n", text ":", config_enabled(CONFIG_VAR) ? "yes" : "no")
 
 #define write_readerconf(CONFIG_VAR, text) \
-	fprintf(fp, "%-30s %s\n", text ":", config_##CONFIG_VAR() ? "yes" : "no - no EMM support!")
+	fprintf(fp, "%-30s %s\n", text ":", config_enabled(CONFIG_VAR) ? "yes" : "no - no EMM support!")
 
 #define write_cardreaderconf(CONFIG_VAR, text) \
-	fprintf(fp, "%s%-19s %s\n", "cardreader_", text ":", config_##CONFIG_VAR() ? "yes" : "no")
+	fprintf(fp, "%s%-19s %s\n", "cardreader_", text ":", config_enabled(CONFIG_VAR) ? "yes" : "no")
 
 static void write_versionfile(bool use_stdout) {
 	FILE *fp = stdout;
 	if (!use_stdout) {
 		char targetfile[256];
-		snprintf(targetfile, sizeof(targetfile) - 1, "%s%s", get_tmp_dir(), "/oscam.version");
-		targetfile[sizeof(targetfile) - 1] = 0;
-		fp = fopen(targetfile, "w");
+		fp = fopen(get_tmp_dir_filename(targetfile, sizeof(targetfile), "oscam.version"), "w");
 		if (!fp) {
 			cs_log("Cannot open %s (errno=%d %s)", targetfile, errno, strerror(errno));
 			return;
@@ -367,7 +302,7 @@ static void write_versionfile(bool use_stdout) {
 	write_conf(TOUCH, "Touch interface support");
 	write_conf(WITH_SSL, "SSL support");
 	write_conf(HAVE_DVBAPI, "DVB API support");
-	if (config_HAVE_DVBAPI()) {
+	if (config_enabled(HAVE_DVBAPI)) {
 		write_conf(WITH_AZBOX, "DVB API with AZBOX support");
 		write_conf(WITH_MCA, "DVB API with MCA support");
 		write_conf(WITH_COOLAPI, "DVB API with COOLAPI support");
@@ -378,6 +313,7 @@ static void write_versionfile(bool use_stdout) {
 	write_conf(WITH_DEBUG, "Debug mode");
 	write_conf(MODULE_MONITOR, "Monitor");
 	write_conf(WITH_LB, "Loadbalancing support");
+	write_conf(CW_CYCLE_CHECK, "CW Cycle Check support");
 	write_conf(LCDSUPPORT, "LCD support");
 	write_conf(LEDSUPPORT, "LED support");
 	write_conf(IPV6SUPPORT, "IPv6 support");
@@ -399,7 +335,7 @@ static void write_versionfile(bool use_stdout) {
 
 	fprintf(fp, "\n");
 	write_conf(WITH_CARDREADER, "Reader support");
-	if (config_WITH_CARDREADER()) {
+	if (config_enabled(WITH_CARDREADER)) {
 		fprintf(fp, "\n");
 		write_readerconf(READER_NAGRA, "Nagra");
 		write_readerconf(READER_IRDETO, "Irdeto");
@@ -412,6 +348,7 @@ static void write_versionfile(bool use_stdout) {
 		write_readerconf(READER_TONGFANG, "TONGFANG");
 		write_readerconf(READER_BULCRYPT, "Bulcrypt");
 		write_readerconf(READER_GRIFFIN, "Griffin");
+		write_readerconf(READER_DGCRYPT, "DGCrypt");
 		fprintf(fp, "\n");
 		write_cardreaderconf(CARDREADER_PHOENIX, "phoenix");
 		write_cardreaderconf(CARDREADER_INTERNAL_AZBOX, "internal_azbox");
@@ -434,14 +371,19 @@ static void write_versionfile(bool use_stdout) {
 #undef write_readerconf
 #undef write_cardreaderconf
 
+static void remove_versionfile(void) {
+	char targetfile[256];
+	unlink(get_tmp_dir_filename(targetfile, sizeof(targetfile), "oscam.version"));
+}
+
 #define report_emm_support(CONFIG_VAR, text) \
 	do { \
-		if (!config_##CONFIG_VAR()) \
+		if (!config_enabled(CONFIG_VAR)) \
 			cs_log("Binary without %s module - no EMM processing for %s possible!", text, text); \
 	} while(0)
 
 static void do_report_emm_support(void) {
-	if (!config_WITH_CARDREADER()) {
+	if (!config_enabled(WITH_CARDREADER)) {
 		cs_log("Binary without Cardreader Support! No EMM processing possible!");
 	} else {
 		report_emm_support(READER_NAGRA, "Nagra");
@@ -455,6 +397,7 @@ static void do_report_emm_support(void) {
 		report_emm_support(READER_TONGFANG, "TONGFANG");
 		report_emm_support(READER_BULCRYPT, "Bulcrypt");
 		report_emm_support(READER_GRIFFIN, "Griffin");
+		report_emm_support(READER_DGCRYPT, "DGCrypt");
 	}
 }
 #undef report_emm_support
@@ -491,51 +434,6 @@ static int32_t do_daemon(int32_t nochdir, int32_t noclose)
 #else
 #define do_daemon daemon
 #endif
-
-static bool config_freed;
-
-static void cs_cleanup(void)
-{
-	if (config_freed)
-		return;
-
-	stat_finish();
-
-	cccam_done_share();
-
-	kill_all_clients();
-
-	//cleanup readers:
-	struct s_client *cl;
-	struct s_reader *rdr;
-	for (rdr=first_active_reader; rdr ; rdr=rdr->next) {
-		cl = rdr->client;
-		if(cl){
-			rdr_log(rdr, "Killing reader");
-			kill_thread(cl);
-			// Stop MCR reader display thread
-			if (cl->typ == 'r' && cl->reader && cl->reader->typ == R_SC8in1
-					&& cl->reader->sc8in1_config && cl->reader->sc8in1_config->display_running) {
-				cl->reader->sc8in1_config->display_running = 0;
-			}
-		}
-	}
-	first_active_reader = NULL;
-
-	init_free_userdb(cfg.account);
-	cfg.account = NULL;
-	init_free_sidtab();
-
-	if (oscam_pidfile)
-		unlink(oscam_pidfile);
-
-	config_free();
-	config_freed = true;
-
-	cs_log("cardserver down");
-
-	cs_close_log();
-}
 
 /*
  * flags: 1 = restart, 2 = don't modify if SIG_IGN, may be combined
@@ -653,71 +551,46 @@ static void init_signal_pre(void)
 }
 
 /* Sets the signal handlers.*/
-static void init_signal(int8_t isDaemon)
+static void init_signal(void)
 {
-		set_signal_handler(SIGINT, 3, cs_exit);
+	set_signal_handler(SIGINT, 3, cs_exit);
 #if defined(__APPLE__)
-		set_signal_handler(SIGEMT, 3, cs_exit);
+	set_signal_handler(SIGEMT, 3, cs_exit);
 #endif
-		set_signal_handler(SIGTERM, 3, cs_exit);
+	set_signal_handler(SIGTERM, 3, cs_exit);
 
-		set_signal_handler(SIGWINCH, 1, SIG_IGN);
-		set_signal_handler(SIGPIPE , 0, cs_sigpipe);
-		set_signal_handler(SIGALRM , 0, cs_master_alarm);
-		set_signal_handler(SIGHUP  , 1, isDaemon?cs_dummy:cs_reload_config);
-		set_signal_handler(SIGUSR1, 1, isDaemon?cs_dummy:cs_debug_level);
-		set_signal_handler(SIGUSR2, 1, isDaemon?cs_dummy:cs_card_info);
-		set_signal_handler(OSCAM_SIGNAL_WAKEUP, 0, isDaemon?cs_dummy:cs_dummy);
+	set_signal_handler(SIGWINCH, 1, SIG_IGN);
+	set_signal_handler(SIGPIPE , 0, cs_sigpipe);
+	set_signal_handler(SIGALRM , 0, cs_master_alarm);
+	set_signal_handler(SIGHUP  , 1, cs_reload_config);
+	set_signal_handler(SIGUSR1, 1, cs_debug_level);
+	set_signal_handler(SIGUSR2, 1, cs_card_info);
+	set_signal_handler(OSCAM_SIGNAL_WAKEUP, 0, cs_dummy);
 
-		if(!isDaemon){
-			if (cs_capture_SEGV) {
-				set_signal_handler(SIGSEGV, 1, cs_exit);
-				set_signal_handler(SIGBUS, 1, cs_exit);
-			}
-			else if (cs_dump_stack) {
-				set_signal_handler(SIGSEGV, 1, cs_dumpstack);
-				set_signal_handler(SIGBUS, 1, cs_dumpstack);
-			}
+	if (cs_capture_SEGV) {
+		set_signal_handler(SIGSEGV, 1, cs_exit);
+		set_signal_handler(SIGBUS, 1, cs_exit);
+	}
+	else if (cs_dump_stack) {
+		set_signal_handler(SIGSEGV, 1, cs_dumpstack);
+		set_signal_handler(SIGBUS, 1, cs_dumpstack);
+	}
 
-			cs_log("signal handling initialized");
-		}
+	cs_log("signal handling initialized");
 	return;
 }
 
 void cs_exit(int32_t sig)
 {
-	if (cs_dump_stack && (sig == SIGSEGV || sig == SIGBUS))
+	if (cs_dump_stack && (sig == SIGSEGV || sig == SIGBUS || sig == SIGQUIT))
 		cs_dumpstack(sig);
 
-	set_signal_handler(SIGCHLD, 1, SIG_IGN);
 	set_signal_handler(SIGHUP , 1, SIG_IGN);
 	set_signal_handler(SIGPIPE, 1, SIG_IGN);
-
-	if (sig==SIGALRM) {
-		cs_debug_mask(D_TRACE, "thread %8lX: SIGALRM, skipping", (unsigned long)pthread_self());
-		return;
-	}
-
-  if (sig && (sig!=SIGQUIT))
-    cs_log("thread %8lX exit with signal %d", (unsigned long)pthread_self(), sig);
 
   struct s_client *cl = cur_client();
   if (!cl)
   	return;
-
-	if (cl->typ == 'h' || cl->typ == 's') {
-		led_status_stopping();
-		led_stop();
-		lcd_thread_stop();
-
-#if !defined(__CYGWIN__)
-	char targetfile[256];
-		snprintf(targetfile, 255, "%s%s", get_tmp_dir(), "/oscam.version");
-		if (unlink(targetfile) < 0)
-			cs_log("cannot remove oscam version file %s (errno=%d %s)", targetfile, errno, strerror(errno));
-#endif
-		coolapi_close_all();
-  }
 
 	// this is very important - do not remove
 	if (cl->typ != 's') {
@@ -733,8 +606,6 @@ void cs_exit(int32_t sig)
 		return;
 	}
 
-	cs_cleanup();
-
 	if (!exit_oscam)
 	  exit_oscam = sig?sig:1;
 
@@ -743,7 +614,6 @@ void cs_exit(int32_t sig)
 		dvbapi_main_exit();
 #endif
 
-		exit(sig);
 	}
 }
 
@@ -824,6 +694,24 @@ void kill_thread(struct s_client *cl) {
 	cl->kill=1;                               //then set kill flag!
 }
 
+struct s_module *get_module(struct s_client *cl) {
+	return &modules[cl->module_idx];
+}
+
+void module_reader_set(struct s_reader *rdr) {
+	int i;
+	if (!is_cascading_reader(rdr))
+		return;
+	for (i = 0; i < CS_MAX_MOD; i++) {
+		struct s_module *module = &modules[i];
+		if (module->num && module->num == rdr->typ) {
+			rdr->ph = *module;
+			if (rdr->device[0])
+				rdr->ph.active = 1;
+		}
+	}
+}
+
 static void cs_waitforcardinit(void)
 {
 	if (cfg.waitforcards)
@@ -844,8 +732,8 @@ static void cs_waitforcardinit(void)
 			if (!card_init_done)
 				cs_sleepms(300); // wait a little bit
 			//alarm(cfg.cmaxidle + cfg.ctimeout / 1000 + 1);
-		} while (!card_init_done);
-		if (cfg.waitforcards_extra_delay>0)
+		} while (!card_init_done && !exit_oscam);
+		if (cfg.waitforcards_extra_delay>0 && !exit_oscam)
 			cs_sleepms(cfg.waitforcards_extra_delay);
 		cs_log("init for all local cards done");
 	}
@@ -914,13 +802,17 @@ static void * check_thread(void) {
 
 			tbc = er->tps;
 #ifdef CS_CACHEEX
-			time_to_check = add_ms_to_timeb(&tbc, (er->stage < 2) ? cfg.cacheex_wait_time:((er->stage < 4) ? auto_timeout(er, cfg.ftimeout) : auto_timeout(er, cfg.ctimeout)));
+			time_to_check = add_ms_to_timeb(&tbc, (er->stage < 2 && er->cacheex_wait_time) ? er->cacheex_wait_time:((er->stage < 4) ? auto_timeout(er, cfg.ftimeout) : auto_timeout(er, cfg.ctimeout)));
 #else
 			time_to_check = add_ms_to_timeb(&tbc, ((er->stage < 4) ? auto_timeout(er, cfg.ftimeout) : auto_timeout(er, cfg.ctimeout)));
 #endif
-
 			if (comp_timeb(&t_now, &tbc) >= 0) {
 				if (er->stage < 4) {
+#ifdef CS_CACHEEX
+					if (er->stage < 2 && er->cacheex_wait_time)
+						debug_ecm(D_TRACE, "request for %s %s", username(er->client), buf);
+					else
+#endif
 					debug_ecm(D_TRACE, "fallback for %s %s", username(er->client), buf);
 
 					if (er->rc >= E_UNHANDLED) //do not request rc=99
@@ -1009,7 +901,7 @@ static void * check_thread(void) {
 
 		if (!msec_wait)
 			msec_wait = 3000;
-
+		cleanupcwcycle();
 		cleanup_hitcache();
 	}
 	add_garbage(cl);
@@ -1049,7 +941,7 @@ static uint32_t chk_resize_cllist(struct pollfd **pfd, struct s_client ***cl_lis
 	return cur_size;
 }
 
-static void * client_check(void) {
+static void process_clients(void) {
 	int32_t i, k, j, rc, pfdcount = 0;
 	struct s_client *cl;
 	struct s_reader *rdr;
@@ -1058,8 +950,6 @@ static void * client_check(void) {
 	uint32_t cl_size = 0;
 
 	char buf[10];
-
-	set_thread_name(__func__);
 
 	if (pipe(thread_pipe) == -1) {
 		printf("cannot create pipe, errno=%d\n", errno);
@@ -1104,15 +994,15 @@ static void * client_check(void) {
 		}
 
 		//server (new tcp connections or udp messages)
-		for (k=0; k < CS_MAX_MOD; k++) {
-			if ( (modules[k].type & MOD_CONN_NET) && modules[k].ptab ) {
-				for (j=0; j<modules[k].ptab->nports; j++) {
-					if (modules[k].ptab->ports[j].fd) {
+		for (k = 0; k < CS_MAX_MOD; k++) {
+			struct s_module *module = &modules[k];
+			if ((module->type & MOD_CONN_NET)) {
+				for (j = 0; j < module->ptab.nports; j++) {
+					if (module->ptab.ports[j].fd) {
 						cl_size = chk_resize_cllist(&pfd, &cl_list, cl_size, pfdcount);
 						cl_list[pfdcount] = NULL;
-						pfd[pfdcount].fd = modules[k].ptab->ports[j].fd;
+						pfd[pfdcount].fd = module->ptab.ports[j].fd;
 						pfd[pfdcount++].events = POLLIN | POLLPRI | POLLHUP;
-
 					}
 				}
 			}
@@ -1181,29 +1071,35 @@ static void * client_check(void) {
 			//server sockets
 			// new connection on a tcp listen socket or new message on udp listen socket
 			if (!cl && (pfd[i].revents & (POLLIN | POLLPRI))) {
-				for (k=0; k<CS_MAX_MOD; k++) {
-					if( (modules[k].type & MOD_CONN_NET) && modules[k].ptab ) {
-						for ( j=0; j<modules[k].ptab->nports; j++ ) {
-							if ( modules[k].ptab->ports[j].fd && pfd[i].fd == modules[k].ptab->ports[j].fd ) {
-								accept_connection(k,j);
+				for (k = 0; k < CS_MAX_MOD; k++) {
+					struct s_module *module = &modules[k];
+					if ((module->type & MOD_CONN_NET)) {
+						for (j = 0; j < module->ptab.nports; j++) {
+							if (module->ptab.ports[j].fd && module->ptab.ports[j].fd == pfd[i].fd) {
+								accept_connection(module, k, j);
 							}
 						}
 					}
-				} // if (modules[i].type & MOD_CONN_NET)
+				}
 			}
 		}
 		first_client->last=time((time_t *)0);
 	}
 	free(pfd);
 	free(cl_list);
-	return NULL;
+	return;
 }
+
+static pthread_cond_t reader_check_sleep_cond;
 
 static void * reader_check(void) {
 	struct s_client *cl;
 	struct s_reader *rdr;
+	pthread_mutex_t reader_check_sleep_cond_mutex;
+	pthread_mutex_init(&reader_check_sleep_cond_mutex, NULL);
+	pthread_cond_init(&reader_check_sleep_cond, NULL);
 	set_thread_name(__func__);
-	while (1) {
+	while (!exit_oscam) {
 		for (cl=first_client->next; cl ; cl=cl->next) {
 			if (!cl->thread_active)
 				client_check_status(cl);
@@ -1230,13 +1126,21 @@ static void * reader_check(void) {
 			}
 		}
 		cs_readunlock(&readerlist_lock);
-		cs_sleepms(1000);
+		struct timespec ts;
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		ts.tv_sec = tv.tv_sec;
+		ts.tv_nsec = tv.tv_usec * 1000;
+		ts.tv_sec += 1;
+		pthread_mutex_lock(&reader_check_sleep_cond_mutex);
+		pthread_cond_timedwait(&reader_check_sleep_cond, &reader_check_sleep_cond_mutex, &ts); // sleep on reader_check_sleep_cond
+		pthread_mutex_unlock(&reader_check_sleep_cond_mutex);
 	}
 	return NULL;
 }
 
 #ifdef WEBIF
-pid_t pid;
+static pid_t pid;
 
 
 static void fwd_sig(int32_t sig)
@@ -1255,10 +1159,20 @@ static void restart_daemon(void)
     if (pid < 0)
       exit(1);
 
-    //set signal handler for the restart daemon:
-    set_signal_handler(SIGTERM, 0, fwd_sig);
+    //set signal handler for the restart daemon:    
+    set_signal_handler(SIGINT, 3, fwd_sig);
+#if defined(__APPLE__)
+		set_signal_handler(SIGEMT, 3, fwd_sig);
+#endif
+    set_signal_handler(SIGTERM, 3, fwd_sig);
     set_signal_handler(SIGQUIT, 0, fwd_sig);
     set_signal_handler(SIGHUP , 0, fwd_sig);
+    set_signal_handler(SIGUSR1, 0, fwd_sig);
+    set_signal_handler(SIGUSR2, 0, fwd_sig);
+    set_signal_handler(SIGALRM , 0, fwd_sig);
+		set_signal_handler(SIGWINCH, 1, SIG_IGN);
+		set_signal_handler(SIGPIPE , 0, SIG_IGN);
+		set_signal_handler(OSCAM_SIGNAL_WAKEUP, 0, SIG_IGN);
                                                                                                                                                 
     //restart control process:
     int32_t res=0;
@@ -1404,6 +1318,9 @@ int32_t main (int32_t argc, char *argv[])
 #ifdef READER_GRIFFIN
 	reader_griffin,
 #endif
+#ifdef READER_DGCRYPT
+	reader_dgcrypt,
+#endif
 	0
   };
 
@@ -1444,7 +1361,6 @@ int32_t main (int32_t argc, char *argv[])
   };
 
   parse_cmdline_params(argc, argv);
-  init_signal(true);
 
   if (bg && do_daemon(1,0))
   {
@@ -1473,6 +1389,7 @@ int32_t main (int32_t argc, char *argv[])
   cs_lock_create(&fakeuser_lock, 5, "fakeuser_lock");
   cs_lock_create(&ecmcache_lock, 5, "ecmcache_lock");
   cs_lock_create(&readdir_lock, 5, "readdir_lock");
+  cs_lock_create(&cwcycle_lock, 5, "cwcycle_lock");
   cs_lock_create(&hitcache_lock, 5, "hitcache_lock");
   coolapi_open_all();
   init_config();
@@ -1480,8 +1397,7 @@ int32_t main (int32_t argc, char *argv[])
   if (!oscam_pidfile && cfg.pidfile)
     oscam_pidfile = cfg.pidfile;
   if (!oscam_pidfile) {
-    snprintf(default_pidfile, sizeof(default_pidfile) - 1, "%s%s", get_tmp_dir(), "/oscam.pid");
-    oscam_pidfile = default_pidfile;
+    oscam_pidfile = get_tmp_dir_filename(default_pidfile, sizeof(default_pidfile), "oscam.pid");
   }
   if (oscam_pidfile)
     pidfile_create(oscam_pidfile);
@@ -1493,8 +1409,8 @@ int32_t main (int32_t argc, char *argv[])
   // because modules depend on config values.
   for (i=0; mod_def[i]; i++)
   {
-	memset(&modules[i], 0, sizeof(struct s_module));
-	mod_def[i](&modules[i]);
+	struct s_module *module = &modules[i];
+	mod_def[i](module);
   }
   for (i=0; cardsystem_def[i]; i++)
   {
@@ -1510,7 +1426,7 @@ int32_t main (int32_t argc, char *argv[])
   init_sidtab();
   init_readerdb();
   cfg.account = init_userdb();
-  init_signal(false);
+  init_signal();
   init_srvid();
   init_tierid();
   init_provid();
@@ -1534,12 +1450,14 @@ int32_t main (int32_t argc, char *argv[])
   global_whitelist_read();
   cacheex_load_config_file();
 
-  for (i=0; i<CS_MAX_MOD; i++)
-    if( (modules[i].type & MOD_CONN_NET) && modules[i].ptab )
-      for(j=0; j<modules[i].ptab->nports; j++)
-      {
-        start_listener(&modules[i], j);
-      }
+	for (i = 0; i < CS_MAX_MOD; i++) {
+		struct s_module *module = &modules[i];
+		if ((module->type & MOD_CONN_NET)) {
+			for (j = 0; j < module->ptab.nports; j++) {
+				start_listener(module, &module->ptab.ports[j]);
+			}
+		}
+	}
 
 	//set time for server to now to avoid 0 in monitor/webif
 	first_client->last=time((time_t *)0);
@@ -1561,21 +1479,56 @@ int32_t main (int32_t argc, char *argv[])
 
 	ac_init();
 
-	for (i=0; i<CS_MAX_MOD; i++)
-		if (modules[i].type & MOD_CONN_SERIAL)   // for now: oscam_ser only
-			if (modules[i].s_handler)
-				modules[i].s_handler(NULL, NULL, i);
+	for (i = 0; i < CS_MAX_MOD; i++) {
+		struct s_module *module = &modules[i];
+		if ((module->type & MOD_CONN_SERIAL) && module->s_handler)
+			module->s_handler(NULL, NULL, i);
+	}
 
 	// main loop function
-	client_check();
+	process_clients();
 
+	pthread_cond_signal(&reader_check_sleep_cond); // Stop reader_check thread
+
+	// Cleanup
+	webif_close();
 	azbox_close();
-
+	coolapi_close_all();
 	mca_close();
 
-	cs_cleanup();
+	led_status_stopping();
+	led_stop();
+	lcd_thread_stop();
+
+	remove_versionfile();
+
+	stat_finish();
+	cccam_done_share();
+
+	kill_all_clients();
+	kill_all_readers();
+
+	if (oscam_pidfile)
+		unlink(oscam_pidfile);
+
+	webif_tpls_free();
+	init_free_userdb(cfg.account);
+	cfg.account = NULL;
+	init_free_sidtab();
+	free_readerdb();
+	free_irdeto_guess_tab();
+	config_free();
+
+	cs_log("cardserver down");
+	log_free();
 
 	stop_garbage_collector();
+
+	free(first_client->account);
+	free(first_client);
+
+	// This prevents the compiler from removing config_mak from the final binary
+	syslog_ident = config_mak;
 
 	return exit_oscam;
 }

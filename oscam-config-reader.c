@@ -12,7 +12,6 @@
 
 #define cs_srvr "oscam.server"
 
-extern struct s_module modules[CS_MAX_MOD];
 extern struct s_cardreader cardreaders[CS_MAX_MOD];
 extern char *RDR_CD_TXT[];
 
@@ -705,6 +704,11 @@ static const struct config_list reader_opts[] = {
 	DEF_OPT_SSTR("pincode"				, OFS(pincode),					"none", SIZEOF(pincode) ),
 #ifdef MODULE_GBOX
 	DEF_OPT_FUNC("mg-encrypted"			, 0,							mgencrypted_fn ),
+	DEF_OPT_INT8("gbox_max_distance"	, OFS(gbox_maxdist), 			DEFAULT_GBOX_MAX_DIST ),
+	DEF_OPT_INT8("gbox_max_ecm_send"	, OFS(gbox_maxecmsend), 		DEFAULT_GBOX_MAX_ECM_SEND ),
+	DEF_OPT_INT8("gbox_reshare"			, OFS(gbox_reshare), 			0 ),
+	DEF_OPT_FUNC("gbox_group"			, OFS(gbox_grp), 				group_fn ),
+	DEF_OPT_SSTR("gbox_my_password"		, OFS(gbox_my_password),		"",	SIZEOF(gbox_my_password) ),
 #endif
 	DEF_OPT_STR("readnano"				, OFS(emmfile),					NULL ),
 	DEF_OPT_FUNC("services"				, OFS(sidtabs),					reader_services_fn ),
@@ -720,7 +724,7 @@ static const struct config_list reader_opts[] = {
 #ifdef CS_CACHEEX
 	DEF_OPT_INT8("cacheex"				, OFS(cacheex.mode),			0 ),
 	DEF_OPT_INT8("cacheex_maxhop"		, OFS(cacheex.maxhop),			0 ),
-	DEF_OPT_FUNC("cacheex_ecm_filter"		, OFS(cacheex.filter_caidtab),	hitvaluetab_fn ),
+	DEF_OPT_FUNC("cacheex_ecm_filter"		, OFS(cacheex.filter_caidtab),	cacheex_hitvaluetab_fn ),
 	DEF_OPT_UINT8("cacheex_allow_request"	, OFS(cacheex.allow_request),	1 ),
 	DEF_OPT_UINT8("cacheex_drop_csp"		, OFS(cacheex.drop_csp),		0 ),
 #endif
@@ -737,6 +741,7 @@ static const struct config_list reader_opts[] = {
 	DEF_OPT_FUNC_X("ins7e11"			, OFS(ins7E11),					ins7E_fn, SIZEOF(ins7E11) ),
 	DEF_OPT_INT8("fix9993"				, OFS(fix_9993),				0 ),
 	DEF_OPT_INT8("force_irdeto"			, OFS(force_irdeto),			0 ),
+	DEF_OPT_UINT32("ecmnotfoundlimit"	, OFS(ecmnotfoundlimit),		0 ),
 	DEF_OPT_FUNC("ecmwhitelist"			, 0,							ecmwhitelist_fn ),
 	DEF_OPT_FUNC("ecmheaderwhitelist"	, 0,							ecmheaderwhitelist_fn ),
 	DEF_OPT_FUNC("detect"				, 0,							detect_fn ),
@@ -782,12 +787,15 @@ static const struct config_list reader_opts[] = {
 	DEF_OPT_INT32("cccreconnect"		, OFS(cc_reconnect),			DEFAULT_CC_RECONNECT ),
 	DEF_OPT_INT8("ccchop"				, OFS(cc_hop),					0 ),
 #endif
+	DEF_OPT_UINT8("emmreassembly"		, OFS(emm_reassembly), 			1 ),
 	DEF_OPT_INT8("deprecated"			, OFS(deprecated),				0 ),
 	DEF_OPT_INT8("audisabled"			, OFS(audisabled),				0 ),
 	DEF_OPT_FUNC("auprovid"				, 0,							auprovid_fn ),
 	DEF_OPT_INT8("ndsversion"			, OFS(ndsversion),				0 ),
 	DEF_OPT_FUNC("ratelimitecm"			, 0,							ratelimitecm_fn ),
 	DEF_OPT_FUNC("ratelimitseconds"		, 0,							ratelimitseconds_fn ),
+	DEF_OPT_INT8("ecmunique"			, OFS(ecmunique),				0 ),
+	DEF_OPT_INT8("srvidholdseconds"		, OFS(srvidholdseconds),		0 ),
 	DEF_OPT_FUNC("cooldown"				, 0,							cooldown_fn ),
 	DEF_OPT_FUNC("cooldowndelay"		, 0,							cooldowndelay_fn ),
 	DEF_OPT_FUNC("cooldowntime"			, 0,							cooldowntime_fn ),
@@ -811,12 +819,12 @@ static bool reader_check_setting(const struct config_list *UNUSED(clist), void *
 	static const char *hw_only_settings[] = {
 		"readnano", "resetcycle", "smargopatch", "sc8in1_dtrrts_patch", "boxid",
 		"fix9993", "rsakey", "ins7e", "ins7e11", "force_irdeto", "boxkey",
-		"atr", "detect", "nagra_read", "mhz", "cardmhz",
+		"atr", "detect", "nagra_read", "mhz", "cardmhz", "emmreassembly",
 #ifdef WITH_AZBOX
 		"mode",
 #endif
 		"deprecated", "ndsversion", "ratelimitecm", "ratelimitseconds",
-		"cooldown",
+		"cooldown", "ecmunique", "srvidholdseconds",
 		0
 	};
 	// These are written only when the reader is network reader
@@ -852,7 +860,7 @@ static bool reader_check_setting(const struct config_list *UNUSED(clist), void *
 	// These are written only when the reader is CCCAM
 	static const char *cccam_settings[] = {
 		"cccversion", "cccmaxhops", "cccmindown", "cccwantemu", "ccckeepalive",
-		"cccreshare", "cccreconnect",
+		"cccreconnect",
 		0
 	};
 	// Special settings for CCCAM
@@ -962,15 +970,7 @@ int32_t init_readerdb(void)
 	struct s_reader *rdr;
 	LL_ITER itr = ll_iter_create(configured_readers);
 	while((rdr = ll_iter_next(&itr))) { //build active readers list
-		int32_t i;
-		if (is_cascading_reader(rdr)) {
-			for (i=0; i<CS_MAX_MOD; i++) {
-				if (modules[i].num && rdr->typ==modules[i].num) {
-					rdr->ph=modules[i];
-					if(rdr->device[0]) rdr->ph.active=1;
-				}
-			}
-		}
+		module_reader_set(rdr);
 		cs_debug_mask(D_READER,"[debug reader] device=%s port=%d enable=%d group=%llu",rdr->device,rdr->r_port,rdr->enable,rdr->grp);
 	}
 	return(0);
@@ -1012,7 +1012,26 @@ void free_reader(struct s_reader *rdr)
 	}
 
 #endif
+	cs_clear_entitlement(rdr);
+	if (rdr->ll_entitlements) {
+		ll_destroy(rdr->ll_entitlements);
+		rdr->ll_entitlements = NULL;
+	}
+	NULLFREE(rdr->csystem_data);
 	add_garbage(rdr);
+}
+
+int32_t free_readerdb(void) {
+	int count = 0;
+	struct s_reader *rdr;
+	LL_ITER itr = ll_iter_create(configured_readers);
+	while((rdr = ll_iter_next(&itr))) {
+		free_reader(rdr);
+		count++;
+	}
+	cs_log("readerdb %d readers freed", count);
+	ll_destroy(configured_readers);
+	return count;
 }
 
 int32_t write_server(void)

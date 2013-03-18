@@ -4,10 +4,6 @@ SHELL = /bin/sh
 .SUFFIXES: .o .c
 .PHONY: all help README.build README.config simple default debug config menuconfig allyesconfig allnoconfig defconfig clean distclean
 
-# Include config.mak which contains variables for all enabled modules
-# These variables will be used to select only needed files for compilation
--include config.mak
-
 VER     := $(shell ./config.sh --oscam-version)
 SVN_REV := $(shell ./config.sh --oscam-revision)
 
@@ -50,7 +46,7 @@ override STD_DEFS += -D'CS_CONFDIR="$(CONF_DIR)"'
 CC_WARN = -W -Wall -Wshadow -Wredundant-decls -Wstrict-prototypes -Wold-style-definition
 
 # Compiler optimizations
-CC_OPTS = -O2 -ggdb -ffunction-sections -fdata-sections
+CC_OPTS = -O2 -ggdb -pipe -ffunction-sections -fdata-sections
 
 CC = $(CROSS_DIR)$(CROSS)gcc
 STRIP = $(CROSS_DIR)$(CROSS)strip
@@ -61,7 +57,11 @@ LDFLAGS = -Wl,--gc-sections
 # Check for the linker version and if it matches disable --gc-sections
 # For more information about the bug see:
 #   http://cygwin.com/ml/binutils/2005-01/msg00103.html
-LINKER_VER := $(shell $(CC) $(LINKER_VER_OPT) 2>&1 | head -1 | cut -d' ' -f5)
+# The LD output is saved into variable and then processed, because if
+# the output is piped directly into another command LD creates 4 files
+# in your /tmp directory and doesn't delete them.
+LINKER_VER := $(shell set -e; VER="`$(CC) $(LINKER_VER_OPT) 2>&1`"; echo $$VER | head -1 | cut -d' ' -f5)
+
 # dm500 toolchain
 ifeq "$(LINKER_VER)" "20040727"
 LDFLAGS :=
@@ -79,118 +79,52 @@ endif
 TARGET := $(shell $(CC) -dumpmachine 2>/dev/null)
 
 # Process USE_ variables
-DEFAULT_STAPI_FLAGS = -DWITH_STAPI
 DEFAULT_STAPI_LIB = -L./stapi -loscam_stapi
-ifdef USE_STAPI
-STAPI_FLAGS = $(DEFAULT_STAPI_FLAGS)
-STAPI_CFLAGS = $(DEFAULT_STAPI_FLAGS)
-STAPI_LDFLAGS = $(DEFAULT_STAPI_FLAGS)
-STAPI_LIB = $(DEFAULT_STAPI_LIB)
-override PLUS_TARGET := $(PLUS_TARGET)-stapi
-CONFIG_WITH_STAPI=y
-else
-override CONFIG_CARDREADER_STAPI:=n
-endif
-
-DEFAULT_COOLAPI_FLAGS = -DWITH_COOLAPI
 DEFAULT_COOLAPI_LIB = -lnxp -lrt
-ifdef USE_COOLAPI
-COOLAPI_FLAGS = $(DEFAULT_COOLAPI_FLAGS)
-COOLAPI_CFLAGS = $(DEFAULT_COOLAPI_FLAGS)
-COOLAPI_LDFLAGS = $(DEFAULT_COOLAPI_FLAGS)
-COOLAPI_LIB = $(DEFAULT_COOLAPI_LIB)
-override PLUS_TARGET := $(PLUS_TARGET)-coolapi
-CONFIG_WITH_COOLAPI=y
-# If COOLAPI is enabled the internal card reader is the COOLAPI reader
-ifeq "$(CONFIG_CARDREADER_INTERNAL)" "y"
-override CONFIG_CARDREADER_INTERNAL_COOLAPI:=y
-override CONFIG_CARDREADER_INTERNAL:=n
-endif
-endif
-
-DEFAULT_AZBOX_FLAGS = -DWITH_AZBOX
 DEFAULT_AZBOX_LIB = -Lextapi/openxcas -lOpenXCASAPI
-ifdef USE_AZBOX
-AZBOX_FLAGS = $(DEFAULT_AZBOX_FLAGS)
-AZBOX_CFLAGS = $(DEFAULT_AZBOX_FLAGS)
-AZBOX_LDFLAGS = $(DEFAULT_AZBOX_FLAGS)
-AZBOX_LIB = $(DEFAULT_AZBOX_LIB)
-override PLUS_TARGET := $(PLUS_TARGET)-azbox
-CONFIG_WITH_AZBOX=y
-# If AZBOX is enabled the internal card reader is the AZBOXreader
-ifeq "$(CONFIG_CARDREADER_INTERNAL)" "y"
-override CONFIG_CARDREADER_INTERNAL_AZBOX:=y
-override CONFIG_CARDREADER_INTERNAL:=n
-endif
-endif
-
-# The default internal reader is SCI reader
-ifeq "$(CONFIG_CARDREADER_INTERNAL)" "y"
-override CONFIG_CARDREADER_INTERNAL_SCI:=y
-endif
-
-DEFAULT_MCA_FLAGS = -DWITH_MCA
-ifdef USE_MCA
-MCA_FLAGS = $(DEFAULT_MCA_FLAGS)
-MCA_CFLAGS = $(DEFAULT_MCA_FLAGS)
-MCA_LDFLAGS = $(DEFAULT_MCA_FLAGS)
-override PLUS_TARGET := $(PLUS_TARGET)-mca
-CONFIG_WITH_MCA=y
-endif
-
-DEFAULT_LIBCRYPTO_FLAGS = -DWITH_LIBCRYPTO
 DEFAULT_LIBCRYPTO_LIB = -lcrypto
-ifdef USE_LIBCRYPTO
-LIBCRYPTO_FLAGS = $(DEFAULT_LIBCRYPTO_FLAGS)
-LIBCRYPTO_CFLAGS = $(DEFAULT_LIBCRYPTO_FLAGS)
-LIBCRYPTO_LDFLAGS = $(DEFAULT_LIBCRYPTO_FLAGS)
-LIBCRYPTO_LIB = $(DEFAULT_LIBCRYPTO_LIB)
-override CONFIG_LIB_BIGNUM:=n
-override CONFIG_LIB_SHA1:=n
-else
-CONFIG_WITHOUT_LIBCRYPTO=y
-endif
-
-DEFAULT_SSL_FLAGS = -DWITH_SSL
 DEFAULT_SSL_LIB = -lssl
-ifdef USE_SSL
-SSL_FLAGS = $(DEFAULT_SSL_FLAGS)
-SSL_CFLAGS = $(DEFAULT_SSL_FLAGS)
-SSL_LDFLAGS = $(DEFAULT_SSL_FLAGS)
-SSL_LIB = $(DEFAULT_SSL_LIB)
-override PLUS_TARGET := $(PLUS_TARGET)-ssl
-endif
-
-DEFAULT_LIBUSB_FLAGS = -DWITH_LIBUSB
 ifeq ($(uname_S),Linux)
 DEFAULT_LIBUSB_LIB = -lusb-1.0 -lrt
 else
 DEFAULT_LIBUSB_LIB = -lusb-1.0
 endif
-ifdef USE_LIBUSB
-LIBUSB_FLAGS = $(DEFAULT_LIBUSB_FLAGS)
-LIBUSB_CFLAGS = $(DEFAULT_LIBUSB_FLAGS)
-LIBUSB_LDFLAGS = $(DEFAULT_LIBUSB_FLAGS)
-LIBUSB_LIB = $(DEFAULT_LIBUSB_LIB)
-override PLUS_TARGET := $(PLUS_TARGET)-libusb
-override CONFIG_CARDREADER_SMART:=y
-endif
-
 ifeq ($(uname_S),Darwin)
-DEFAULT_PCSC_FLAGS = -isysroot $(OSX_SDK) -DWITH_PCSC -I/usr/local/include
+DEFAULT_PCSC_FLAGS = -isysroot $(OSX_SDK) -I/usr/local/include
 DEFAULT_PCSC_LIB = -syslibroot,$(OSX_SDK) -framework IOKit -framework CoreFoundation -framework PCSC -L/usr/local/lib
 else
-DEFAULT_PCSC_FLAGS = -DWITH_PCSC -I/usr/include/PCSC
+DEFAULT_PCSC_FLAGS = -I/usr/include/PCSC
 DEFAULT_PCSC_LIB = -lpcsclite
 endif
-ifdef USE_PCSC
-PCSC_FLAGS = $(DEFAULT_PCSC_FLAGS)
-PCSC_CFLAGS = $(DEFAULT_PCSC_FLAGS)
-PCSC_LDFLAGS = $(DEFAULT_PCSC_FLAGS)
-PCSC_LIB = $(DEFAULT_PCSC_LIB)
-override PLUS_TARGET := $(PLUS_TARGET)-pcsc
-override CONFIG_CARDREADER_PCSC:=y
+
+# Function to initialize USE related variables
+#   Usage: $(eval $(call prepare_use_flags,FLAG_NAME,PLUS_TARGET_TEXT))
+define prepare_use_flags
+override DEFAULT_$(1)_FLAGS:=$$(strip -DWITH_$(1)=1 $$(DEFAULT_$(1)_FLAGS))
+ifdef USE_$(1)
+$(1)_FLAGS:=$$(DEFAULT_$(1)_FLAGS)
+$(1)_CFLAGS:=$$($(1)_FLAGS)
+$(1)_LDFLAGS:=$$($(1)_FLAGS)
+$(1)_LIB:=$$(DEFAULT_$(1)_LIB)
+ifneq "$(2)" ""
+override PLUS_TARGET:=$$(PLUS_TARGET)-$(2)
 endif
+override USE_CFLAGS+=$$($(1)_CFLAGS)
+override USE_LDFLAGS+=$$($(1)_LDFLAGS)
+override USE_LIBS+=$$($(1)_LIB)
+override USE_FLAGS+=$$(if $$(USE_$(1)),USE_$(1))
+endif
+endef
+
+# Initialize USE variables
+$(eval $(call prepare_use_flags,STAPI,stapi))
+$(eval $(call prepare_use_flags,COOLAPI,coolapi))
+$(eval $(call prepare_use_flags,AZBOX,azbox))
+$(eval $(call prepare_use_flags,MCA,mca))
+$(eval $(call prepare_use_flags,SSL,ssl))
+$(eval $(call prepare_use_flags,LIBCRYPTO,))
+$(eval $(call prepare_use_flags,LIBUSB,libusb))
+$(eval $(call prepare_use_flags,PCSC,pcsc))
 
 # Add PLUS_TARGET and EXTRA_TARGET to TARGET
 ifdef NO_PLUS_TARGET
@@ -198,11 +132,6 @@ override TARGET := $(TARGET)$(EXTRA_TARGET)
 else
 override TARGET := $(TARGET)$(PLUS_TARGET)$(EXTRA_TARGET)
 endif
-
-# Set USE_ flags
-override USE_CFLAGS = $(STAPI_CFLAGS) $(COOLAPI_CFLAGS) $(AZBOX_CFLAGS) $(MCA_CFLAGS) $(SSL_CFLAGS) $(LIBCRYPTO_CFLAGS) $(LIBUSB_CFLAGS) $(PCSC_CFLAGS)
-override USE_LDFLAGS= $(STAPI_LDFLAGS) $(COOLAPI_LDFLAGS) $(AZBOX_LDFLAGS) $(MCA_LDFLAGS) $(SSL_LDFLAGS) $(LIBCRYPTO_LDFLAGS) $(LIBUSB_LDFLAGS) $(PCSC_LDFLAGS)
-override USE_LIBS   = $(STAPI_LIB) $(COOLAPI_LIB) $(AZBOX_LIB) $(SSL_LIB) $(LIBCRYPTO_LIB) $(LIBUSB_LIB) $(PCSC_LIB)
 
 EXTRA_CFLAGS = $(EXTRA_FLAGS)
 EXTRA_LDFLAGS = $(EXTRA_FLAGS)
@@ -215,16 +144,6 @@ override LDFLAGS += $(USE_LDFLAGS) $(EXTRA_LDFLAGS)
 override LIBS    += $(USE_LIBS) $(EXTRA_LIBS) $(STD_LIBS)
 
 override STD_DEFS += -D'CS_TARGET="$(TARGET)"'
-
-# This is a *HACK* to enable config variables based on defines
-# given in EXTRA_CFLAGS/EXTRA_LDFLAGS/EXTRA_FLAGS variables.
-#
-# -DXXXXXX is parsed and CONFIG_XXXXXX=y variable is set.
-#
-# *NOTE*: This is not the proper way to enable features.
-#         Use `make config` or `./config --enable CONFIG_VAR`
-conf_enabled := $(subst -D,CONFIG_,$(subst =,,$(subst =1,,$(filter -D%,$(sort $(CFLAGS) $(LDFLAGS))))))
-$(foreach conf,$(conf_enabled),$(eval override $(conf)=y))
 
 # Setup quiet build
 Q =
@@ -239,6 +158,10 @@ BINDIR := Distribution
 override BUILD_DIR := build
 OBJDIR := $(BUILD_DIR)/$(TARGET)
 
+# Include config.mak which contains variables for all enabled modules
+# These variables will be used to select only needed files for compilation
+-include $(OBJDIR)/config.mak
+
 OSCAM_BIN := $(BINDIR)/oscam-$(VER)$(SVN_REV)-$(subst cygwin,cygwin.exe,$(TARGET))
 LIST_SMARGO_BIN := $(BINDIR)/list_smargo-$(VER)$(SVN_REV)-$(subst cygwin,cygwin.exe,$(TARGET))
 
@@ -247,9 +170,7 @@ ifndef USE_LIBUSB
 override LIST_SMARGO_BIN =
 endif
 
-SRC-$(CONFIG_LIB_MINILZO) += algo/minilzo.c
-
-SRC-$(CONFIG_WITHOUT_LIBCRYPTO) += cscrypt/aes.c
+SRC-$(CONFIG_LIB_AES) += cscrypt/aes.c
 SRC-$(CONFIG_LIB_BIGNUM) += cscrypt/bn_add.c
 SRC-$(CONFIG_LIB_BIGNUM) += cscrypt/bn_asm.c
 SRC-$(CONFIG_LIB_BIGNUM) += cscrypt/bn_ctx.c
@@ -262,7 +183,6 @@ SRC-$(CONFIG_LIB_BIGNUM) += cscrypt/bn_shift.c
 SRC-$(CONFIG_LIB_BIGNUM) += cscrypt/bn_sqr.c
 SRC-$(CONFIG_LIB_BIGNUM) += cscrypt/bn_word.c
 SRC-$(CONFIG_LIB_BIGNUM) += cscrypt/mem.c
-SRC-y += cscrypt/crc32.c
 SRC-$(CONFIG_LIB_DES) += cscrypt/des.c
 SRC-$(CONFIG_LIB_IDEA) += cscrypt/i_cbc.c
 SRC-$(CONFIG_LIB_IDEA) += cscrypt/i_ecb.c
@@ -288,6 +208,8 @@ SRC-$(CONFIG_CARDREADER_SMARGO) += csctapi/ifd_smargo.c
 SRC-$(CONFIG_CARDREADER_SMART) += csctapi/ifd_smartreader.c
 SRC-$(CONFIG_CARDREADER_STAPI) += csctapi/ifd_stapi.c
 
+SRC-$(CONFIG_LIB_MINILZO) += minilzo/minilzo.c
+
 SRC-$(CONFIG_CS_ANTICASC) += module-anticasc.c
 SRC-$(CONFIG_CS_CACHEEX) += module-cacheex.c
 SRC-$(CONFIG_MODULE_CAMD33) += module-camd33.c
@@ -296,6 +218,7 @@ SRC-$(CONFIG_MODULE_CCCAM) += module-cccam.c
 SRC-$(CONFIG_MODULE_CCCSHARE) += module-cccshare.c
 SRC-$(CONFIG_MODULE_CONSTCW) += module-constcw.c
 SRC-$(CONFIG_CS_CACHEEX) += module-csp.c
+SRC-$(CONFIG_CW_CYCLE_CHECK) += module-cw-cycle-check.c
 SRC-$(CONFIG_WITH_AZBOX) += module-dvbapi-azbox.c
 SRC-$(CONFIG_WITH_MCA) += module-dvbapi-mca.c
 SRC-$(CONFIG_WITH_COOLAPI) += module-dvbapi-coolapi.c
@@ -312,13 +235,15 @@ SRC-$(CONFIG_MODULE_GHTTP) += module-ghttp.c
 SRC-$(CONFIG_MODULE_RADEGAST) += module-radegast.c
 SRC-$(CONFIG_MODULE_SERIAL) += module-serial.c
 SRC-$(CONFIG_WITH_LB) += module-stat.c
-SRC-$(CONFIG_WEBIF) += module-webif.c
 SRC-$(CONFIG_WEBIF) += module-webif-lib.c
-SRC-$(CONFIG_WEBIF) += module-webif-pages.c
+SRC-$(CONFIG_WEBIF) += module-webif-tpl.c
+SRC-$(CONFIG_WEBIF) += module-webif.c
+SRC-$(CONFIG_WEBIF) += webif/pages.c
 SRC-$(CONFIG_WITH_CARDREADER) += reader-common.c
 SRC-$(CONFIG_READER_BULCRYPT) += reader-bulcrypt.c
 SRC-$(CONFIG_READER_CONAX) += reader-conax.c
 SRC-$(CONFIG_READER_CRYPTOWORKS) += reader-cryptoworks.c
+SRC-$(CONFIG_READER_DGCRYPT) += reader-dgcrypt.c
 SRC-$(CONFIG_READER_DRE) += reader-dre.c
 SRC-$(CONFIG_READER_GRIFFIN) += reader-griffin.c
 SRC-$(CONFIG_READER_IRDETO) += reader-irdeto.c
@@ -357,42 +282,24 @@ SRC-y += oscam-string.c
 SRC-y += oscam-time.c
 SRC-y += oscam-work.c
 SRC-y += oscam.c
-######################################################################
-#
-#	Cygwin crosscompiler with PCSC
-#
-######################################################################
-cross-i386-pc-cygwin-pcsc:
-	@-$(MAKE) --no-print-directory \
-		-f Maketype TYP=$(subst cross-,,$@) \
-		OS_LIBS="-lcrypto -lm -lwinscard" \
-		OS_CULI="-lncurses" \
-		OS_PTLI="-lpthread" \
-		DS_OPTS="-O2 -DOS_CYGWIN32 -DWITH_LIBCRYPTO -D_WIN32 -DCS_CONFDIR=${CS_CONFDIR} -static -DHAVE_PCSC=1 -D'CS_SVN_VERSION="\"$(SVN_REV)\""'" \
-		DS_CFLAGS="-c" \
-		DS_LDFLAGS="" \
-		DS_ARFLAGS="-rvsl" \
-		DS_CC=i686-pc-cygwin-gcc \
-		DS_AR=i686-pc-cygwin-ar \
-		DS_LD=i686-pc-cygwin-ld \
-		DS_RL=i686-pc-cygwin-ranlib \
-		DS_ST=i686-pc-cygwin-strip
+# config.c is automatically generated by config.sh in OBJDIR
+SRC-y += config.c
 
 SRC := $(SRC-y)
 OBJ := $(addprefix $(OBJDIR)/,$(subst .c,.o,$(SRC)))
+SRC := $(subst config.c,$(OBJDIR)/config.c,$(SRC))
 
 # The default build target rebuilds the config.mak if needed and then
 # starts the compilation.
 all:
-	$(shell ./config.sh --make-config.mak)
-	@-mkdir -p $(OBJDIR)/algo $(OBJDIR)/cscrypt $(OBJDIR)/csctapi
+	@./config.sh --use-flags "$(USE_FLAGS)" --objdir "$(OBJDIR)" --make-config.mak
+	@-mkdir -p $(OBJDIR)/cscrypt $(OBJDIR)/csctapi $(OBJDIR)/minilzo $(OBJDIR)/webif
 	@-printf "\
 +-------------------------------------------------------------------------------\n\
 | OSCam ver: $(VER) rev: $(SVN_REV) target: $(TARGET)\n\
 | Tools:\n\
 |  CROSS    = $(CROSS_DIR)$(CROSS)\n\
 |  CC       = $(CC)\n\
-|  STRIP    = $(STRIP)\n\
 | Settings:\n\
 |  CONF_DIR = $(CONF_DIR)\n\
 |  CC_OPTS  = $(strip $(CC_OPTS))\n\
@@ -400,15 +307,18 @@ all:
 |  CFLAGS   = $(strip $(CFLAGS))\n\
 |  LDFLAGS  = $(strip $(LDFLAGS))\n\
 |  LIBS     = $(strip $(LIBS))\n\
+|  UseFlags = $(addsuffix =1,$(USE_FLAGS))\n\
 | Config:\n\
 |  Addons   : $(shell ./config.sh --show-enabled addons)\n\
 |  Protocols: $(shell ./config.sh --show-enabled protocols | sed -e 's|MODULE_||g')\n\
 |  Readers  : $(shell ./config.sh --show-enabled readers | sed -e 's|READER_||g')\n\
 |  CardRdrs : $(shell ./config.sh --show-enabled card_readers | sed -e 's|CARDREADER_||g')\n\
 |  Compiler : $(shell $(CC) --version 2>/dev/null | head -n 1)\n\
-|  Linker   : $(shell $(CC) $(LINKER_VER_OPT) 2>&1 | head -n 1)\n\
 |  Binary   : $(OSCAM_BIN)\n\
 +-------------------------------------------------------------------------------\n"
+ifeq "$(shell ./config.sh --enabled WEBIF)" "Y"
+	@$(MAKE) --no-print-directory --quiet -C webif
+endif
 	@$(MAKE) --no-print-directory $(OSCAM_BIN) $(LIST_SMARGO_BIN)
 
 $(OSCAM_BIN).debug: $(OBJ)
@@ -423,6 +333,10 @@ $(OSCAM_BIN): $(OSCAM_BIN).debug
 $(LIST_SMARGO_BIN): utils/list_smargo.c
 	$(SAY) "BUILD	$@"
 	$(Q)$(CC) $(STD_DEFS) $(CC_OPTS) $(CC_WARN) $(CFLAGS) $(LDFLAGS) utils/list_smargo.c $(LIBS) -o $@
+
+$(OBJDIR)/config.o: $(OBJDIR)/config.c
+	$(SAY) "CONF	$<"
+	$(Q)$(CC) $(STD_DEFS) $(CC_OPTS) $(CC_WARN) $(CFLAGS) -c $< -o $@
 
 $(OBJDIR)/%.o: %.c Makefile
 	@$(CC) -MP -MM -MT $@ -o $(subst .o,.d,$@) $<
@@ -456,10 +370,11 @@ clean:
 	@-rm -rf $(BUILD_DIR) lib
 
 distclean: clean
-	@-for FILE in config.mak $(BINDIR)/list_smargo-* $(BINDIR)/oscam-$(VER)*; do \
+	@-for FILE in $(BINDIR)/list_smargo-* $(BINDIR)/oscam-$(VER)*; do \
 		echo "RM	$$FILE"; \
 		rm -rf $$FILE; \
 	done
+	@-$(MAKE) --no-print-directory --quiet -C webif clean
 
 README.build:
 	@echo "Extracting 'make help' into $@ file."
@@ -467,7 +382,7 @@ README.build:
 ** This file is generated from 'make help' output, do not edit it. **\n\
 \n\
 " > $@
-	@-make --no-print-directory help >> $@
+	@-$(MAKE) --no-print-directory help >> $@
 	@echo "Done."
 
 README.config:
@@ -543,7 +458,7 @@ OSCam build system documentation\n\
                     Example: 'make EXTRA_LDFLAGS=-Llibdir'\n\
 \n\
    EXTRA_FLAGS    - Add text to both EXTRA_CFLAGS and EXTRA_LDFLAGS.\n\
-                    Example: 'make EXTRA_FLAGS=-DWEBIF=1'\n\
+                    Example: 'make EXTRA_FLAGS=-DBLAH=1'\n\
 \n\
    EXTRA_LIBS     - Add text to LIBS (affects linking).\n\
                     Example: 'make EXTRA_LIBS=\"-L./stapi -loscam_stapi\"'\n\
@@ -650,6 +565,19 @@ OSCam build system documentation\n\
                       'Distribution/oscam-1.20-unstable_svn7404-i486-slackware-linux-static'\n\
                      For example you can run: 'make OSCAM_BIN=my-oscam'\n\
 \n\
+ Binaries compiled and run during the OSCam build:\n\
+\n\
+   OSCam builds webif/pages_gen binary that is run by the build system to\n\
+   generate file that holds web pages. To build this binary two variables\n\
+   are used:\n\
+\n\
+   HOSTCC=gcc     - The compiler used for building binaries that are run on\n\
+                    the build machine (the host). Default: gcc\n\
+                    To use clang for example run: make CC=clang HOSTCC=clang\n\
+\n\
+   HOSTCFLAGS=xxx - The CFLAGS passed to HOSTCC. See webif/Makefile for the\n\
+                    default host cflags.\n\
+\n\
  Config targets:\n\
    make config        - Start configuration utility.\n\
    make allyesconfig  - Enable all configuration options.\n\
@@ -692,6 +620,7 @@ OSCam build system documentation\n\
     make dockstar      - Builds OSCam for Dockstar\n\
     make qboxhd        - Builds OSCam for QBoxHD STBs\n\
     make opensolaris   - Builds OSCam for OpenSolaris\n\
+    make uclinux       - Builds OSCam for m68k uClinux\n\
 \n\
  Predefined targets for static builds:\n\
     make static        - Builds OSCam statically\n\

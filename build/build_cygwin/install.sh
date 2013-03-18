@@ -29,6 +29,7 @@ cmake 	-DCMAKE_TOOLCHAIN_FILE=toolchain-i386-cygwin.cmake \
       	-DLIBUSBDIR=$TOOLCHAIN_ROOT/i686-pc-cygwin/i686-pc-cygwin \
 	-DLIBRTDIR=$TOOLCHAIN_ROOT/i686-pc-cygwin/i686-pc-cygwin \
 	-DOPTIONAL_INCLUDE_DIR=$TOOLCHAIN_ROOT/i686-pc-cygwin/i686-pc-cygwin/include \
+	-DSTATIC_LIBUSB=1 \
       	$srcdir
 make
 export CMAKE_LEGACY_CYGWIN_WIN32=

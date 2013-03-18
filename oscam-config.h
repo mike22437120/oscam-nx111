@@ -20,6 +20,7 @@ void    chk_reader(char *token, char *value, struct s_reader *rdr);
 void    reader_set_defaults(struct s_reader *rdr);
 int32_t init_readerdb(void);
 void    free_reader(struct s_reader *rdr);
+int32_t free_readerdb(void);
 int32_t write_server(void);
 
 void    chk_sidtab(char *token, char *value, struct s_sidtab *sidtab);
@@ -38,8 +39,8 @@ void    init_len4caid(void);
 
 /* Shared parser functions */
 void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f);
-void cspvaluetab_fn(const char *token, char *value, void *setting, FILE *f);
-void hitvaluetab_fn(const char *token, char *value, void *setting, FILE *f);
+void cacheex_valuetab_fn(const char *token, char *value, void *setting, FILE *f);
+void cacheex_hitvaluetab_fn(const char *token, char *value, void *setting, FILE *f);
 void class_fn(const char *token, char *value, void *setting, FILE *f);
 void group_fn(const char *token, char *value, void *setting, FILE *f);
 void services_fn(const char *token, char *value, void *setting, FILE *f);
